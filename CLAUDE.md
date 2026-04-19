@@ -63,19 +63,19 @@ Public Claude Code plugin marketplace. Distributes the `slideless` plugin: skill
 
 ## Backend Dependency
 
-All non-`generate-presentation` skills call the **slideless-ai** backend (a standalone Firebase project). Endpoints:
+All non-`generate-presentation` and non-`export-presentation-pdf` skills delegate to the **`slideless` CLI** (npm package), which wraps the slideless-ai backend's HTTP API. Skills never call curl or hand-roll fetch; the CLI centralises auth, base URL, error decoding, and JSON output shape.
 
-| Skill | Endpoint | Auth |
-|---|---|---|
-| `setup-slideless` | `POST /verifyApiKey` | API key |
-| `share-presentation` | `POST /uploadSharedPresentation` | API key (`presentations:write`) |
-| `update-presentation` | `POST /updateSharedPresentation` | API key (`presentations:write`) |
-| `list-presentations` | `GET /listMyPresentationsPublic` | API key (`presentations:read`) |
-| `get-presentation` | `GET /getSharedPresentationInfoPublic/<shareId>` | API key (`presentations:read`) |
-| (viewer, public) | `GET /getSharedPresentation/<shareId>?token=...` | unguessable token in URL |
+| Skill | CLI command | Backing endpoint | Required scope |
+|---|---|---|---|
+| `setup-slideless` | `slideless auth signup-request/signup-complete/login-request/login-complete` (primary), `slideless login` (fallback), `slideless whoami` / `verify` | `POST /cliRequestSignupOtp`, `/cliCompleteSignup`, `/cliRequestLoginOtp`, `/cliCompleteLogin`, `/verifyApiKey` | (mints its own `cko_` key with `presentations:read` + `presentations:write`) |
+| `share-presentation` | `slideless share` (or `slideless update` with `--update`) | `POST /uploadSharedPresentation` / `POST /updateSharedPresentation` | `presentations:write` |
+| `update-presentation` | `slideless update` | `POST /updateSharedPresentation` | `presentations:write` |
+| `list-presentations` | `slideless list` | `GET /listMyPresentations` | `presentations:read` |
+| `get-presentation` | `slideless get` | `GET /getSharedPresentationInfo/<shareId>` | `presentations:read` |
+| (viewer, public) | (no CLI) | `GET /getSharedPresentation/<shareId>?token=...` | unguessable token in URL |
 
-Default base URL: `https://europe-west1-slideless-ai.cloudfunctions.net`
+Skills always pass `--json` so the response shape is stable: `{ success: true, data: ... }` or `{ success: false, status, error: { code, message } }`.
 
-To use a custom domain or staging environment later, set `SLIDELESS_API_BASE_URL` in `~/.codika/.env` and update each SKILL.md to read from that env var. Skill source code lives in this repo — when the backend changes URL shape, version bump + edit the skills.
+Auth is via the standard `Authorization: Bearer <key>` header. The CLI handles this — skills should not deal with headers directly.
 
-The auth header is `X-Process-Manager-Key` (NOT `Authorization: Bearer`) — inherited from codika-app-platform's API key middleware. Don't confuse with `CODIKA_ADMIN_API_KEY` which is a different key for a different backend.
+Don't confuse `cko_…` slideless API keys with `CODIKA_ADMIN_API_KEY` (which targets a different backend).

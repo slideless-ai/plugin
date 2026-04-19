@@ -1,6 +1,6 @@
 # Slideless Marketplace
 
-Public Claude Code plugin marketplace for generating, hosting, and sharing beautiful HTML presentations from any agent. Backed by [slideless-ai](https://slideless-ai.web.app) (a standalone Firebase project).
+Public Claude Code plugin marketplace for generating, hosting, and sharing beautiful HTML presentations from any agent. Backed by [slideless](https://slideless.ai), with all backend operations going through the official `slideless` CLI.
 
 ## What's Inside
 
@@ -8,7 +8,7 @@ One plugin, `slideless`, with seven skills covering the full lifecycle:
 
 | Skill | What it does |
 |---|---|
-| `setup-slideless` | Get an API key from the slideless-ai dashboard, store it in `~/.codika/.env`, verify it works. Run this **first**. |
+| `setup-slideless` | Install the `slideless` CLI and attach a `cko_` key. Prefers the OTP flow (`slideless auth signup-request` / `login-request` + matching `-complete`); falls back to pasting a dashboard key. Run this **first**. |
 | `generate-presentation` | Generate a self-contained `.html` presentation in one of several built-in visual styles. Each style ships with a complete reference example and a build guide. |
 | `share-presentation` | Upload a generated `.html` file to slideless-ai and get a public share URL with view tracking. |
 | `update-presentation` | Replace the HTML of an existing share **in place** — same URL, view counts preserved, version bumps. Use after re-generating or editing a deck. |
@@ -59,12 +59,15 @@ Each style lives in its own folder under `plugins/slideless/skills/generate-pres
 
 ```
 > /slideless:setup-slideless
-[follow the steps to create an API key at slideless-ai.web.app and save it to ~/.codika/.env]
+[installs the `slideless` CLI, then:
+ - emails an OTP to the address you give it (`slideless auth signup-request`)
+ - you paste the 6-digit code back, and it finishes with `slideless auth signup-complete`
+ - result: a `cko_` key saved to ~/.config/slideless/config.json, ready to go]
 
 > use slideless to generate a 7-slide deck about <topic> in full-deck style, save to ./deck.html
 
 > share that presentation as "<title>"
-[returns: https://europe-west1-slideless-ai.cloudfunctions.net/getSharedPresentation/<shareId>?token=…]
+[skill runs `slideless share ./deck.html --title "<title>" --json` and returns the public URL]
 ```
 
 ## Adding a New Style

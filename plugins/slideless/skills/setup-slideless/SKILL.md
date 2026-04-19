@@ -1,71 +1,146 @@
 ---
 name: setup-slideless
-description: "Set up authentication for the slideless-ai backend so other slideless skills (share-presentation, update-presentation, list-presentations, get-presentation) can call its Cloud Functions. Activate when the user wants to start using slideless for the first time, when share-presentation or any other slideless skill returns 401, or when the user asks how to get a slideless API key."
+description: "Bootstrap the slideless CLI so other slideless skills (share-presentation, update-presentation, list-presentations, get-presentation) can call its API. Activate when the user wants to start using slideless for the first time, when share-presentation or any other slideless skill returns 401, or when the user asks how to get a slideless API key. Runs the OTP-based signup or login flow via `slideless auth ...`; falls back to pasting a dashboard key if the user already has one."
 ---
 
 # Slideless Setup
 
-Get a slideless organization API key, store it in the workspace `.env`, and verify it works. After this, all other slideless skills authenticate automatically.
+Install the `slideless` CLI and attach an organization API key to this machine. After this, every other slideless skill authenticates automatically: no env vars, no header juggling.
+
+The preferred path is **OTP from the terminal** — two commands and the key is minted and saved. No browser visit required. Dashboard-paste is available as a fallback for users who already have a `cko_`.
 
 ## Prerequisites
 
-- A slideless-ai account (sign up at `https://slideless-ai.web.app` if you don't have one)
-- Workspace `.env` file at `~/.codika/.env` (it already exists if you've used Codika before)
+- Node.js 20+
+- An email address the user can check (for the OTP path)
 
-## Step 1: Get an organization API key
-
-The dashboard creates the key for you and shows the raw value once:
-
-1. Go to **`https://slideless-ai.web.app`**, sign in if needed
-2. Click your organization → **API Keys** in the sidebar (URL pattern: `/organizations/<orgId>/org/api-keys`)
-3. Click **Create API key**
-4. Name it (e.g. `claude-skill`), select scope `presentations:write` (and optionally `presentations:read`)
-5. Copy the raw `cko_…` value when the modal shows it. **This is the only time you'll see it.**
-
-If the user wants to do this from the CLI instead of the dashboard, that's a v2 feature — for v1, the dashboard is the only path.
-
-## Step 2: Store the key in the workspace `.env`
+## Step 1: Install the CLI
 
 ```bash
-echo 'SLIDELESS_API_KEY=cko_paste_the_value_here' >> ~/.codika/.env
+npm install -g slideless
+slideless --version
 ```
 
-If `~/.codika/.env` doesn't exist, create it. The other slideless skills read this env var.
+If `npm install -g` is blocked, `npx slideless ...` works for any command (slower).
 
-## Step 3: Verify the key works
+## Step 2: Pick a path
+
+Ask the user which applies — don't guess:
+
+- **No slideless account yet** → **Path A: OTP signup** (most common for first-time use).
+- **Account exists, but this machine has no key (or the current key is bad)** → **Path B: OTP login**.
+- **User already copied a `cko_...` from the dashboard** → **Path C: paste** (fallback).
+
+If the user is unsure, start with Path A. The backend tells you (via `USER_ALREADY_HAS_ORGANIZATION`) if you should switch to Path B, and vice versa. Handle that branching automatically — don't make the user figure it out.
+
+## Path A — OTP signup
 
 ```bash
-source ~/.codika/.env
-curl -sS -X POST \
-  -H "X-Process-Manager-Key: $SLIDELESS_API_KEY" \
-  https://europe-west1-slideless-ai.cloudfunctions.net/verifyApiKey
+slideless auth signup-request --email $EMAIL --json
 ```
 
-Expected response (success):
+Expected success shape:
+
+```json
+{ "success": true, "data": { "email": "...", "expiresInSeconds": 600 } }
+```
+
+Tell the user "I sent a 6-digit code to `<email>` — paste it back when you have it" and wait. Then:
+
+```bash
+slideless auth signup-complete --email $EMAIL --code $OTP --json
+```
+
+Optional flags for populating the new organization at the same time. All optional; the CLI base64-encodes the logo for you.
+
+```bash
+slideless auth signup-complete --email $EMAIL --code $OTP --json \
+  --company "Acme" \
+  --description "We make widgets" \
+  --brand-primary "#0a0a0a" \
+  --logo ./logo.png
+```
+
+Expected success shape:
+
 ```json
 {
-  "valid": true,
-  "type": "organization",
-  "keyPrefix": "cko_xxxxxxxx",
-  "keyName": "claude-skill",
-  "scopes": ["presentations:write"],
-  "organizationName": "<Your workspace name>",
-  "expiresAt": null
+  "success": true,
+  "data": {
+    "profileName": "my-organization",
+    "organizationId": "...",
+    "organizationName": "My Organization",
+    "apiKey": { "keyPrefix": "cko_xxxx", "name": "CLI default key", "scopes": ["presentations:write","presentations:read"], "createdAt": "..." },
+    "isNewUser": true
+  }
 }
 ```
 
-If you get `401 Unauthorized` or `valid: false`, the key was mis-pasted or revoked. Repeat Step 1.
+The `cko_` key is saved to `~/.config/slideless/config.json` and set as the active profile. Surface `organizationName`, `organizationId`, and `keyPrefix` to the user.
+
+**Branching**: if `signup-request` returns `USER_ALREADY_HAS_ORGANIZATION`, switch to **Path B** (the user already has an account; OTP login gives them a fresh key).
+
+## Path B — OTP login
+
+```bash
+slideless auth login-request --email $EMAIL --json
+slideless auth login-complete --email $EMAIL --code $OTP --json
+```
+
+Same flow, same response shape. Each `login-complete` mints a **new** `cko_` key scoped to the existing organization; previous keys stay valid until revoked from the dashboard.
+
+**Branching**: if `login-request` returns `USER_NOT_FOUND` or `USER_HAS_NO_ORGANIZATION`, switch to **Path A**.
+
+## Path C — Paste a dashboard key (fallback)
+
+Only use this if the user explicitly has a key already (they say so, or they paste a `cko_...` at you):
+
+```bash
+slideless login --api-key cko_xxxx     # non-interactive
+# or
+slideless login                        # interactive, masked prompt
+```
+
+If the user doesn't have a key and asks where to get one, direct them back to Path A/B (they'll be done in 30 seconds) rather than walking them through the dashboard.
+
+## Step 3: Verify
+
+```bash
+slideless whoami --json
+```
+
+Must return `success: true` with an `organizationName`, `keyPrefix` starting with `cko_`, and scopes `presentations:write` + `presentations:read`.
+
+## Error-handling table
+
+Every `slideless auth ...` error payload carries a `nextAction` string — use it. Pass it through to the user verbatim when surfacing failures; its wording is chosen to be actionable.
+
+| Code | What to do |
+|---|---|
+| `OTP_RESEND_COOLDOWN` (`details.retryInSeconds`) | Wait the number of seconds, then re-run the `-request`. |
+| `OTP_EXPIRED`, `OTP_NOT_FOUND`, `OTP_ALREADY_USED`, `OTP_LOCKED_OUT` | Re-run the matching `-request` to get a fresh code. |
+| `OTP_INVALID` (`details.attemptsRemaining`) | Ask the user to re-check the email; they have `attemptsRemaining` tries before lockout. |
+| `OTP_PURPOSE_MISMATCH` | Happens if you crossed signup and login flows. Re-run the matching `-request`. |
+| `USER_ALREADY_HAS_ORGANIZATION` | Switch from Path A → Path B. |
+| `USER_NOT_FOUND` / `USER_HAS_NO_ORGANIZATION` | Switch from Path B → Path A. |
+| `EMAIL_RATE_LIMITED` / `IP_RATE_LIMITED` | 20/hour per email or 60/hour per IP hit. Wait and retry. |
+| `LOGO_TOO_LARGE` / `LOGO_INVALID_FORMAT` / `LOGO_DECODE_FAILED` | Drop `--logo` and retry, or pick a smaller/valid file (PNG/JPEG/WebP/SVG ≤ 2 MB). |
+| `BRAND_COLOR_INVALID` | Use a 6-digit hex like `#0a0a0a`, or omit the flag. |
+| `COMPANY_NAME_TOO_LONG` | Shorten `--company` to ≤ 100 chars, or omit (defaults to "My Organization"). |
+| `INVALID_EXPIRES_IN_DAYS` | Omit `--key-expires-in` or pass 1–365. |
+| `INTERNAL` | Retry in a few seconds. |
 
 ## Output checklist
 
-- [ ] User has a `cko_…` key from the slideless-ai dashboard
-- [ ] Key is stored as `SLIDELESS_API_KEY` in `~/.codika/.env`
-- [ ] `verifyApiKey` returns `valid: true` with the expected scopes
-- [ ] Tell the user: "Setup complete. You can now use share-presentation, update-presentation, list-presentations, and get-presentation."
+- [ ] `slideless --version` prints a version number.
+- [ ] The active profile in `~/.config/slideless/config.json` has a `cko_` key and both `presentations:write` and `presentations:read` scopes.
+- [ ] `slideless whoami --json` returns `success: true`.
+- [ ] Tell the user which organization they are logged into, the masked key prefix, and that other slideless skills (share / update / list / get) will now work.
 
 ## Pitfalls
 
-- **Wrong scope** → Other skills will return 403 even though the key is valid. Make sure `presentations:write` is selected.
-- **Key not loaded by shell** → Don't forget `source ~/.codika/.env` in the same shell session, or restart the terminal.
-- **Multiple Codika products** → If the user already has `CODIKA_ADMIN_API_KEY` for codika-app, that's a different key. Slideless uses its own `SLIDELESS_API_KEY`.
-- **Wrong header name** → Header must be `X-Process-Manager-Key`, NOT `Authorization: Bearer`. This is the slideless-ai convention (inherited from codika-app-platform).
+- **Starting interactively without an email.** The OTP path requires `--email`; don't try `slideless auth signup-request` with no flags.
+- **Falling back too fast.** If a signup hits `USER_ALREADY_HAS_ORGANIZATION`, that's a useful signal — switch to login, don't ask the user for a pasted key.
+- **Leaking the code.** The 6-digit OTP arrives by email. Accept it from the user, but never echo it to shared logs.
+- **Confusing the two Codika keys.** `CODIKA_ADMIN_API_KEY` (for the main Codika platform) is a different backend with a different key format (`ck_…`). Slideless uses `cko_…` and has its own `~/.config/slideless/config.json`; the two do not conflict.
+- **CLI not on PATH after `npm install -g`.** Check `npm prefix -g` and ensure that bin dir is on PATH, or fall back to `npx slideless ...`.

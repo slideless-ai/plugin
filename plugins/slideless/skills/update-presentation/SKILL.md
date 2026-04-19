@@ -5,61 +5,60 @@ description: "Replace the HTML of an existing shared presentation in place. The 
 
 # Update Presentation
 
-Wraps the slideless-ai `updateSharedPresentation` Cloud Function. Same URL, new HTML, version bumps, view count preserved.
+Wraps `slideless update`. Replaces the HTML at an existing share. Same URL, new content, version bumps, view count preserved.
 
 ## Inputs
 
 | Input | Required | Notes |
 |---|---|---|
-| `share_id` | yes | The `shareId` returned by a previous `share-presentation` call (the user has it in chat history or in their dashboard at `/organizations/<orgId>/presentations`). |
-| `html_path` | yes | Absolute path to the local `.html` file with the updated content. |
-| `title` | optional | New title. If omitted, keeps the existing title. |
+| `share_id` | yes | The `shareId` returned by a previous `share-presentation` call (in chat history, dashboard URL, or `slideless list` output). |
+| `html_path` | yes | Path to the local `.html` file with the updated content. |
+| `title` | optional | New title. If omitted, the existing title is kept. |
 
 ## Prerequisites
 
-- `SLIDELESS_API_KEY` in `~/.codika/.env` (run `setup-slideless` if you don't have one)
-- The user must own the presentation being updated (ownership is checked server-side; updating someone else's presentation returns 403)
+- `slideless` CLI installed and authenticated (run `setup-slideless` if not)
+- The user must own the presentation being updated (ownership is checked server-side)
 
 ## Steps
 
-1. **Validate inputs** — confirm the file at `html_path` exists, is non-empty, and is under 10 MB
-2. **Read the HTML** from disk
-3. **Resolve the API key** from `~/.codika/.env` (or env var)
-4. **POST to the update endpoint**:
+1. **Validate** — confirm the file at `html_path` exists and is non-empty (CLI rejects > 10 MB)
+2. **Run the CLI** with `--json`:
 
 ```bash
-curl -sS -X POST \
-  -H "X-Process-Manager-Key: $SLIDELESS_API_KEY" \
-  -H "Content-Type: application/json" \
-  --data-binary @<(jq -Rs --arg id "$SHARE_ID" --arg title "$TITLE" '{shareId: $id, html: ., title: $title}' < "$HTML_PATH") \
-  "https://europe-west1-slideless-ai.cloudfunctions.net/updateSharedPresentation"
-```
+# Without title change:
+slideless update "$SHARE_ID" "$HTML_PATH" --json
 
-(If `title` is omitted, drop the `--arg title` and `title: $title` parts.)
+# With title change:
+slideless update "$SHARE_ID" "$HTML_PATH" --title "$NEW_TITLE" --json
+```
 
 ## Expected response
 
 ```json
 {
-  "shareId": "01a3b…",
-  "version": 2,
-  "shareUrl": "https://europe-west1-slideless-ai.cloudfunctions.net/getSharedPresentation/01a3b…?token=…"
+  "success": true,
+  "data": {
+    "shareId": "01a3b…",
+    "version": 2,
+    "shareUrl": "https://…"
+  }
 }
 ```
 
-Tell the user: "Updated to version N. Same URL — recipients see the new content on next load."
+Tell the user: "Updated to version &lt;N&gt;. Same URL — recipients see the new content on next load."
 
 ## Pitfalls
 
-- **Wrong shareId** → 404. The `shareId` is the UUIDv7 from the upload response (also visible in the dashboard URL `/presentations/<shareId>`).
-- **Updating someone else's presentation** → 403 with `permission-denied`. Only the original owner can update.
-- **Updating an archived presentation** → 410 with `archived`. Create a fresh one with `share-presentation` instead.
-- **HTML > 10 MB** → 413 with `payload-too-large`. Slim the deck (compress images, inline fewer fonts).
-- **No `presentations:write` scope on the key** → 403. Re-run `setup-slideless` and pick the right scope.
+- **Wrong shareId** → `not-found`. Confirm with `slideless list` or check the dashboard URL.
+- **Updating someone else's presentation** → `permission-denied`. Only the original owner can update.
+- **Updating an archived presentation** → `archived`. Create a fresh one with `share-presentation` instead.
+- **HTML > 10 MB** → `payload-too-large`. Slim the deck.
+- **No `presentations:write` scope** → `permission-denied`. Re-run `setup-slideless` and pick the right scope.
 
 ## Output checklist
 
 - [ ] HTML file exists and is non-empty
-- [ ] API key resolved
-- [ ] Update returned 200 with version > previous version
+- [ ] CLI returned `success: true` with `version > previous version`
 - [ ] Surface the unchanged share URL to the user (same as before — no need to re-distribute)
+- [ ] On error, surface the `code` and `message` verbatim
