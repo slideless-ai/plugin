@@ -1,6 +1,8 @@
-# Slideless Marketplace
+# Slideless Plugin
 
-Public Claude Code plugin marketplace for generating, hosting, and sharing beautiful HTML presentations from any agent. Backed by [slideless](https://slideless.ai), with all backend operations going through the official `slideless` CLI.
+Agent plugin for generating, hosting, and sharing beautiful HTML presentations from any Claude- or Cursor-compatible coding agent. Backed by [slideless](https://slideless.ai), with all backend operations going through the official `slideless` CLI.
+
+Conforms to the [Open Plugin Specification v1.0](https://github.com/vercel-labs/open-plugin-spec), so it installs into any Open-Plugin-compatible host.
 
 ## What's Inside
 
@@ -43,17 +45,29 @@ The `generate-presentation` skill ships with two complete reference styles:
 | `slim-tabbed` | Workshops, internal alignments, content-heavy decks where reading comprehension matters more than spectacle. Sidebar-driven navigation, theme toggle, scrollable panels. |
 | `full-deck` | Investor pitches, conference talks, recorded presentations. Cinematic full-screen slides with word-reveal animations, grid overview, scrubber preview, swipe support. |
 
-Each style lives in its own folder under `plugins/slideless/skills/generate-presentation/styles/<style>/` containing:
+Each style lives in its own folder under `skills/generate-presentation/styles/<style>/` containing:
 - `README.md` — when to pick this style and what it's good for
 - `how-to-build.md` — every component, CSS variable, JS behavior the agent needs to reproduce the look
 - `example.html` — a complete production-quality reference presentation, source of truth for HTML/CSS/JS patterns
 
 ## Install
 
+### Any Open-Plugin-compatible host (Claude Code, Cursor, …)
+
 ```bash
-/plugin marketplace add slideless-ai/marketplace
-/plugin install slideless@slideless-marketplace
+npx plugins add slideless-ai/plugin
 ```
+
+The `plugins` CLI auto-detects which agent tools are installed and installs to all of them.
+
+### Claude Code (native)
+
+```
+/plugin marketplace add slideless-ai/plugin
+/plugin install slideless@plugin
+```
+
+Both paths produce the same `/slideless:*` skills — Claude Code prefers the `.claude-plugin/plugin.json` manifest when available, other hosts read `.plugin/plugin.json`.
 
 ## Quickstart
 
@@ -72,9 +86,9 @@ Each style lives in its own folder under `plugins/slideless/skills/generate-pres
 
 ## Adding a New Style
 
-1. Create `plugins/slideless/skills/generate-presentation/styles/<style-name>/`
+1. Create `skills/generate-presentation/styles/<style-name>/`
 2. Add `README.md`, `how-to-build.md`, and `example.html`
-3. Register the style in `plugins/slideless/skills/generate-presentation/styles/README.md`
+3. Register the style in `skills/generate-presentation/styles/README.md`
 4. Update the table above
 
 ## License

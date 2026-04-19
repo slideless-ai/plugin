@@ -1,44 +1,55 @@
-# Slideless Marketplace
+# Slideless Plugin
 
-Public Claude Code plugin marketplace. Distributes the `slideless` plugin: skills for generating, sharing, and managing HTML presentations.
+Public agent plugin for generating, sharing, and managing HTML presentations. Published as a single [Open Plugin v1](https://github.com/vercel-labs/open-plugin-spec)-conformant repo, installable via `npx plugins add slideless-ai/plugin` or Claude Code's `/plugin marketplace add` flow.
 
 ## Repository Structure
 
 ```
 .
+├── .plugin/
+│   └── plugin.json                   # Vendor-neutral manifest (Open Plugin v1)
 ├── .claude-plugin/
-│   └── marketplace.json              # Marketplace catalog
-├── plugins/
-│   └── slideless/
-│       ├── .claude-plugin/
-│       │   └── plugin.json
-│       └── skills/
-│           ├── setup-slideless/
-│           │   └── SKILL.md
-│           ├── generate-presentation/
-│           │   ├── SKILL.md
-│           │   └── styles/
-│           │       ├── README.md
-│           │       ├── slim-tabbed/
-│           │       │   ├── README.md
-│           │       │   ├── how-to-build.md
-│           │       │   └── example.html
-│           │       └── full-deck/
-│           │           ├── README.md
-│           │           ├── how-to-build.md
-│           │           └── example.html
-│           ├── share-presentation/
-│           │   └── SKILL.md
-│           ├── update-presentation/
-│           │   └── SKILL.md
-│           ├── list-presentations/
-│           │   └── SKILL.md
-│           └── get-presentation/
-│               └── SKILL.md
+│   └── plugin.json                   # Vendor-prefixed manifest (preferred by Claude Code)
+├── skills/
+│   ├── setup-slideless/
+│   │   └── SKILL.md
+│   ├── generate-presentation/
+│   │   ├── SKILL.md
+│   │   └── styles/
+│   │       ├── README.md
+│   │       ├── slim-tabbed/
+│   │       │   ├── README.md
+│   │       │   ├── how-to-build.md
+│   │       │   └── example.html
+│   │       └── full-deck/
+│   │           ├── README.md
+│   │           ├── how-to-build.md
+│   │           └── example.html
+│   ├── share-presentation/
+│   │   └── SKILL.md
+│   ├── update-presentation/
+│   │   └── SKILL.md
+│   ├── list-presentations/
+│   │   └── SKILL.md
+│   ├── get-presentation/
+│   │   └── SKILL.md
+│   └── export-presentation-pdf/
+│       └── SKILL.md
 ├── README.md
 ├── CLAUDE.md
 └── LICENSE
 ```
+
+The repo root IS the plugin root — no `plugins/` wrapper, no marketplace layer. This matches `vercel/vercel-plugin` and is the recommended Open Plugin layout for single-plugin repos.
+
+## Manifests
+
+Two manifests are kept intentionally in sync:
+
+- `.plugin/plugin.json` — canonical Open Plugin v1 manifest. Read by `npx plugins`, Cursor, and any other Open-Plugin-compatible host.
+- `.claude-plugin/plugin.json` — Claude Code vendor-prefixed manifest. Per Open Plugin §5.1, Claude Code prefers this when both are present.
+
+When editing manifest metadata (`version`, `description`, `keywords`, …), update BOTH files. Both ship the same schema; the only field that must stay present in `.plugin/` is `repository`.
 
 ## Conventions
 
@@ -50,15 +61,15 @@ Public Claude Code plugin marketplace. Distributes the `slideless` plugin: skill
 
 ## Adding a New Style
 
-1. Create `plugins/slideless/skills/generate-presentation/styles/<style-name>/`
+1. Create `skills/generate-presentation/styles/<style-name>/`
 2. Add `README.md`, `how-to-build.md`, and `example.html`
-3. Register the style in `plugins/slideless/skills/generate-presentation/styles/README.md` (the picker table) and in the SKILL.md style index
+3. Register the style in `skills/generate-presentation/styles/README.md` (the picker table) and in the SKILL.md style index
 4. Update the README.md style table
 
 ## Adding a New Skill
 
-1. Create `plugins/slideless/skills/<skill-name>/SKILL.md` with YAML frontmatter (`name`, `description`)
-2. The plugin loader will pick it up automatically; no plugin.json edits needed
+1. Create `skills/<skill-name>/SKILL.md` with YAML frontmatter (`name`, `description`)
+2. The plugin loader picks it up automatically from the default `skills/` discovery location (Open Plugin §7.1) — no manifest edits needed
 3. Document it in `README.md`
 
 ## Backend Dependency

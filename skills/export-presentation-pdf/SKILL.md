@@ -35,7 +35,7 @@ export-presentation-pdf/
     └── slim-tabbed.css     ← print overrides for slim-tabbed
 ```
 
-If not found, tell the user: "I can't find the `export-presentation-pdf` skill assets. Make sure the `slideless` plugin is installed from the slideless marketplace."
+If not found, tell the user: "I can't find the `export-presentation-pdf` skill assets. Make sure the `slideless` plugin is installed (`npx plugins add slideless-ai/plugin`)."
 
 ## Prerequisites
 

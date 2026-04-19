@@ -18,7 +18,7 @@ Style guides and reference examples are bundled inside this skill's `styles/` di
 
 Once found, store the `styles/` base path and use it for all subsequent reads.
 
-If none found, tell the user: "I can't find the slideless style guides. Make sure the `slideless` plugin is installed from the slideless marketplace."
+If none found, tell the user: "I can't find the slideless style guides. Make sure the `slideless` plugin is installed (`npx plugins add slideless-ai/plugin`)."
 
 ## Directory Structure
 

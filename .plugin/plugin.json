@@ -1,0 +1,22 @@
+{
+  "name": "slideless",
+  "version": "2.1.0",
+  "description": "Generate and share beautiful self-contained HTML presentations. Bundles multiple visual styles, each with a complete reference example and a build guide. Skills delegate to the official `slideless` CLI (npm package) for all backend operations, so auth, error handling, and JSON output stay consistent. Run `setup-slideless` first.",
+  "author": {
+    "name": "Slideless",
+    "email": "team@slideless.ai",
+    "url": "https://slideless.ai"
+  },
+  "homepage": "https://slideless.ai",
+  "repository": "https://github.com/slideless-ai/plugin",
+  "license": "MIT",
+  "keywords": [
+    "presentation",
+    "slides",
+    "html",
+    "deck",
+    "pitch",
+    "slideless",
+    "share"
+  ]
+}
