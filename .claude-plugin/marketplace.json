@@ -1,0 +1,17 @@
+{
+  "name": "slideless-marketplace",
+  "version": "1.0.0",
+  "description": "Generate and share beautiful HTML presentations from any Claude agent",
+  "owner": {
+    "name": "Slideless",
+    "email": "team@slideless.ai"
+  },
+  "plugins": [
+    {
+      "name": "slideless",
+      "description": "Skills to generate self-contained HTML presentations in multiple visual styles and share them via a public link",
+      "source": "./plugins/slideless",
+      "category": "productivity"
+    }
+  ]
+}

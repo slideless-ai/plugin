@@ -1,0 +1,1318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Codika x Hexa Sprint — The Thesis</title>
+<meta name="theme-color" content="#0a0a0a">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --background: #ffffff;
+    --foreground: #0a0a0a;
+    --card: #ffffff;
+    --card-foreground: #0a0a0a;
+    --primary: #18181b;
+    --primary-foreground: #fafafa;
+    --secondary: #f4f4f5;
+    --muted: #f4f4f5;
+    --muted-foreground: #71717a;
+    --border: #e4e4e7;
+    --ring: #d4d4d8;
+    --radius: 0.625rem;
+    --dark-background: #0a0a0a;
+    --dark-foreground: #fafafa;
+    --dark-card: #0a0a0a;
+    --dark-card-foreground: #fafafa;
+    --dark-primary: #fafafa;
+    --dark-primary-foreground: #18181b;
+    --dark-secondary: #27272a;
+    --dark-muted: #18181b;
+    --dark-muted-foreground: #a1a1aa;
+    --dark-border: #27272a;
+    --dark-ring: #52525b;
+    --black: #0a0a0a;
+    --dark: #0a0a0a;
+    --dark2: #18181b;
+    --dark3: #27272a;
+    --gray1: #27272a;
+    --gray2: #3f3f46;
+    --gray3: #52525b;
+    --gray4: #71717a;
+    --gray5: #a1a1aa;
+    --gray6: #d4d4d8;
+    --light: #f4f4f5;
+    --white: #ffffff;
+    --font-h: 'Outfit', sans-serif;
+    --font-b: 'Inter', sans-serif;
+  }
+
+  html, body { width: 100%; height: 100%; overflow: hidden; font-family: var(--font-b); -webkit-font-smoothing: antialiased; background: var(--dark-background); }
+
+  .deck { width: 100vw; height: 100vh; position: relative; }
+
+  .slide {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
+    padding: 80px 120px;
+    opacity: 0; visibility: hidden;
+    transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1), visibility 0s 0.7s;
+    overflow: hidden;
+  }
+  .slide.active {
+    opacity: 1; visibility: visible;
+    transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1), visibility 0s 0s;
+  }
+  .slide--dark { background: var(--dark-background); color: var(--dark-foreground); }
+  .slide--black { background: var(--dark-background); color: var(--dark-foreground); }
+  .slide--light { background: var(--secondary); color: var(--foreground); }
+  .slide--white { background: var(--background); color: var(--foreground); }
+
+  /* ── STAGGER ANIM ── */
+  .anim {
+    opacity: 0; transform: translateY(30px); filter: blur(5px);
+    transition: opacity 0.65s cubic-bezier(0.16, 1, 0.3, 1),
+                transform 0.65s cubic-bezier(0.16, 1, 0.3, 1),
+                filter 0.65s ease;
+  }
+  .slide.active .anim { opacity: 1; transform: translateY(0); filter: blur(0); }
+  .slide.active .anim:nth-child(1) { transition-delay: 0.1s; }
+  .slide.active .anim:nth-child(2) { transition-delay: 0.25s; }
+  .slide.active .anim:nth-child(3) { transition-delay: 0.4s; }
+  .slide.active .anim:nth-child(4) { transition-delay: 0.55s; }
+  .slide.active .anim:nth-child(5) { transition-delay: 0.7s; }
+  .slide.active .anim:nth-child(6) { transition-delay: 0.85s; }
+  .slide.active .anim:nth-child(7) { transition-delay: 1.0s; }
+
+  /* ── WORD REVEAL ── */
+  .reveal-word {
+    display: inline-block; opacity: 0; filter: blur(8px); transform: translateY(14px);
+    transition: opacity 0.5s ease, filter 0.6s ease, transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .slide.active .reveal-word { opacity: 1; filter: blur(0); transform: translateY(0); }
+
+  /* ── TYPOGRAPHY ── */
+  .headline {
+    font-family: var(--font-h); font-weight: 800;
+    font-size: clamp(40px, 5.5vw, 78px); line-height: 1.04; letter-spacing: -0.04em;
+    max-width: 920px; text-align: center;
+  }
+  .headline--sm { font-size: clamp(28px, 3.2vw, 50px); }
+  .headline--md { font-size: clamp(32px, 4vw, 60px); }
+  .subline {
+    font-family: var(--font-b); font-weight: 400;
+    font-size: clamp(16px, 1.4vw, 21px); line-height: 1.75;
+    max-width: 620px; text-align: center;
+  }
+  .label {
+    font-family: var(--font-h); font-weight: 700;
+    font-size: 14px; letter-spacing: 0.14em; text-transform: uppercase;
+    padding: 6px 16px; border-radius: 6px;
+    display: inline-block;
+  }
+  .slide--dark .label, .slide--black .label { background: rgba(255,255,255,0.07); color: var(--gray5); }
+  .slide--light .label, .slide--white .label { background: rgba(0,0,0,0.05); color: var(--gray3); }
+
+  .text-gray { color: var(--gray4); }
+  .slide--light .text-gray, .slide--white .text-gray { color: var(--gray3); }
+  .text-white-soft { color: rgba(255,255,255,0.7); }
+
+  /* ── QUOTE ── */
+  .quote {
+    font-family: var(--font-b); font-style: italic; font-weight: 300;
+    font-size: clamp(17px, 1.4vw, 21px); line-height: 1.75;
+    max-width: 560px; text-align: center; position: relative; padding: 28px 0;
+  }
+  .quote::before {
+    content: ''; position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+    width: 40px; height: 2px; background: var(--dark-ring); border-radius: 1px;
+  }
+  .slide--light .quote::before, .slide--white .quote::before { background: var(--border); }
+
+  /* ── CARDS ── */
+  .card {
+    padding: 28px 24px; border-radius: var(--radius);
+    border: 1px solid var(--dark-border);
+    background: var(--dark-secondary);
+    transition: border-color 0.3s, transform 0.3s, box-shadow 0.3s;
+  }
+  .card:hover {
+    border-color: var(--dark-ring);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  }
+  .slide--light .card, .slide--white .card {
+    border-color: var(--border); background: var(--card);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.04);
+  }
+  .slide--light .card:hover, .slide--white .card:hover {
+    border-color: var(--ring);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 12px 32px rgba(0,0,0,0.08);
+  }
+
+  .card__icon {
+    width: 36px; height: 36px; border-radius: 9px;
+    background: var(--dark-muted);
+    display: flex; align-items: center; justify-content: center; margin-bottom: 14px;
+  }
+  .slide--light .card__icon, .slide--white .card__icon { background: var(--muted); }
+  .card__icon svg { width: 18px; height: 18px; color: var(--gray5); }
+  .slide--light .card__icon svg, .slide--white .card__icon svg { color: var(--gray3); }
+  .card__title { font-family: var(--font-h); font-weight: 700; font-size: 16px; margin-bottom: 8px; }
+  .card__body { font-size: 14.5px; line-height: 1.7; color: var(--gray4); }
+  .slide--light .card__body, .slide--white .card__body { color: var(--gray3); }
+
+  .card-grid { display: grid; gap: 18px; width: 100%; max-width: 860px; }
+  .card-grid--2 { grid-template-columns: repeat(2, 1fr); }
+  .card-grid--3 { grid-template-columns: repeat(3, 1fr); }
+  .card-grid--4 { grid-template-columns: repeat(4, 1fr); }
+
+  /* ── COMPARISON ── */
+  .comparison { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; max-width: 760px; width: 100%; }
+  .comp-card { padding: 32px; border-radius: var(--radius); border: 1px solid; position: relative; }
+  .comp-card--dim { border-color: var(--dark-border); background: var(--dark-secondary); opacity: 0.6; }
+  .comp-card--hi {
+    border-color: var(--white); background: var(--dark-secondary);
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.2), 0 8px 40px rgba(0,0,0,0.3);
+  }
+  .slide--light .comp-card--dim { border-color: var(--border); background: var(--muted); }
+  .slide--light .comp-card--hi {
+    border-color: var(--primary); background: var(--card);
+    box-shadow: 0 0 0 1px var(--primary), 0 8px 40px rgba(0,0,0,0.1);
+  }
+  .comp-card--hi::before {
+    content: attr(data-badge); position: absolute; top: -11px; left: 24px;
+    font-family: var(--font-h); font-weight: 700; font-size: 10px; letter-spacing: 0.1em;
+    color: var(--dark-primary-foreground); background: var(--white); padding: 4px 12px; border-radius: calc(var(--radius) - 2px);
+  }
+  .slide--light .comp-card--hi::before { background: var(--primary); color: var(--primary-foreground); }
+  .comp-label { font-family: var(--font-h); font-weight: 700; font-size: 17px; margin-bottom: 18px; }
+  .comp-row { display: flex; align-items: flex-start; gap: 10px; padding: 9px 0; font-size: 14px; line-height: 1.5; border-bottom: 1px solid rgba(255,255,255,0.06); }
+  .slide--light .comp-row, .slide--white .comp-row { border-bottom-color: var(--border); }
+  .comp-row:last-child { border-bottom: none; }
+  .comp-icon { flex-shrink: 0; width: 18px; height: 18px; margin-top: 2px; }
+
+  /* ── METRICS ── */
+  .metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; max-width: 780px; width: 100%; }
+  .metric {
+    padding: 22px; border-radius: var(--radius); text-align: center;
+    border: 1px solid var(--dark-border);
+    background: var(--dark-secondary);
+    transition: border-color 0.3s, transform 0.3s;
+  }
+  .metric:hover { border-color: var(--dark-ring); transform: translateY(-2px); }
+  .metric__val { font-family: var(--font-h); font-weight: 800; font-size: 32px; letter-spacing: -0.02em; margin-bottom: 4px; }
+  .metric__label { font-size: 12.5px; color: var(--gray4); }
+
+  /* ── S2 3-COLUMN GRID ── */
+  .s2-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 24px; max-width: 900px; width: 100%; }
+  .s2-block {
+    padding: 28px 24px; border-radius: 14px;
+    border: 1px solid var(--border); background: var(--card);
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .s2-block--accent {
+    border-color: var(--foreground); background: var(--foreground); color: var(--background);
+  }
+  .s2-block--accent .s2-block-body { color: rgba(255,255,255,0.7); }
+  .s2-icon { width: 28px; height: 28px; margin-bottom: 4px; }
+  .s2-icon svg { width: 100%; height: 100%; }
+  .s2-block-title { font-family: var(--font-h); font-weight: 700; font-size: 16px; }
+  .s2-block-body { font-size: 15px; line-height: 1.6; color: var(--muted-foreground); }
+
+  /* ── THESIS STATEMENT ── */
+  .thesis-statement {
+    font-family: var(--font-h); font-weight: 800;
+    font-size: clamp(22px, 2.2vw, 32px); line-height: 1.3; letter-spacing: -0.02em;
+    max-width: 700px; text-align: center;
+    padding: 28px 36px; border-radius: 16px;
+    border: 1px solid var(--dark-border); background: var(--dark-secondary);
+  }
+  .slide--light .thesis-statement, .slide--white .thesis-statement {
+    border-color: var(--border); background: var(--card);
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  }
+
+  /* ── FLYWHEEL ── */
+  .flywheel {
+    display: flex; align-items: center; gap: 12px; max-width: 860px; width: 100%;
+    justify-content: center; flex-wrap: wrap;
+  }
+  .flywheel__step {
+    padding: 14px 20px; border-radius: var(--radius);
+    border: 1px solid var(--border); background: var(--card);
+    font-family: var(--font-h); font-weight: 600; font-size: 13px;
+    text-align: center; min-width: 120px;
+  }
+  .flywheel__arrow {
+    font-size: 18px; color: var(--gray4);
+  }
+
+  /* ── BUDGET COMPARISON ── */
+  .budget-comp {
+    display: grid; grid-template-columns: 1fr auto 1fr; gap: 24px; align-items: center;
+    max-width: 700px; width: 100%;
+  }
+  .budget-card {
+    padding: 28px 24px; border-radius: var(--radius); text-align: center;
+  }
+  .budget-card--dim {
+    border: 1px solid var(--dark-border); background: var(--dark-secondary); opacity: 0.6;
+  }
+  .budget-card--hi {
+    border: 1px solid rgba(255,255,255,0.3); background: var(--dark-secondary);
+    box-shadow: 0 0 48px rgba(255,255,255,0.06);
+  }
+  .budget-card__amount {
+    font-family: var(--font-h); font-weight: 800; font-size: 36px; margin-bottom: 6px;
+  }
+  .budget-card__label {
+    font-size: 14px; color: var(--gray4); line-height: 1.5;
+  }
+  .budget-vs {
+    font-family: var(--font-h); font-weight: 600; font-size: 14px;
+    color: var(--gray3); text-transform: uppercase; letter-spacing: 0.1em;
+  }
+
+  /* ── ARCHITECTURE LAYERS ── */
+  .arch-layers {
+    display: flex; flex-direction: column; gap: 8px; max-width: 700px; width: 100%;
+  }
+  .arch-layer {
+    padding: 20px 28px; border-radius: var(--radius);
+    display: flex; align-items: center; justify-content: space-between;
+    font-family: var(--font-h); font-weight: 600; font-size: 15px;
+    transition: transform 0.3s;
+  }
+  .arch-layer:hover { transform: translateX(4px); }
+  .arch-layer--top {
+    border: 1px solid var(--dark-border); background: var(--dark-secondary); color: var(--gray4);
+  }
+  .arch-layer--mid {
+    border: 1px solid var(--dark-border); background: var(--dark-secondary); color: var(--gray5);
+  }
+  .arch-layer--us {
+    border: 1px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.08);
+    color: var(--white);
+    box-shadow: 0 0 32px rgba(255,255,255,0.06);
+  }
+  .arch-layer__tag {
+    font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
+    padding: 4px 10px; border-radius: 4px;
+  }
+  .arch-layer--us .arch-layer__tag { background: rgba(255,255,255,0.15); color: var(--white); }
+  .arch-layer--top .arch-layer__tag { background: rgba(255,255,255,0.06); color: var(--gray4); }
+  .arch-layer--mid .arch-layer__tag { background: rgba(255,255,255,0.06); color: var(--gray5); }
+
+  /* ── MATCH GRID ── */
+  .match-grid { display: grid; grid-template-columns: 1fr auto 1fr; gap: 24px; align-items: start; max-width: 780px; width: 100%; }
+  .match-col {
+    padding: 22px; border-radius: 12px;
+    border: 1px solid var(--dark-border); background: var(--dark-secondary);
+  }
+  .match-col__title { font-family: var(--font-h); font-weight: 700; font-size: 14px; margin-bottom: 12px; }
+  .match-col__items { list-style: none; padding: 0; }
+  .match-col__items li { font-size: 13px; line-height: 1.65; padding: 4px 0; color: var(--gray4); }
+  .match-bridge { display: flex; flex-direction: column; align-items: center; justify-content: center; padding-top: 44px; gap: 8px; }
+  .match-bridge__icon {
+    width: 42px; height: 42px; border-radius: 50%;
+    background: var(--white); color: var(--black);
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 0 32px rgba(255,255,255,0.12);
+  }
+
+  /* ── NICHE TAGS ── */
+  .niche-cloud {
+    display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; max-width: 700px;
+  }
+  .niche-tag {
+    padding: 8px 16px; border-radius: 8px;
+    font-family: var(--font-h); font-weight: 500; font-size: 13px;
+    border: 1px solid var(--dark-border); color: var(--gray5);
+    transition: border-color 0.3s, color 0.3s;
+  }
+  .niche-tag:hover { border-color: var(--dark-ring); color: var(--white); }
+  .niche-tag--hi {
+    border-color: rgba(255,255,255,0.3); color: var(--white);
+    background: rgba(255,255,255,0.06);
+  }
+
+  /* ── FACTORY VISUAL ── */
+  .factory-flow {
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; max-width: 860px; width: 100%;
+    align-items: start;
+  }
+  .factory-step {
+    padding: 20px 14px; border-radius: var(--radius); text-align: center;
+    border: 1px solid var(--dark-border); background: var(--dark-secondary);
+    position: relative;
+  }
+  .factory-step::after {
+    content: '→'; position: absolute; right: -14px; top: 50%; transform: translateY(-50%);
+    font-size: 16px; color: var(--gray3);
+  }
+  .factory-step:last-child::after { display: none; }
+  .factory-step__num {
+    font-family: var(--font-h); font-weight: 800; font-size: 20px; margin-bottom: 6px;
+    color: var(--gray5);
+  }
+  .factory-step__label {
+    font-family: var(--font-h); font-weight: 600; font-size: 12px;
+    color: var(--gray4); line-height: 1.4;
+  }
+
+  /* ── PILLAR SINGLE ── */
+  .pillar-single {
+    max-width: 480px; width: 100%; padding: 32px; border-radius: 16px; text-align: center;
+    border: 1px solid var(--dark-border); background: var(--dark-secondary);
+    position: relative;
+  }
+  .pillar-single::before {
+    content: 'WHERE WE ARE'; position: absolute; top: -11px; left: 50%; transform: translateX(-50%);
+    font-family: var(--font-h); font-weight: 700; font-size: 10px; letter-spacing: 0.12em;
+    color: var(--dark-primary-foreground); background: var(--white); padding: 4px 14px; border-radius: calc(var(--radius) - 2px);
+  }
+  .pillar-single__title { font-family: var(--font-h); font-weight: 800; font-size: 22px; margin-bottom: 10px; }
+  .pillar-single__desc { font-size: 14px; line-height: 1.65; color: var(--gray4); margin-bottom: 20px; }
+  .pillar-others { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  .pillar-tag {
+    padding: 6px 14px; border-radius: 8px; font-family: var(--font-h); font-weight: 500; font-size: 12px;
+    border: 1px solid var(--dark-border); color: var(--gray5);
+  }
+
+  /* ── PROGRESS ── */
+  .progress { position: fixed; bottom: 0; left: 0; height: 2px; background: var(--primary); transition: width 0.5s cubic-bezier(0.16, 1, 0.3, 1); z-index: 100; }
+
+  /* ── NAV ── */
+  .nav { position: fixed; bottom: 24px; right: 32px; display: flex; gap: 6px; z-index: 250; }
+  .nav__btn {
+    width: 36px; height: 36px; border-radius: var(--radius);
+    border: 1px solid; backdrop-filter: blur(12px);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: all 0.2s;
+  }
+  /* Dark slide theme */
+  .nav__btn.nav--dark {
+    border-color: rgba(255,255,255,0.1); background: rgba(0,0,0,0.5); color: rgba(255,255,255,0.5);
+  }
+  .nav__btn.nav--dark:hover {
+    border-color: rgba(255,255,255,0.6); background: rgba(255,255,255,0.12); color: var(--white); transform: scale(1.1);
+  }
+  /* Light slide theme */
+  .nav__btn.nav--light {
+    border-color: rgba(0,0,0,0.1); background: rgba(255,255,255,0.8); color: rgba(0,0,0,0.4);
+  }
+  .nav__btn.nav--light:hover {
+    border-color: rgba(0,0,0,0.5); background: rgba(0,0,0,0.08); color: rgba(0,0,0,0.9); transform: scale(1.1);
+  }
+  .nav__btn--active { border-color: var(--white) !important; color: var(--white) !important; background: rgba(255,255,255,0.15) !important; }
+
+  /* ── COUNTER ── */
+  .counter { position: fixed; bottom: 28px; left: 32px; font-family: var(--font-h); font-weight: 500; font-size: 12px; color: var(--dark-muted-foreground); z-index: 100; letter-spacing: 0.06em; opacity: 0.5; }
+  .counter__cur { color: var(--dark-foreground); font-weight: 700; opacity: 1; }
+
+  /* ── GRID OVERVIEW ── */
+  .grid-overlay {
+    position: fixed; inset: 0; z-index: 200;
+    display: flex; align-items: flex-start; justify-content: center;
+    background: rgba(0,0,0,0.85); backdrop-filter: blur(24px);
+    overflow-y: auto;
+    opacity: 0; visibility: hidden; pointer-events: none;
+    transition: opacity 0.35s ease, visibility 0s 0.35s;
+    padding: 40px;
+  }
+  .grid-overlay__inner {
+    display: flex; flex-wrap: wrap; gap: 20px;
+    justify-content: flex-start;
+    max-width: calc(5 * 340px + 4 * 20px); /* will be updated by JS */
+  }
+  .grid-overlay.open {
+    opacity: 1; visibility: visible; pointer-events: auto;
+    transition: opacity 0.35s ease, visibility 0s 0s;
+  }
+  .grid-tile {
+    position: relative; border-radius: 10px; cursor: pointer;
+    border: 2px solid transparent; padding: 4px;
+    width: 340px; height: 191px; /* 340 * 9/16 */
+    flex-shrink: 0;
+    transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+  }
+  .grid-tile__clip {
+    width: 100%; height: 100%; border-radius: 6px; overflow: hidden; position: relative;
+  }
+  .grid-tile:hover {
+    border-color: rgba(255,255,255,0.4);
+    transform: scale(1.03);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  }
+  .grid-tile.grid-tile--current {
+    border-color: rgba(255,255,255,0.6);
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.3), 0 8px 32px rgba(0,0,0,0.4);
+  }
+  .grid-tile__inner {
+    width: 1920px; height: 1080px;
+    transform-origin: top left;
+    position: absolute; top: 0; left: 0;
+  }
+  .grid-tile__inner .slide {
+    opacity: 1 !important; visibility: visible !important;
+    position: absolute; inset: 0;
+  }
+  .grid-tile__inner .slide .anim {
+    opacity: 1 !important; transform: none !important; filter: none !important;
+    transition: none !important;
+  }
+  .grid-tile__inner .slide .reveal-word {
+    opacity: 1 !important; filter: none !important; transform: none !important;
+    transition: none !important;
+  }
+
+  /* ── GRID SIZE SLIDER ── */
+  .grid-slider-wrap {
+    position: relative; display: flex; align-items: flex-end;
+  }
+  .grid-slider {
+    position: absolute; bottom: 44px; left: 50%; transform: translateX(-50%);
+    width: 36px; height: 120px;
+    background: var(--dark-secondary); border: 1px solid var(--dark-border);
+    border-radius: var(--radius); backdrop-filter: blur(12px);
+    display: flex; align-items: center; justify-content: center;
+    padding: 10px 0;
+    opacity: 0; visibility: hidden; pointer-events: none;
+    transition: opacity 0.2s, visibility 0s 0.2s;
+  }
+  .grid-slider.visible {
+    opacity: 1; visibility: visible; pointer-events: auto;
+    transition: opacity 0.2s, visibility 0s 0s;
+  }
+  .grid-slider input[type="range"] {
+    -webkit-appearance: none; appearance: none;
+    width: 100px; height: 4px;
+    background: var(--gray3); border-radius: 2px; outline: none;
+    transform: rotate(-90deg);
+    cursor: pointer;
+  }
+  .grid-slider input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 14px; height: 14px; border-radius: 50%;
+    background: var(--white); border: none;
+    cursor: pointer;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+  }
+
+  .grid-tile__num {
+    position: absolute; top: 8px; left: 10px;
+    font-family: var(--font-h); font-weight: 700; font-size: 12px;
+    color: rgba(255,255,255,0.8); background: rgba(0,0,0,0.5);
+    padding: 2px 7px; border-radius: 4px;
+    backdrop-filter: blur(4px); z-index: 1;
+  }
+
+  /* ── SPACERS ── */
+  .sp-8{height:8px}.sp-16{height:16px}.sp-24{height:24px}.sp-32{height:32px}.sp-40{height:40px}
+
+  /* ── EMPHASIS ── */
+  .em-highlight {
+    color: var(--white); font-weight: 700;
+  }
+  .slide--light .em-highlight, .slide--white .em-highlight {
+    color: var(--foreground); font-weight: 700;
+  }
+
+  /* ── SCRUBBER PREVIEW ── */
+  .scrubber-zone {
+    position: fixed; bottom: 0; left: 0; right: 0; height: 60px; z-index: 90;
+    cursor: pointer;
+  }
+  .scrubber-preview {
+    position: fixed; z-index: 95; pointer-events: none;
+    width: 240px; height: 150px;
+    border-radius: 8px; overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.15);
+    box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+    opacity: 0; transform: translateY(8px);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+  }
+  .scrubber-preview.visible {
+    opacity: 1; transform: translateY(0); pointer-events: auto; cursor: pointer;
+  }
+  .scrubber-preview__inner {
+    width: 1920px; height: 1080px;
+    transform-origin: top left;
+    position: absolute; top: 0; left: 0;
+  }
+  .scrubber-preview__inner .slide {
+    opacity: 1 !important; visibility: visible !important;
+    position: absolute; inset: 0;
+  }
+  .scrubber-preview__inner .slide .anim {
+    opacity: 1 !important; transform: none !important; filter: none !important;
+    transition: none !important;
+  }
+  .scrubber-preview__inner .slide .reveal-word {
+    opacity: 1 !important; filter: none !important; transform: none !important;
+    transition: none !important;
+  }
+  .scrubber-preview__label {
+    position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%);
+    font-family: var(--font-h); font-weight: 600; font-size: 11px;
+    color: rgba(255,255,255,0.9); background: rgba(0,0,0,0.6);
+    padding: 2px 8px; border-radius: 4px; white-space: nowrap;
+    backdrop-filter: blur(4px);
+  }
+
+  /* ── SUMMARY ROW ── */
+  .summary-row {
+    display: flex; gap: 14px; align-items: baseline;
+    padding: 10px 8px; cursor: pointer; border-radius: 6px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    transition: background 0.2s;
+    position: relative;
+  }
+  .summary-row:last-child { border-bottom: none; }
+  .summary-row:hover { background: rgba(255,255,255,0.06); }
+  .summary-row:hover .summary-row__text { color: var(--white); }
+  .summary-row__num {
+    font-family: var(--font-h); font-weight: 700; font-size: 14px;
+    color: var(--gray3); min-width: 24px;
+  }
+  .summary-row__text {
+    font-family: var(--font-h); font-weight: 500; font-size: 17px;
+    color: var(--gray5); line-height: 1.5; transition: color 0.2s;
+  }
+
+  @media (prefers-reduced-motion: reduce) { .slide,.anim,.reveal-word { transition:none!important; animation:none!important; } }
+  @media (max-width: 768px) {
+    .slide{padding:40px 24px}
+    .s2-grid{grid-template-columns:1fr}
+    .card-grid--3,.card-grid--2,.comparison,.metrics{grid-template-columns:1fr}
+    .budget-comp{grid-template-columns:1fr}
+    .budget-vs{display:none}
+    .arch-layers{gap:6px}
+    .factory-flow{grid-template-columns:1fr}
+    .factory-step::after{display:none}
+    .match-grid{grid-template-columns:1fr}
+    .match-bridge{flex-direction:row;padding-top:0}
+    .niche-cloud{max-width:100%}
+  }
+</style>
+</head>
+<body>
+
+<div class="deck" id="deck">
+
+  <!-- ═══ SLIDE 1 — HOOK: "SaaS is not dead." ═══ -->
+  <section class="slide slide--black active" data-slide="0">
+    <div class="anim"><div class="label" style="margin-bottom:20px;text-align:center">Codika</div></div>
+    <div class="anim"><h1 class="headline" id="hl1"></h1></div>
+    <div class="sp-24"></div>
+    <div class="anim"><p class="subline text-white-soft" style="max-width:520px">Public SaaS net new ARR dropped 29% year-over-year.<br>But "SaaS is dead" is a lazy diagnosis.</p></div>
+  </section>
+
+  <!-- ═══ SLIDE 2 — KEY MESSAGES ═══ -->
+  <section class="slide slide--black" data-slide="1">
+    <div class="anim"><div class="label" style="margin-bottom:28px;text-align:center">CODIKA &times; HEXA SPRINT</div></div>
+    <div class="anim" style="max-width:640px;width:100%;text-align:left">
+      <div class="summary-row" data-goto="2">
+        <span class="summary-row__num">01</span>
+        <span class="summary-row__text">The constraint that built SaaS &mdash; expensive code &mdash; no longer exists</span>
+      </div>
+      <div class="summary-row" data-goto="3">
+        <span class="summary-row__num">02</span>
+        <span class="summary-row__text">SaS captures the services market &mdash; SaaS 2.0 captures software</span>
+      </div>
+      <div class="summary-row" data-goto="4">
+        <span class="summary-row__num">03</span>
+        <span class="summary-row__text">SaaS 2.0 = custom-generated software with the same product discipline</span>
+      </div>
+      <div class="summary-row" data-goto="5">
+        <span class="summary-row__num">04</span>
+        <span class="summary-row__text">Custom-generated software needs infrastructure to live &mdash; that's us</span>
+      </div>
+      <div class="summary-row" data-goto="7">
+        <span class="summary-row__num">05</span>
+        <span class="summary-row__text">We industrialize vertical SaaS creation &mdash; a SaaS factory</span>
+      </div>
+      <div class="summary-row" data-goto="8">
+        <span class="summary-row__num">06</span>
+        <span class="summary-row__text">Hundreds of super-niches are now viable markets</span>
+      </div>
+      <div class="summary-row" data-goto="12">
+        <span class="summary-row__num">07</span>
+        <span class="summary-row__text">First product live, first client closed, 93% reuse on client 2</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ SLIDE 3 — THE CONSTRAINT ═══ -->
+  <section class="slide slide--light" data-slide="2">
+    <div class="anim"><div class="label" style="margin-bottom:10px;text-align:center">THE CONSTRAINT THAT CHANGED</div></div>
+    <div class="anim"><h2 class="headline headline--sm" style="margin-bottom:10px">Code was expensive.<br>That shaped everything. The constraint is gone.</h2></div>
+    <div class="anim"><p class="subline text-gray" style="margin-bottom:36px">AI coding tools now deliver 38&ndash;42% cost reductions. The constraint that shaped SaaS &mdash; expensive code &mdash; no longer exists. Time to separate what was valuable from what was just an artifact.</p></div>
+    <div class="s2-grid anim">
+      <div class="s2-block">
+        <div class="s2-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg></div>
+        <div class="s2-block-title">What stays</div>
+        <div class="s2-block-body">ICP discipline, problem identification, go-to-market, feedback loops &mdash; the <strong>business model</strong> disciplines are the real value.</div>
+      </div>
+      <div class="s2-block">
+        <div class="s2-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div>
+        <div class="s2-block-title">What dies</div>
+        <div class="s2-block-body">The parameterized monolith &mdash; one codebase, same UI for everyone, customization via config. An artifact of the constraint.</div>
+      </div>
+      <div class="s2-block s2-block--accent">
+        <div class="s2-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></div>
+        <div class="s2-block-title">What's coming</div>
+        <div class="s2-block-body"><strong>Custom-generated software</strong> &mdash; specific code per customer. Same ICP discipline, new tech layer. This is what we're building.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ SLIDE 4 — THE LANDSCAPE: 3 RESPONSES ═══ -->
+  <section class="slide slide--black" data-slide="3">
+    <div class="anim"><div class="label" style="margin-bottom:10px;text-align:center">THE LANDSCAPE</div></div>
+    <div class="anim"><h2 class="headline headline--sm" style="margin-bottom:10px">Three responses to cheap code.<br>Only one keeps the SaaS magic.</h2></div>
+    <div class="anim"><p class="subline text-white-soft" style="margin-bottom:36px">Code is nearly free. Three models emerged. All produce custom output. They differ on <strong class="em-highlight">who does the thinking</strong> and <strong class="em-highlight">who uses the result</strong>.</p></div>
+    <div class="anim" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;max-width:960px;width:100%">
+      <div class="comp-card comp-card--dim">
+        <div class="comp-label">DIY Builders</div>
+        <div class="comp-row">
+          <svg class="comp-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+          <span>User writes specs and builds their own software.</span>
+        </div>
+        <div class="comp-row">
+          <svg class="comp-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+          <span>Most operators don't want to think about architecture, integrations, or maintenance.</span>
+        </div>
+        <div style="margin-top:14px"><span style="font-family:var(--font-h);font-weight:700;font-size:11px;letter-spacing:0.1em;color:var(--gray3);text-transform:uppercase;padding:4px 10px;border:1px solid var(--dark-border);border-radius:4px">LOVABLE, BOLT</span></div>
+      </div>
+      <div class="comp-card comp-card--dim">
+        <div class="comp-label">Service as Software (SaS)</div>
+        <div class="comp-row">
+          <svg class="comp-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+          <span>Sell the <strong>outcome</strong>, not the tool. Software runs in the background.</span>
+        </div>
+        <div class="comp-row">
+          <svg class="comp-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          <span>Captures the <strong>services budget</strong> &mdash; replaces labor.</span>
+        </div>
+        <div style="margin-top:14px"><span style="font-family:var(--font-h);font-weight:700;font-size:11px;letter-spacing:0.1em;color:var(--gray3);text-transform:uppercase;padding:4px 10px;border:1px solid var(--dark-border);border-radius:4px">AGENCY 2.0</span></div>
+      </div>
+      <div class="comp-card comp-card--hi" data-badge="WHAT WE BUILD">
+        <div class="comp-label">SaaS 2.0</div>
+        <div class="comp-row">
+          <svg class="comp-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          <span>Sell the <strong>tool itself</strong> &mdash; but custom-generated per customer.</span>
+        </div>
+        <div class="comp-row">
+          <svg class="comp-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          <span>Captures the <strong>software budget</strong> &mdash; replaces parameterized tools.</span>
+        </div>
+        <div style="margin-top:14px"><span style="font-family:var(--font-h);font-weight:700;font-size:11px;letter-spacing:0.1em;color:var(--white);text-transform:uppercase;padding:4px 10px;border:1px solid rgba(255,255,255,0.3);border-radius:4px;background:rgba(255,255,255,0.1)">THE SAAS MAGIC</span></div>
+      </div>
+    </div>
+    <div class="sp-24"></div>
+    <div class="anim"><p class="subline" style="font-size:14px;color:var(--gray4);max-width:660px">DIY asks too much of the user. SaS loses the product magic. SaaS 2.0 keeps the discipline &mdash; ICP, go-to-market, feedback loops &mdash; with custom-generated code. That's the overlooked opportunity.</p></div>
+  </section>
+
+  <!-- ═══ SLIDE 5 — SaaS 2.0 DEFINED ═══ -->
+  <section class="slide slide--white" data-slide="4">
+    <div class="anim"><div class="label" style="margin-bottom:10px;text-align:center">OUR THESIS</div></div>
+    <div class="anim"><h2 class="headline headline--sm" style="margin-bottom:10px">SaaS 2.0: Custom-generated, not parameterized.</h2></div>
+    <div class="anim"><p class="subline text-gray" style="margin-bottom:36px">Keep everything that worked &mdash; ICP discipline, problem identification, go-to-market, feedback loops &mdash; and replace the obsolete tech layer. Everyone has different needs, but <strong>the categories of needs are finite.</strong></p></div>
+    <div class="anim" style="max-width:860px;width:100%">
+      <div class="flywheel">
+        <div class="flywheel__step">Identify<br>category</div>
+        <div class="flywheel__arrow">→</div>
+        <div class="flywheel__step">Build first<br>solutions</div>
+        <div class="flywheel__arrow">→</div>
+        <div class="flywheel__step">Templates<br>emerge</div>
+        <div class="flywheel__arrow">→</div>
+        <div class="flywheel__step">Custom-generate<br>per customer</div>
+        <div class="flywheel__arrow">→</div>
+        <div class="flywheel__step">Platform<br>compounds</div>
+      </div>
+    </div>
+    <div class="sp-32"></div>
+    <div class="anim"><div class="thesis-statement" style="border-color:var(--border);background:var(--card)">Two community managers get genuinely different software &mdash; different integrations, workflows, features &mdash; custom-generated for their exact needs. But both found your product because the ICP identification is crystal clear. <strong>They didn't need to write a spec.</strong></div></div>
+  </section>
+
+  <!-- ═══ SLIDE 6 — THE PROBLEM WE SOLVE ═══ -->
+  <section class="slide slide--dark" data-slide="5">
+    <div class="anim"><div class="label" style="margin-bottom:10px;text-align:center">THE PROBLEM WE SOLVE</div></div>
+    <div class="anim"><h2 class="headline headline--sm" style="margin-bottom:10px">Custom-generated software needs infrastructure.<br>That's the unsolved problem.</h2></div>
+    <div class="anim"><p class="subline text-white-soft" style="margin-bottom:32px">AI can generate the code. But that code needs hosting, credentials, monitoring, versioning &mdash; it needs to <strong class="em-highlight">live somewhere</strong>. Nobody solves this yet. We do.</p></div>
+    <div class="anim arch-layers">
+      <div class="arch-layer arch-layer--top">
+        <span>Humans &amp; AI Agents</span>
+        <span class="arch-layer__tag">Consumers</span>
+      </div>
+      <div class="arch-layer arch-layer--mid">
+        <span>Verticalized Products (facades)</span>
+        <span class="arch-layer__tag">Interface layer</span>
+      </div>
+      <div class="arch-layer arch-layer--us">
+        <span>Codika Engine &mdash; Workflows as atomic operations</span>
+        <span class="arch-layer__tag">WE ARE HERE</span>
+      </div>
+    </div>
+    <div class="sp-24"></div>
+    <div class="anim"><p class="subline" style="font-size:14px;color:var(--gray4);max-width:640px">Anyone can generate code. The difference between "I can cook" and "I have a restaurant." We're the restaurant &mdash; hosting, credentials, monitoring, versioning, auto-healing. Inherently safer than raw API access.</p></div>
+  </section>
+
+  <!-- ═══ SLIDE 7 — GTM REALITY ═══ -->
+  <section class="slide slide--light" data-slide="6">
+    <div class="anim"><div class="label" style="margin-bottom:10px;text-align:center">GO-TO-MARKET REALITY</div></div>
+    <div class="anim"><h2 class="headline headline--sm" style="margin-bottom:10px">Horizontal is impossible to sell.<br>Verticalized products are the answer.</h2></div>
+    <div class="anim"><p class="subline text-gray" style="margin-bottom:36px">Our engine can orchestrate anything. And that's a <strong>problem for selling it</strong>. The blank canvas is paralyzing. No one thinks "I should use Codika" because the platform is too generic to suggest that.</p></div>
+    <div class="anim card-grid card-grid--2" style="max-width:700px">
+      <div class="card">
+        <div class="card__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></div>
+        <div class="card__title">The horizontal trap</div>
+        <div class="card__body">ICP too broad. Positioning too vague. Empty page syndrome. The tool can do everything, so users don't know what to do with it.</div>
+      </div>
+      <div class="card" style="border-color:var(--primary);background:var(--primary);color:var(--primary-foreground)">
+        <div class="card__icon" style="background:rgba(255,255,255,0.1)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
+        <div class="card__title" style="color:var(--primary-foreground)">The vertical solution</div>
+        <div class="card__body" style="color:rgba(255,255,255,0.7)">Specific facades on the same engine. Own interface, features, messaging. A community manager sees our bot product and thinks "that's exactly what I need." Service phase first, then self-serve.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ SLIDE 8 — THE PUNCH ═══ -->
+  <section class="slide slide--black" data-slide="7">
+    <div class="anim"><h2 class="headline headline--md" id="hl8"></h2></div>
+    <div class="sp-16"></div>
+    <div class="anim"><p class="subline text-white-soft" style="margin-bottom:36px;max-width:580px">Not one product for one niche. A factory that produces verticalized SaaS 2.0 products. Every satellite on the same engine. Templates compound. Playbooks sharpen.</p></div>
+    <div class="anim factory-flow">
+      <div class="factory-step">
+        <div class="factory-step__num">01</div>
+        <div class="factory-step__label">Identify niche</div>
+      </div>
+      <div class="factory-step">
+        <div class="factory-step__num">02</div>
+        <div class="factory-step__label">Service phase<br>(3&ndash;5 clients)</div>
+      </div>
+      <div class="factory-step">
+        <div class="factory-step__num">03</div>
+        <div class="factory-step__label">Generalize into product</div>
+      </div>
+      <div class="factory-step">
+        <div class="factory-step__num">04</div>
+        <div class="factory-step__label">Launch on engine</div>
+      </div>
+      <div class="factory-step">
+        <div class="factory-step__num">05</div>
+        <div class="factory-step__label">Compound learnings</div>
+      </div>
+    </div>
+    <div class="sp-24"></div>
+    <div class="anim"><div class="thesis-statement">The machine that produces products. Not one SaaS company &mdash; <strong>a SaaS factory.</strong></div></div>
+  </section>
+
+  <!-- ═══ SLIDE 9 — SUPER-NICHE UNLOCK ═══ -->
+  <section class="slide slide--black" data-slide="8">
+    <div class="anim"><div class="label" style="margin-bottom:10px;text-align:center">THE CONSTRAINT DISAPPEARED &mdash; AGAIN</div></div>
+    <div class="anim"><h2 class="headline headline--sm" style="margin-bottom:10px">Small markets are now viable.<br>Hundreds of them.</h2></div>
+    <div class="anim"><p class="subline text-white-soft" style="margin-bottom:32px">In the old world, 500 potential customers couldn't justify the dev cost. Entire categories went unserved. <strong class="em-highlight">That's not true anymore.</strong></p></div>
+    <div class="anim card-grid card-grid--4" style="max-width:860px">
+      <div class="card" style="text-align:center">
+        <div class="card__title" style="color:var(--dark-foreground)">Low marginal cost</div>
+        <div class="card__body">Engine already exists. New vertical = new facade.</div>
+      </div>
+      <div class="card" style="text-align:center">
+        <div class="card__title" style="color:var(--dark-foreground)">Templates transfer</div>
+        <div class="card__body">Previous verticals accelerate next ones.</div>
+      </div>
+      <div class="card" style="text-align:center">
+        <div class="card__title" style="color:var(--dark-foreground)">Laser messaging</div>
+        <div class="card__body">Narrow niche = crystal clear positioning.</div>
+      </div>
+      <div class="card" style="text-align:center">
+        <div class="card__title" style="color:var(--dark-foreground)">Perfect fit</div>
+        <div class="card__body">Custom-generated code, not generic config.</div>
+      </div>
+    </div>
+    <div class="sp-24"></div>
+    <div class="anim niche-cloud">
+      <span class="niche-tag niche-tag--hi">Co-working spaces</span>
+      <span class="niche-tag niche-tag--hi">Incubators</span>
+      <span class="niche-tag">Consultancies</span>
+      <span class="niche-tag">Real estate agencies</span>
+      <span class="niche-tag">Fitness studios</span>
+      <span class="niche-tag">Event organizers</span>
+      <span class="niche-tag">Trade associations</span>
+      <span class="niche-tag">Member clubs</span>
+      <span class="niche-tag" style="color:var(--gray3)">...</span>
+    </div>
+  </section>
+
+  <!-- ═══ SLIDE 10 — WHY US ═══ -->
+  <section class="slide slide--light" data-slide="9">
+    <div class="anim"><div class="label" style="margin-bottom:10px;text-align:center">WHY US</div></div>
+    <div class="anim"><h2 class="headline headline--sm" style="margin-bottom:10px">Why we're the right team<br>to build this.</h2></div>
+    <div class="anim"><p class="subline text-gray" style="margin-bottom:28px">Best friends for 15 years. Same schools, same degree, same passion for building.<br>Opposite personalities &mdash; and that's the point.</p></div>
+    <div class="anim" style="display:flex;gap:24px;max-width:780px;width:100%;margin-bottom:20px">
+      <!-- Luca -->
+      <div class="card" style="flex:1;text-align:center">
+        <div style="width:56px;height:56px;border-radius:50%;background:var(--primary);color:var(--primary-foreground);display:flex;align-items:center;justify-content:center;font-family:var(--font-h);font-weight:800;font-size:22px;margin:0 auto 12px">L</div>
+        <div class="card__title" style="font-size:18px;margin-bottom:2px">Luca Derumier</div>
+        <div style="font-family:var(--font-h);font-weight:500;font-size:12px;color:var(--gray4);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:12px">AI &times; Distribution</div>
+        <div class="card__body" style="text-align:left">
+          Joined CluePoints as employee #50 (ML Engineer). Left at <strong>&euro;500M exit</strong>, 300 employees.<br><br>
+          Knows AI and scaling. The generalist who networks and closes deals.
+        </div>
+      </div>
+      <!-- Romain -->
+      <div class="card" style="flex:1;text-align:center">
+        <div style="width:56px;height:56px;border-radius:50%;background:var(--primary);color:var(--primary-foreground);display:flex;align-items:center;justify-content:center;font-family:var(--font-h);font-weight:800;font-size:22px;margin:0 auto 12px">R</div>
+        <div class="card__title" style="font-size:18px;margin-bottom:2px">Romain Pattyn</div>
+        <div style="font-family:var(--font-h);font-weight:500;font-size:12px;color:var(--gray4);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:12px">Infrastructure &times; Orchestration</div>
+        <div class="card__body" style="text-align:left">
+          Built mobile dev agency from scratch (&euro;100K+ contracts). Created 10x faster tooling.<br><br>
+          Knows infra and production. The perfectionist obsessed with compounding.
+        </div>
+      </div>
+    </div>
+    <div class="anim"><p class="subline" style="font-size:14px;font-style:italic;color:var(--gray3);max-width:520px;margin-bottom:20px">We also taught breakdancing together. We've had fights and know how to get out of them. We won't split.</p></div>
+    <div class="anim card-grid card-grid--2" style="max-width:780px">
+      <div class="card" style="border-color:var(--primary);background:var(--primary);color:var(--primary-foreground)">
+        <div class="card__title" style="color:var(--primary-foreground);font-size:14px">The technical edge</div>
+        <div class="card__body" style="color:rgba(255,255,255,0.7);font-size:13px">
+          <strong>30</strong> workflow modules &bull; <strong>93%</strong> reuse client 1 &rarr; 2 &bull; AI generation pipeline (markdown &rarr; Claude Code &rarr; CLI &rarr; production) &bull; Traditional agency: 3 months, &euro;50K+. <strong>Codika: 3 weeks, &euro;5K.</strong>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card__title" style="font-size:14px">Both MSc in AI</div>
+        <div class="card__body" style="font-size:13px">
+          Same schools, same engineering degree. One went deep into infrastructure, the other into product &amp; distribution. Built the engine together for 1.5 years. Not a pitch deck &mdash; a running system.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ SLIDE 11 — WHY HEXA ═══ -->
+  <section class="slide slide--light" data-slide="10">
+    <div class="anim"><div class="label" style="margin-bottom:10px;text-align:center">WHY HEXA</div></div>
+    <div class="anim"><h2 class="headline headline--sm" style="margin-bottom:10px">You've done this for 15 years.<br>We're building the next version.</h2></div>
+    <div class="anim"><p class="subline text-gray" style="margin-bottom:36px">Hexa industrialized SaaS creation in Europe. 50+ companies. Aircall, Spendesk, Front. Same thesis &mdash; identify vertical, build product, scale. New tech layer. New economics.</p></div>
+    <div class="anim match-grid">
+      <div class="match-col" style="border-color:var(--border);background:var(--card)">
+        <div class="match-col__title">What Hexa does</div>
+        <ul class="match-col__items" style="color:var(--gray3)">
+          <li>Identify verticals worth building for</li>
+          <li>Match them with founders</li>
+          <li>Playbook for launching SaaS companies</li>
+          <li>"10x more chances to succeed"</li>
+        </ul>
+      </div>
+      <div class="match-bridge" style="padding-top:30px">
+        <div class="match-bridge__icon" style="background:var(--primary);color:var(--primary-foreground);box-shadow:0 0 32px rgba(0,0,0,0.15)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        </div>
+      </div>
+      <div class="match-col" style="border-color:var(--primary);background:var(--card);box-shadow:0 0 0 1px var(--primary)">
+        <div class="match-col__title">What Codika adds</div>
+        <ul class="match-col__items" style="color:var(--gray3)">
+          <li>A compounding engine &mdash; each launch faster and cheaper</li>
+          <li>Custom-generated code, not parameterized</li>
+          <li>10x applies across every vertical launched</li>
+          <li>"Replace workflows from first principles" &mdash; your Sprint page</li>
+        </ul>
+      </div>
+    </div>
+    <div class="sp-24"></div>
+    <div class="anim"><p class="subline" style="font-size:14px;font-weight:500;text-align:center;color:var(--gray3)">The fit isn't a stretch. It's a continuation.</p></div>
+  </section>
+
+  <!-- ═══ SLIDE 12 — THE ASK ═══ -->
+  <section class="slide slide--black" data-slide="11">
+    <div class="anim"><div class="label" style="margin-bottom:10px;text-align:center">THE ASK</div></div>
+    <div class="anim"><h2 class="headline headline--sm" style="margin-bottom:10px">What we need from Hexa Sprint.</h2></div>
+    <div class="anim"><p class="subline text-white-soft" style="margin-bottom:36px">We have the product, the first clients, and the speed. What we need is what Hexa does best.</p></div>
+    <div class="anim card-grid card-grid--3" style="max-width:860px">
+      <div class="card">
+        <div class="card__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></div>
+        <div class="card__title">Distribution</div>
+        <div class="card__body">Warm intros to co-working and incubator operators across Europe. Your network opens doors we can't knock on alone.</div>
+      </div>
+      <div class="card">
+        <div class="card__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+        <div class="card__title">Pricing &amp; GTM rigor</div>
+        <div class="card__body">Right price. Right packaging. Right channels. We're technical founders &mdash; we need commercial sharpening.</div>
+      </div>
+      <div class="card">
+        <div class="card__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></div>
+        <div class="card__title">From project to company</div>
+        <div class="card__body">Hexa has industrialized SaaS for 15 years. We're building the next version &mdash; together.</div>
+      </div>
+    </div>
+    <div class="sp-24"></div>
+    <div class="anim"><div style="max-width:660px;width:100%;padding:20px 28px;border-radius:var(--radius);border:1px solid var(--dark-border);background:var(--dark-secondary);text-align:center">
+      <div style="font-family:var(--font-h);font-weight:700;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--gray4);margin-bottom:10px">SPRINT DELIVERABLES</div>
+      <div style="font-size:14px;line-height:1.7;color:var(--gray5)">Co-working vertical validated &bull; 10+ paying clients &bull; Productized offering &bull; Playbook for next vertical</div>
+    </div></div>
+  </section>
+
+  <!-- ═══ SLIDE 13 — PROOF ═══ -->
+  <section class="slide slide--dark" data-slide="12">
+    <div class="anim"><div class="label" style="margin-bottom:10px;text-align:center">PROOF &mdash; IT'S ALREADY WORKING</div></div>
+    <div class="anim"><h2 class="headline headline--sm" style="margin-bottom:10px">WAT was our first client.<br>This isn't theoretical.</h2></div>
+    <div class="anim"><p class="subline text-white-soft" style="margin-bottom:28px">Hexa's own incubator in Brussels. Custom WhatsApp bot, Notion sync, event management, admin dashboard.</p></div>
+    <!-- Compounding visualization -->
+    <div class="anim" style="display:grid;grid-template-columns:1fr auto 1fr;gap:20px;align-items:center;max-width:720px;width:100%;margin-bottom:24px">
+      <div style="padding:22px;border-radius:var(--radius);border:1px solid var(--dark-border);background:var(--dark-secondary);text-align:center">
+        <div style="font-family:var(--font-h);font-weight:700;font-size:13px;margin-bottom:12px;color:var(--gray5)">CLIENT #1 &mdash; WAT</div>
+        <div style="font-family:var(--font-h);font-weight:800;font-size:28px;margin-bottom:4px">~2 weeks</div>
+        <div style="font-size:12px;color:var(--gray4);margin-bottom:12px">delivery</div>
+        <div style="font-family:var(--font-h);font-weight:700;font-size:16px;margin-bottom:4px">30 modules</div>
+        <div style="font-size:12px;color:var(--gray4);margin-bottom:12px">built from scratch</div>
+        <div style="height:6px;border-radius:3px;background:var(--dark-border);overflow:hidden"><div style="height:100%;width:35%;background:var(--gray4);border-radius:3px"></div></div>
+        <div style="font-size:11px;color:var(--gray4);margin-top:4px">Discovery margin</div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:6px">
+        <div style="width:42px;height:42px;border-radius:50%;background:var(--white);color:var(--black);display:flex;align-items:center;justify-content:center;box-shadow:0 0 32px rgba(255,255,255,0.15)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        </div>
+        <div style="font-family:var(--font-h);font-weight:700;font-size:10px;letter-spacing:0.12em;color:var(--gray4)">COMPOUNDS</div>
+      </div>
+      <div style="padding:22px;border-radius:var(--radius);border:1px solid rgba(255,255,255,0.3);background:rgba(255,255,255,0.06);text-align:center;box-shadow:0 0 32px rgba(255,255,255,0.06)">
+        <div style="font-family:var(--font-h);font-weight:700;font-size:13px;margin-bottom:12px;color:var(--white)">CLIENT #2</div>
+        <div style="font-family:var(--font-h);font-weight:800;font-size:28px;margin-bottom:4px">~1 day</div>
+        <div style="font-size:12px;color:var(--gray4);margin-bottom:12px">delivery</div>
+        <div style="font-family:var(--font-h);font-weight:700;font-size:16px;margin-bottom:4px">28/30 reused</div>
+        <div style="font-size:12px;color:var(--gray4);margin-bottom:12px">93% from library</div>
+        <div style="height:6px;border-radius:3px;background:var(--dark-border);overflow:hidden"><div style="height:100%;width:85%;background:var(--white);border-radius:3px"></div></div>
+        <div style="font-size:11px;color:var(--gray5);margin-top:4px">High margin</div>
+      </div>
+    </div>
+    <div class="metrics anim" style="grid-template-columns:repeat(3,1fr);max-width:520px">
+      <div class="metric"><div class="metric__val" data-count="5000" data-prefix="&euro;" data-format="comma">0</div><div class="metric__label">Setup fee + &euro;300/mo</div></div>
+      <div class="metric"><div class="metric__val" data-count="6">0</div><div class="metric__label">Qualified leads</div></div>
+      <div class="metric"><div class="metric__val" data-text=">80%">-</div><div class="metric__label">Gross margin at scale</div></div>
+    </div>
+    <div class="sp-16"></div>
+    <div class="anim"><p class="subline" style="font-size:14px;color:var(--gray4);text-align:center;max-width:580px">1 deal closed, 1 proposal pending, 6 qualified leads. Their exact words: "We need exactly that." Delivery in <strong class="em-highlight">days, not weeks.</strong></p></div>
+  </section>
+
+  <!-- ═══ SLIDE 14 — CLOSING ═══ -->
+  <section class="slide slide--black" data-slide="13">
+    <div class="anim"><h2 class="headline" id="hlClosing"></h2></div>
+    <div class="sp-24"></div>
+    <div class="anim"><p class="subline text-white-soft">Luca Derumier &amp; Romain Pattyn &mdash; Codika</p></div>
+    <div class="sp-16"></div>
+    <div class="anim"><p style="font-family:var(--font-h);font-weight:600;font-size:16px;color:var(--gray4);letter-spacing:0.04em">Custom by default. Built to compound.</p></div>
+  </section>
+
+</div>
+
+<div class="progress" id="progress"></div>
+<div class="scrubber-zone" id="scrubberZone"></div>
+<div class="scrubber-preview" id="scrubberPreview">
+  <div class="scrubber-preview__inner" id="scrubberInner"></div>
+  <div class="scrubber-preview__label" id="scrubberLabel"></div>
+</div>
+<div class="counter"><span class="counter__cur" id="curSlide">01</span> / 14</div>
+<div class="grid-overlay" id="gridOverlay"></div>
+<div class="nav">
+  <button class="nav__btn" id="prevBtn" aria-label="Previous"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg></button>
+  <button class="nav__btn" id="nextBtn" aria-label="Next"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9 6 15 12 9 18"/></svg></button>
+  <div class="grid-slider-wrap">
+    <div class="grid-slider" id="gridSlider"><input type="range" id="gridSizeRange" min="200" max="500" value="340"></div>
+    <button class="nav__btn" id="gridBtn" aria-label="Grid view"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></button>
+  </div>
+</div>
+
+<script>
+(function(){
+  // ── Word Reveal Headlines ──
+  const headlines = {
+    hl1: ['SaaS', 'is', '<em>not</em>', 'dead.'],
+    hl8: ['We', 'want', 'to', '<em>industrialize</em>', 'this.'],
+    hlClosing: ["Let's", '<em>Sprint</em>', 'together.']
+  };
+
+  function buildHL(id, words) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.innerHTML = words.map((w, i) => {
+      const delay = 0.18 + i * 0.1;
+      return '<span class="reveal-word" style="transition-delay:' + delay + 's">' + w + '</span>';
+    }).join(' ');
+  }
+
+  Object.keys(headlines).forEach(id => buildHL(id, headlines[id]));
+
+  // ── Counter Animation ──
+  function animateCounters() {
+    document.querySelectorAll('.slide.active .metric__val[data-count]').forEach(el => {
+      const target = parseInt(el.dataset.count);
+      const prefix = el.dataset.prefix || '';
+      const suffix = el.dataset.suffix || '';
+      const fmt = el.dataset.format;
+      const dur = 1200;
+      const start = performance.now();
+      (function tick(now) {
+        const p = Math.min((now - start) / dur, 1);
+        const e = 1 - Math.pow(1 - p, 3);
+        let v = Math.round(e * target);
+        if (fmt === 'comma') v = v.toLocaleString();
+        el.textContent = prefix + v + suffix;
+        if (p < 1) requestAnimationFrame(tick);
+      })(start);
+    });
+    document.querySelectorAll('.slide.active .metric__val[data-text]').forEach(el => {
+      setTimeout(() => { el.textContent = el.dataset.text; }, 350);
+    });
+  }
+
+  // ── Navigation ──
+  const slides = document.querySelectorAll('.slide');
+  const total = slides.length;
+  let current = 0;
+
+  function updateUI() {
+    document.getElementById('progress').style.width = ((current + 1) / total * 100) + '%';
+    document.getElementById('curSlide').textContent = String(current + 1).padStart(2, '0');
+
+    const isLight = slides[current].classList.contains('slide--light');
+    const isWhite = slides[current].classList.contains('slide--white');
+    const isDark = !isLight && !isWhite;
+    document.querySelector('meta[name="theme-color"]').setAttribute('content', isWhite ? '#ffffff' : isLight ? '#f4f4f5' : '#0a0a0a');
+    const counter = document.querySelector('.counter');
+    counter.style.color = isDark ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.2)';
+    document.getElementById('curSlide').style.color = isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.4)';
+    document.querySelectorAll('.nav__btn').forEach(b => {
+      b.classList.toggle('nav--dark', isDark);
+      b.classList.toggle('nav--light', !isDark);
+    });
+    document.getElementById('progress').style.background = isDark ? '#fff' : '#000';
+  }
+
+  function goTo(i) {
+    if (i < 0 || i >= total || i === current) return;
+    slides[current].classList.remove('active');
+    current = i;
+    slides[current].classList.add('active');
+    updateUI();
+    if (current === 12) setTimeout(animateCounters, 300);
+    var url = new URL(window.location);
+    url.searchParams.set('slide', current + 1);
+    history.replaceState(null, '', url);
+  }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') { e.preventDefault(); goTo(current + 1); }
+    else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); goTo(current - 1); }
+  });
+  document.getElementById('prevBtn').addEventListener('click', () => goTo(current - 1));
+  document.getElementById('nextBtn').addEventListener('click', () => goTo(current + 1));
+
+  let tx = 0;
+  document.addEventListener('touchstart', e => { tx = e.changedTouches[0].screenX; }, { passive: true });
+  document.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].screenX - tx;
+    if (Math.abs(dx) > 50) dx < 0 ? goTo(current + 1) : goTo(current - 1);
+  }, { passive: true });
+
+  // ── Wheel / trackpad scroll navigation ──
+  // Scroll down (or right) advances, scroll up (or left) goes back.
+  // A lock gates firing rate so trackpad inertia does not skip multiple slides.
+  let wheelLock = false;
+  let wheelAccum = 0;
+  document.addEventListener('wheel', e => {
+    if (typeof gridOpen !== 'undefined' && gridOpen) return;
+    if (wheelLock) return;
+    const delta = Math.abs(e.deltaY) > Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
+    if (Math.abs(delta) < 6) return;
+    wheelAccum += delta;
+    if (Math.abs(wheelAccum) < 40) return;
+    wheelLock = true;
+    if (wheelAccum > 0) goTo(current + 1);
+    else goTo(current - 1);
+    wheelAccum = 0;
+    setTimeout(() => { wheelLock = false; }, 650);
+  }, { passive: true });
+
+  // ── Scrubber preview ──
+  const scrubberZone = document.getElementById('scrubberZone');
+  const scrubberPreview = document.getElementById('scrubberPreview');
+  const scrubberInner = document.getElementById('scrubberInner');
+  const scrubberLabel = document.getElementById('scrubberLabel');
+  const previewW = 240, previewH = 150;
+  const previewScale = previewW / 1920;
+  scrubberInner.style.transform = 'scale(' + previewScale + ')';
+  let scrubberSlideIdx = -1;
+
+  scrubberZone.addEventListener('mousemove', function(e) {
+    const ratio = e.clientX / window.innerWidth;
+    const idx = Math.min(Math.floor(ratio * total), total - 1);
+    // Position preview above cursor
+    let left = e.clientX - previewW / 2;
+    left = Math.max(8, Math.min(left, window.innerWidth - previewW - 8));
+    scrubberPreview.style.left = left + 'px';
+    scrubberPreview.style.bottom = '64px';
+    if (idx !== scrubberSlideIdx) {
+      scrubberSlideIdx = idx;
+      const clone = slides[idx].cloneNode(true);
+      clone.classList.add('active');
+      clone.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
+      scrubberInner.innerHTML = '';
+      scrubberInner.appendChild(clone);
+      clone.querySelectorAll('.reveal-word').forEach(rw => { rw.style.opacity = '1'; rw.style.filter = 'none'; rw.style.transform = 'none'; });
+      scrubberLabel.textContent = String(idx + 1).padStart(2, '0') + ' / ' + total;
+      // Fill preview bg with slide's background color
+      var slideBg = '#0a0a0a';
+      if (slides[idx].classList.contains('slide--light')) slideBg = '#f4f4f5';
+      else if (slides[idx].classList.contains('slide--white')) slideBg = '#ffffff';
+      scrubberPreview.style.background = slideBg;
+    }
+    scrubberPreview.classList.add('visible');
+  });
+
+  scrubberZone.addEventListener('mouseleave', function() {
+    scrubberPreview.classList.remove('visible');
+    scrubberSlideIdx = -1;
+  });
+
+  scrubberZone.addEventListener('click', function(e) {
+    const ratio = e.clientX / window.innerWidth;
+    const idx = Math.min(Math.floor(ratio * total), total - 1);
+    scrubberPreview.classList.remove('visible');
+    scrubberSlideIdx = -1;
+    goTo(idx);
+  });
+
+  scrubberPreview.addEventListener('click', function() {
+    if (scrubberSlideIdx >= 0) {
+      scrubberPreview.classList.remove('visible');
+      goTo(scrubberSlideIdx);
+      scrubberSlideIdx = -1;
+    }
+  });
+
+  // ── Grid overview ──
+  const gridOverlay = document.getElementById('gridOverlay');
+  let gridOpen = false;
+
+  function buildGrid() {
+    gridOverlay.innerHTML = '';
+    const wrap = document.createElement('div');
+    wrap.className = 'grid-overlay__inner';
+    slides.forEach((slide, idx) => {
+      const tile = document.createElement('div');
+      tile.className = 'grid-tile' + (idx === current ? ' grid-tile--current' : '');
+      var bg = '#0a0a0a';
+      if (slide.classList.contains('slide--light')) bg = '#f4f4f5';
+      else if (slide.classList.contains('slide--white')) bg = '#ffffff';
+      const clip = document.createElement('div');
+      clip.className = 'grid-tile__clip';
+      clip.style.background = bg;
+      const num = document.createElement('div');
+      num.className = 'grid-tile__num';
+      num.textContent = String(idx + 1).padStart(2, '0');
+      clip.appendChild(num);
+      const inner = document.createElement('div');
+      inner.className = 'grid-tile__inner';
+      const clone = slide.cloneNode(true);
+      clone.classList.add('active');
+      clone.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
+      inner.appendChild(clone);
+      clip.appendChild(inner);
+      tile.appendChild(clip);
+      tile.addEventListener('click', () => {
+        closeGrid();
+        goTo(idx);
+      });
+      wrap.appendChild(tile);
+    });
+    gridOverlay.appendChild(wrap);
+  }
+
+  const gridBtn = document.getElementById('gridBtn');
+
+  function openGrid() {
+    buildGrid();
+    resizeGridTiles(parseInt(gridSizeRange.value));
+    gridOverlay.classList.add('open');
+    gridBtn.classList.add('nav__btn--active');
+    gridSlider.classList.add('visible');
+    gridOpen = true;
+  }
+
+  function closeGrid() {
+    gridOverlay.classList.remove('open');
+    gridBtn.classList.remove('nav__btn--active');
+    gridSlider.classList.remove('visible');
+    gridOpen = false;
+  }
+
+  gridBtn.addEventListener('click', () => {
+    gridOpen ? closeGrid() : openGrid();
+  });
+
+  // Click outside a tile closes grid
+  gridOverlay.addEventListener('click', e => {
+    if (e.target === gridOverlay || e.target.classList.contains('grid-overlay__inner')) closeGrid();
+  });
+
+  // Grid size slider
+  const gridSlider = document.getElementById('gridSlider');
+  const gridSizeRange = document.getElementById('gridSizeRange');
+
+  function resizeGridTiles(w) {
+    var pad = 8;
+    var gap = 20;
+    var h = Math.round(w * 9 / 16);
+    var innerW = w - pad;
+    var s = innerW / 1920;
+    gridOverlay.querySelectorAll('.grid-tile').forEach(tile => {
+      tile.style.width = w + 'px';
+      tile.style.height = h + 'px';
+    });
+    gridOverlay.querySelectorAll('.grid-tile__inner').forEach(inner => {
+      inner.style.transform = 'scale(' + s + ')';
+    });
+    // Set wrapper max-width to fit as many columns as possible
+    var available = gridOverlay.clientWidth - 80; // 40px padding each side
+    var cols = Math.max(1, Math.floor((available + gap) / (w + gap)));
+    var wrapW = cols * w + (cols - 1) * gap;
+    var wrap = gridOverlay.querySelector('.grid-overlay__inner');
+    if (wrap) wrap.style.maxWidth = wrapW + 'px';
+  }
+
+  gridSizeRange.addEventListener('input', () => {
+    resizeGridTiles(parseInt(gridSizeRange.value));
+  });
+
+  // Escape closes grid
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && gridOpen) { e.preventDefault(); closeGrid(); }
+  });
+
+  // ── Summary row click-to-navigate ──
+  document.querySelectorAll('.summary-row[data-goto]').forEach(row => {
+    row.addEventListener('click', () => {
+      const target = parseInt(row.dataset.goto);
+      goTo(target);
+    });
+  });
+
+  // Init from URL param
+  var initSlide = parseInt(new URLSearchParams(window.location.search).get('slide'));
+  if (initSlide >= 1 && initSlide <= total) {
+    slides[0].classList.remove('active');
+    current = initSlide - 1;
+    slides[current].classList.add('active');
+  }
+
+  updateUI();
+})();
+</script>
+
+</body>
+</html>

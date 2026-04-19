@@ -1,0 +1,155 @@
+/* slim-tabbed print overrides — inject via puppeteer before page.pdf()
+ * Targets the slim-tabbed style in generate-presentation/styles/slim-tabbed/example.html.
+ *
+ * Goal: hide header/sidebar/footer, expand every <section class="panel"> so all
+ *       tabs render stacked, one per PDF page.
+ *
+ * If the agent has already transformed the HTML (stripped sidebar, stacked panels)
+ * this CSS is still safe — it just re-asserts the desired print state.
+ */
+
+@page {
+  size: A4 landscape;
+  margin: 16mm 14mm;
+}
+
+html, body {
+  overflow: visible !important;
+  width: auto !important;
+  height: auto !important;
+  background: #ffffff !important;
+  color: #0a0a0a !important;
+}
+
+/* Collapse the app grid → single flow. */
+.app {
+  display: block !important;
+  grid-template-columns: none !important;
+  grid-template-rows: none !important;
+  width: auto !important;
+  height: auto !important;
+}
+
+/* Hide all navigation / theme / overlay chrome. */
+.header,
+.sidebar,
+.footer,
+.tab-btn,
+.theme-toggle,
+.kbd-hint,
+.cover-overlay,
+.lightbox-overlay,
+.zoomable-btn {
+  display: none !important;
+}
+
+/* Every panel visible, one per page. */
+.content {
+  display: block !important;
+  overflow: visible !important;
+  height: auto !important;
+}
+.panel {
+  display: flex !important;
+  flex-direction: column !important;
+  opacity: 1 !important;
+  transform: none !important;
+  transition: none !important;
+  animation: none !important;
+  max-width: none !important;
+  width: 100% !important;
+  padding: 0 0 24px 0 !important;
+  page-break-after: always;
+  break-after: page;
+}
+.panel:last-child {
+  page-break-after: auto;
+  break-after: auto;
+}
+
+/* Force any in-panel reveal/stagger animations to their end state. */
+.panel .anim,
+.panel .reveal-word,
+.panel [data-anim] {
+  opacity: 1 !important;
+  transform: none !important;
+  filter: none !important;
+  transition: none !important;
+  animation: none !important;
+}
+
+/* Don't split images, cards, or key components across page boundaries. */
+img,
+svg,
+picture,
+video,
+figure,
+.zoomable-wrap,
+.card,
+.founder-card,
+.compound-card,
+.compound-bar,
+.compound-bridge,
+.quote-box,
+.metric,
+.factory-step,
+.match-col,
+.match-bridge,
+blockquote,
+pre,
+table {
+  break-inside: avoid !important;
+  page-break-inside: avoid !important;
+}
+
+/* Images: shrink aggressively so they fit with surrounding cards/text on
+   the same page. Without this, `break-inside: avoid` pushes a ~250px image
+   to its own page when it can't fit alongside a 3-card grid, leaving a
+   half-empty page behind and a near-empty page ahead. */
+.zoomable-wrap {
+  width: 32% !important;
+  max-width: 520px !important;
+}
+.zoomable-wrap img,
+img {
+  max-width: 100% !important;
+  max-height: 45vh !important;
+  height: auto !important;
+  object-fit: contain;
+}
+
+/* Shrink whitespace around common components so more fits per page. */
+.panel > .anim { margin: 0 0 10px 0 !important; }
+.card, .founder-card, .s2-block, .factory-step, .match-col {
+  padding: 18px 20px !important;
+}
+.headline { margin-bottom: 6px !important; }
+.subline { margin-bottom: 14px !important; }
+.thesis-box, .insight-box, .quote-box {
+  padding: 14px 20px !important;
+  margin: 10px 0 !important;
+}
+
+/* Slightly smaller base type for print to buy ~8% vertical room. */
+body, .panel { font-size: 14.5px !important; }
+.headline { font-size: clamp(24px, 2.6vw, 34px) !important; }
+.subline { font-size: 13.5px !important; line-height: 1.6 !important; }
+
+/* Don't orphan a heading at the bottom of a page. */
+.headline,
+.section-title,
+h1, h2, h3, h4 {
+  break-after: avoid !important;
+  page-break-after: avoid !important;
+}
+
+/* Light background in print regardless of the user's theme toggle. */
+body.theme-dark,
+body {
+  background: #ffffff !important;
+  color: #0a0a0a !important;
+}
+body.theme-dark .headline,
+.headline {
+  color: #0a0a0a !important;
+}

@@ -1,0 +1,67 @@
+/* full-deck print overrides — inject via puppeteer before page.pdf()
+ * Targets the full-deck style in generate-presentation/styles/full-deck/example.html.
+ * Goal: one <section.slide> per PDF page, no nav chrome, all reveal animations
+ *       forced to their final visible state.
+ */
+
+@page {
+  size: 1280px 720px;
+  margin: 0;
+}
+
+html, body {
+  overflow: visible !important;
+  width: auto !important;
+  height: auto !important;
+  background: transparent !important;
+}
+
+.deck {
+  width: 1280px !important;
+  height: auto !important;
+  position: static !important;
+}
+
+/* Every slide renders; stacked, one per page. */
+.slide {
+  position: relative !important;
+  inset: auto !important;
+  width: 1280px !important;
+  height: 720px !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  transition: none !important;
+  animation: none !important;
+  page-break-after: always;
+  break-after: page;
+  overflow: hidden !important;
+}
+.slide:last-child {
+  page-break-after: auto;
+  break-after: auto;
+}
+
+/* Force all reveal-on-activate animations to their final state. */
+.slide .anim,
+.slide .reveal-word {
+  opacity: 1 !important;
+  transform: none !important;
+  filter: none !important;
+  transition: none !important;
+  animation: none !important;
+}
+
+/* Hide every piece of navigation / overview / scrubber chrome. */
+.nav,
+.nav__btn,
+.nav-hint,
+.progress,
+.counter,
+.grid-overlay,
+.grid-slider,
+.grid-slider-wrap,
+.scrubber-zone,
+.scrubber-preview,
+.nav-toggle {
+  display: none !important;
+}

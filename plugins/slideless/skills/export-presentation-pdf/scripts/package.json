@@ -1,0 +1,16 @@
+{
+  "name": "slideless-html-to-pdf",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Puppeteer-based HTML→PDF runner bundled with the export-presentation-pdf skill.",
+  "scripts": {
+    "run": "tsx html-to-pdf.ts"
+  },
+  "dependencies": {
+    "puppeteer": "^24.2.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2",
+    "@types/node": "^22.10.0"
+  }
+}

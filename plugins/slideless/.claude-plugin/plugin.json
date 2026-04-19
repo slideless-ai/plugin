@@ -1,0 +1,18 @@
+{
+  "name": "slideless",
+  "description": "Generate and share beautiful self-contained HTML presentations. Bundles multiple visual styles, each with a complete reference example and a build guide. Includes a sharing skill that uploads a generated presentation and returns a public link.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Slideless",
+    "email": "team@slideless.ai"
+  },
+  "keywords": [
+    "presentation",
+    "slides",
+    "html",
+    "deck",
+    "pitch",
+    "slideless",
+    "share"
+  ]
+}
