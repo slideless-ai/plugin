@@ -13,6 +13,7 @@ The preferred path is **OTP from the terminal** — two commands and the key is 
 
 - Node.js 20+
 - An email address the user can check (for the OTP path)
+- The user's first name (required for signup — used in onboarding emails and as the default workspace name; last name is optional)
 
 ## Step 1: Install the CLI
 
@@ -45,21 +46,27 @@ Expected success shape:
 { "success": true, "data": { "email": "...", "expiresInSeconds": 600 } }
 ```
 
-Tell the user "I sent a 6-digit code to `<email>` — paste it back when you have it" and wait. Then:
+Tell the user "I sent a 6-digit code to `<email>` — paste it back when you have it" and wait. Before running `signup-complete`, make sure you have the user's first name (see "Gathering the user's name" below — don't skip it; `--first-name` is required and the CLI will fail fast without it). Then:
 
 ```bash
-slideless auth signup-complete --email $EMAIL --code $OTP --json
+slideless auth signup-complete --email $EMAIL --code $OTP --first-name "$FIRST_NAME" --json
 ```
 
-Optional flags for populating the new organization at the same time. All optional; the CLI base64-encodes the logo for you.
+Optional flags for providing a last name and populating the new organization at the same time. The CLI base64-encodes the logo for you.
 
 ```bash
 slideless auth signup-complete --email $EMAIL --code $OTP --json \
+  --first-name "Romain" \
+  --last-name "Pattyn" \
   --company "Acme" \
   --description "We make widgets" \
   --brand-primary "#0a0a0a" \
   --logo ./logo.png
 ```
+
+### Gathering the user's name
+
+Prefer asking the user directly — `"What's your first name?"` is one turn and gives you clean data. If running non-interactively and the user hasn't told you, fall back to `git config user.name` and take the first whitespace-separated token; if that's also empty, stop and ask rather than guessing. Never pass the email local part as the first name — the backend used to do that and produced emails greeting users as "My, your first steps".
 
 Expected success shape:
 
@@ -67,9 +74,9 @@ Expected success shape:
 {
   "success": true,
   "data": {
-    "profileName": "my-organization",
+    "profileName": "romains-workspace",
     "organizationId": "...",
-    "organizationName": "My Organization",
+    "organizationName": "Romain's workspace",
     "apiKey": { "keyPrefix": "cko_xxxx", "name": "CLI default key", "scopes": ["presentations:write","presentations:read"], "createdAt": "..." },
     "isNewUser": true
   }
@@ -126,7 +133,9 @@ Every `slideless auth ...` error payload carries a `nextAction` string — use i
 | `EMAIL_RATE_LIMITED` / `IP_RATE_LIMITED` | 20/hour per email or 60/hour per IP hit. Wait and retry. |
 | `LOGO_TOO_LARGE` / `LOGO_INVALID_FORMAT` / `LOGO_DECODE_FAILED` | Drop `--logo` and retry, or pick a smaller/valid file (PNG/JPEG/WebP/SVG ≤ 2 MB). |
 | `BRAND_COLOR_INVALID` | Use a 6-digit hex like `#0a0a0a`, or omit the flag. |
-| `COMPANY_NAME_TOO_LONG` | Shorten `--company` to ≤ 100 chars, or omit (defaults to "My Organization"). |
+| `USER_FIRST_NAME_REQUIRED` | `--first-name` was missing. Ask the user for their first name and retry. |
+| `USER_NAME_TOO_LONG` (`details.field`) | Shorten the offending `--first-name` / `--last-name` to ≤ 60 chars. |
+| `COMPANY_NAME_TOO_LONG` | Shorten `--company` to ≤ 100 chars, or omit (defaults to "{first-name}'s workspace"). |
 | `INVALID_EXPIRES_IN_DAYS` | Omit `--key-expires-in` or pass 1–365. |
 | `INTERNAL` | Retry in a few seconds. |
 
