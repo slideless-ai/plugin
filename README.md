@@ -6,13 +6,14 @@ Conforms to the [Open Plugin Specification v1.0](https://github.com/vercel-labs/
 
 ## What's Inside
 
-One plugin, `slideless`, with seven skills covering the full lifecycle:
+One plugin, `slideless`, with eight skills covering the full lifecycle:
 
 | Skill | What it does |
 |---|---|
 | `setup-slideless` | Install the `slideless` CLI and attach a `cko_` key. Prefers the OTP flow (`slideless auth signup-request` / `login-request` + matching `-complete`); falls back to pasting a dashboard key. Run this **first**. |
 | `generate-presentation` | Generate a self-contained `.html` presentation in one of several built-in visual styles. Each style ships with a complete reference example and a build guide. |
 | `share-presentation` | Upload a generated `.html` file to slideless-ai and get a public share URL with view tracking. |
+| `share-presentation-email` | Email an existing shared presentation to 1–20 recipients. Each recipient gets a unique named link so the sender can track per-recipient opens. Use after `share-presentation` when the user says "send this to alice@…". |
 | `update-presentation` | Replace the HTML of an existing share **in place** — same URL, view counts preserved, version bumps. Use after re-generating or editing a deck. |
 | `list-presentations` | List all of your shared presentations with title, view count, share URL. |
 | `get-presentation` | Fetch full metadata for a single presentation: per-token view counts, status, all share URLs. |
@@ -29,9 +30,11 @@ share-presentation ./deck.html "Q4 board"
   ↓
   → returns shareUrl + shareId
   ↓
+share-presentation-email <shareId> alice@x.com bob@y.com   (optional: email it out)
+  ↓
 [recipients open the URL]
   ↓
-list-presentations / get-presentation <shareId>     (track views)
+list-presentations / get-presentation <shareId>     (track views — per-recipient)
   ↓
 update-presentation <shareId> ./deck-v2.html        (re-publish, same URL)
 ```

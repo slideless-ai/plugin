@@ -100,3 +100,7 @@ Wraps `slideless share` (and `slideless update` when `share_id` is provided). Up
 - [ ] User has the URL pasted plainly in the chat (not buried in a code block)
 - [ ] If creating, the `shareId` is also surfaced so they can update later
 - [ ] If anything failed, the error `code` and `message` are surfaced verbatim
+
+## Next step
+
+If the user mentions recipients ("send this to alice@…", "email the deck"), use the `share-presentation-email` skill with the `shareId` you just received — it emails the deck via Resend and mints a per-recipient tracked token.

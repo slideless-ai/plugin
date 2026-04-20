@@ -80,6 +80,7 @@ All non-`generate-presentation` and non-`export-presentation-pdf` skills delegat
 |---|---|---|---|
 | `setup-slideless` | `slideless auth signup-request/signup-complete/login-request/login-complete` (primary), `slideless login` (fallback), `slideless whoami` / `verify` | `POST /cliRequestSignupOtp`, `/cliCompleteSignup`, `/cliRequestLoginOtp`, `/cliCompleteLogin`, `/verifyApiKey` | (mints its own `cko_` key with `presentations:read` + `presentations:write`) |
 | `share-presentation` | `slideless share` (or `slideless update` with `--update`) | `POST /uploadSharedPresentation` / `POST /updateSharedPresentation` | `presentations:write` |
+| `share-presentation-email` | `slideless share-email` | `POST /sharePresentationViaEmail` | `presentations:write` |
 | `update-presentation` | `slideless update` | `POST /updateSharedPresentation` | `presentations:write` |
 | `list-presentations` | `slideless list` | `GET /listMyPresentations` | `presentations:read` |
 | `get-presentation` | `slideless get` | `GET /getSharedPresentationInfo/<shareId>` | `presentations:read` |
