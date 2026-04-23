@@ -84,6 +84,8 @@ All non-`generate-presentation` and non-`export-presentation-pdf` skills delegat
 | `update-presentation` | `slideless update` | `POST /updateSharedPresentation` | `presentations:write` |
 | `list-presentations` | `slideless list` | `GET /listMyPresentations` | `presentations:read` |
 | `get-presentation` | `slideless get` | `GET /getSharedPresentationInfo/<shareId>` | `presentations:read` |
+| `revoke-presentation` | `slideless revoke` | `POST /revokeSharedPresentation` | `presentations:write` |
+| `add-presentation-token` | `slideless token add` | `POST /addPresentationToken` | `presentations:write` |
 | (viewer, public) | (no CLI) | `GET /getSharedPresentation/<shareId>?token=...` | unguessable token in URL |
 
 Skills always pass `--json` so the response shape is stable: `{ success: true, data: ... }` or `{ success: false, status, error: { code, message } }`.

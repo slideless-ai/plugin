@@ -9,7 +9,7 @@ Wraps `slideless list`. Returns up to 100 of the user's most recently created sh
 
 ## Prerequisites
 
-- `slideless` CLI installed and authenticated (run `setup-slideless` if not)
+- `slideless` CLI installed and authenticated — if `slideless --version` fails with `command not found`, invoke the `setup-slideless` skill first, then retry.
 - Active profile must have `presentations:read` (granted by `presentations:write` too)
 
 ## Steps

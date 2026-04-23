@@ -17,6 +17,8 @@ One plugin, `slideless`, with eight skills covering the full lifecycle:
 | `update-presentation` | Replace the HTML of an existing share **in place** — same URL, view counts preserved, version bumps. Use after re-generating or editing a deck. |
 | `list-presentations` | List all of your shared presentations with title, view count, share URL. |
 | `get-presentation` | Fetch full metadata for a single presentation: per-token view counts, status, all share URLs. |
+| `add-presentation-token` | Mint a new named share token on an existing presentation so the user can send a fresh, separately trackable link to a specific recipient. |
+| `revoke-presentation` | Revoke a single recipient's token or archive the whole presentation (all links stop working). |
 | `export-presentation-pdf` | Convert a generated `.html` deck into a `.pdf` via a bundled Puppeteer runner. Handles `full-deck` slides mechanically and restructures `slim-tabbed` decks so each tab becomes its own page. |
 
 ## Lifecycle at a glance
@@ -36,7 +38,11 @@ share-presentation-email <shareId> alice@x.com bob@y.com   (optional: email it o
   ↓
 list-presentations / get-presentation <shareId>     (track views — per-recipient)
   ↓
+add-presentation-token <shareId> "Acme Corp"        (optional: extra recipient link)
+  ↓
 update-presentation <shareId> ./deck-v2.html        (re-publish, same URL)
+  ↓
+revoke-presentation <shareId> [--token <tokenId>]   (cut off a recipient or archive)
 ```
 
 ## Bundled Styles

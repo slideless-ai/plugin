@@ -15,7 +15,7 @@ Wraps `slideless get`. Returns full metadata + per-token info for a single share
 
 ## Prerequisites
 
-- `slideless` CLI installed and authenticated (run `setup-slideless` if not)
+- `slideless` CLI installed and authenticated — if `slideless --version` fails with `command not found`, invoke the `setup-slideless` skill first, then retry.
 - Active profile must have `presentations:read`
 - The user must own this presentation (ownership checked server-side)
 
@@ -89,3 +89,8 @@ slideless get "$SHARE_ID" --json
 - [ ] Token list rendered in a scannable format
 - [ ] Total views and last-viewed-at surfaced clearly
 - [ ] Sensitive `shareUrl` values only quoted when the user is about to share them
+
+## Next steps
+
+- To **mint a new token** for an additional recipient → `add-presentation-token`
+- To **revoke a specific recipient's token** or archive the whole presentation → `revoke-presentation`

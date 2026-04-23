@@ -17,7 +17,7 @@ Wraps `slideless update`. Replaces the HTML at an existing share. Same URL, new 
 
 ## Prerequisites
 
-- `slideless` CLI installed and authenticated (run `setup-slideless` if not)
+- `slideless` CLI installed and authenticated — if `slideless --version` fails with `command not found`, invoke the `setup-slideless` skill first, then retry.
 - The user must own the presentation being updated (ownership is checked server-side)
 
 ## Steps

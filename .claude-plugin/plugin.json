@@ -1,6 +1,6 @@
 {
   "name": "slideless",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "description": "Generate, share, and email beautiful self-contained HTML presentations. Bundles multiple visual styles, each with a complete reference example and a build guide. Skills delegate to the official `slideless` CLI (npm package) for all backend operations, so auth, error handling, and JSON output stay consistent. Run `setup-slideless` first.",
   "author": {
     "name": "Slideless",

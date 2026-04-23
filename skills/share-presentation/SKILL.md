@@ -17,7 +17,7 @@ Wraps `slideless share` (and `slideless update` when `share_id` is provided). Up
 
 ## Prerequisites
 
-- `slideless` CLI installed and authenticated (run `setup-slideless` if not)
+- `slideless` CLI installed and authenticated — if `slideless --version` fails with `command not found`, invoke the `setup-slideless` skill first, then retry.
 - Confirm with `slideless whoami` that the active profile has `presentations:write` scope
 
 ## Steps

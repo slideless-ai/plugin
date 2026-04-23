@@ -20,7 +20,7 @@ If the user says "share" but doesn't mention email, use `share-presentation` ins
 ## Preconditions
 
 - The presentation must already be uploaded — you need a `shareId`. If you don't have one, run `share-presentation` first.
-- `slideless` CLI installed and authenticated (run `setup-slideless` if needed).
+- `slideless` CLI installed and authenticated — if `slideless --version` fails with `command not found`, invoke the `setup-slideless` skill first, then retry.
 - Active profile must have `presentations:write` scope.
 
 ## Inputs
