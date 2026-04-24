@@ -1,6 +1,6 @@
 ---
 name: list-presentations
-description: "List the user's shared presentations on slideless — id, title, version, view count, share URL. Use when the user asks 'what presentations have I shared', 'show me my decks', 'do I already have a share link for X', or before deciding whether to create a new share or update an existing one with update-presentation."
+description: "List the user's shared presentations on slideless — id, title, currentVersion, view count, share URL. Use when the user asks 'what presentations have I shared', 'show me my decks', 'do I already have a share link for X', or before deciding whether to create a new share or update an existing one with update-presentation."
 ---
 
 # List Presentations
@@ -28,7 +28,7 @@ slideless list --json
       {
         "id": "01a3b…",
         "title": "Q4 board deck",
-        "version": 3,
+        "currentVersion": 3,
         "createdAt": "2026-04-18T12:34:56.000Z",
         "updatedAt": "2026-04-18T15:00:00.000Z",
         "archived": false,
@@ -46,7 +46,7 @@ Sorted by `createdAt` descending. `shareUrl` is `null` for archived presentation
 ## Presenting results to the user
 
 - If empty: "You haven't shared any presentations yet. Generate one with `generate-presentation` and share it with `share-presentation`."
-- If non-empty: render a compact list with title, version (`v3`), totalViews (`12 views`), and the share URL. A markdown table works well.
+- If non-empty: render a compact list with title, `currentVersion` (`v3`), totalViews (`12 views`), and the share URL. A markdown table works well.
 - If the user asked for a specific presentation by name, filter results client-side and surface the matching `id` so they can pass it to `update-presentation` or `get-presentation`.
 
 ## Pitfalls

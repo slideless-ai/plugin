@@ -1,6 +1,6 @@
 ---
 name: get-presentation
-description: "Fetch full metadata for a single shared presentation: title, version, all share tokens with per-token view counts, archive status, expiration, total views. Use when the user asks 'how many views does my deck have', 'what URLs am I sharing for X', 'who has access to this presentation', or to confirm details before updating or revoking."
+description: "Fetch full metadata for a single shared presentation: title, currentVersion, all share tokens with per-token view counts and versionMode, archive status, expiration, total views. Use when the user asks 'how many views does my deck have', 'what URLs am I sharing for X', 'who has access to this presentation', or to confirm details before updating or revoking."
 ---
 
 # Get Presentation
@@ -35,7 +35,7 @@ slideless get "$SHARE_ID" --json
     "ownerId": "tnzblYpM…",
     "organizationId": "ORG…",
     "title": "Q4 board deck",
-    "version": 3,
+    "currentVersion": 3,
     "createdAt": "2026-04-18T12:34:56.000Z",
     "updatedAt": "2026-04-18T15:00:00.000Z",
     "archived": false,
@@ -53,7 +53,8 @@ slideless get "$SHARE_ID" --json
         "revokedAt": null,
         "lastAccessedAt": "2026-04-19T08:00:00.000Z",
         "accessCount": 7,
-        "shareUrl": "https://…"
+        "shareUrl": "https://…",
+        "versionMode": { "type": "latest" }
       },
       {
         "tokenId": "01a3d…",
@@ -63,7 +64,8 @@ slideless get "$SHARE_ID" --json
         "revokedAt": null,
         "lastAccessedAt": "2026-04-19T09:30:00.000Z",
         "accessCount": 5,
-        "shareUrl": "https://…"
+        "shareUrl": "https://…",
+        "versionMode": { "type": "pinned", "version": 2 }
       }
     ]
   }
@@ -72,8 +74,8 @@ slideless get "$SHARE_ID" --json
 
 ## Presenting results to the user
 
-- Lead with title, version, and `totalViews`
-- List each token: `name`, `accessCount`, `lastAccessedAt`, status (active/revoked)
+- Lead with title, `currentVersion`, and `totalViews`
+- List each token: `name`, `accessCount`, `lastAccessedAt`, status (active/revoked), `versionMode` (either "follows latest" or "pinned to vN")
 - Surface `primaryShareUrl` separately for easy copy-paste
 - Don't repeat per-token `shareUrl` unless the user explicitly asks — long URLs are noisy
 

@@ -7,7 +7,7 @@ description: Upload a presentation (single HTML or a folder with assets) to slid
 
 Wraps `slideless share` (and `slideless share --update <shareId>` when re-publishing). Uploads a deck to the slideless backend and returns a public share URL with an unguessable token. Anyone with the URL views the presentation in their browser; no login required.
 
-Slideless v3 accepts a folder containing `index.html` plus any images, videos, 3D assets, shaders, CSS, or JS files — relative paths inside the HTML (`./hero.jpg`, `../styles.css`) resolve naturally, same as serving the folder from a local static webserver. A single `.html` file still works as a one-file deck.
+Slideless v3 accepts a folder containing `index.html` plus any images, videos, 3D assets, shaders, CSS, or JS files — relative paths inside the deck (e.g. `./hero.jpg`, `./styles.css`, `./images/logo.png`) resolve naturally, same as serving the folder from a local static webserver. A single `.html` file still works as a one-file deck. Paths that escape the deck root (`../outside/foo.jpg`) are rejected at upload — decks must be self-contained.
 
 ## Inputs
 
