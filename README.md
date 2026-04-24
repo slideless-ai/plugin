@@ -12,13 +12,16 @@ One plugin, `slideless`, with skills covering the full lifecycle:
 |---|---|
 | `setup-slideless` | Install the `slideless` CLI and attach a `cko_` key. Prefers the OTP flow (`slideless auth signup-request` / `login-request` + matching `-complete`); falls back to pasting a dashboard key. Run this **first**. |
 | `generate-presentation` | Generate an HTML presentation in one of several built-in visual styles. Output is either a single `.html` or a folder with sibling assets (images, video, 3D models, CSS, JS) depending on what the deck needs. |
-| `share-presentation` | Upload a deck (folder or single HTML file) to slideless and get a public share URL with view tracking. Relative asset paths resolve natively for viewers. |
+| `push-presentation` | Upload a deck (folder or single HTML file). First push creates a new presentation and writes `slideless.json` at the deck root; subsequent pushes from the same folder re-publish to the same `presentationId` with view counts preserved. |
+| `pull-presentation` | Download a deck to a local folder (writes `slideless.json` so a subsequent `push` re-publishes in place). Works for owners on another machine and for invited dev collaborators. |
+| `share-presentation` | Mint a public viewer URL for an existing presentation. Mint as many named tokens as you need (one per recipient for per-recipient tracking). |
+| `unshare-presentation` | Revoke viewer URLs — one token with `--token`, or every token without. The deck stays editable. |
+| `delete-presentation` | Hard-delete a presentation: Firestore doc, every version, every asset, every collaborator row. Irreversible. |
+| `invite-collaborator` | Invite a dev collaborator by email. They gain push + pull access once they have a Slideless account (auto-claims on signup if they don't). |
+| `uninvite-collaborator` | Revoke a dev collaborator. Revocation is immediate. |
 | `share-presentation-email` | Email an existing shared presentation to 1–20 recipients. Each recipient gets a unique named link so the sender can track per-recipient opens. |
-| `update-presentation` | Replace the deck behind an existing share **in place** — same URL, view counts preserved, version bumps, unchanged assets deduplicated by SHA-256. |
-| `list-presentations` | List all your shared presentations with title, view count, share URL. |
-| `get-presentation` | Fetch full metadata for a single presentation: per-token view counts, `versionMode`, all share URLs. |
-| `add-presentation-token` | Mint a new named share token on an existing presentation so the user can send a fresh, separately trackable link to a specific recipient. |
-| `revoke-presentation` | Revoke a single recipient's token or archive the whole presentation. |
+| `list-presentations` | List every deck you can access — owned plus shared-with-you. Each row carries a `role` column. |
+| `get-presentation` | Fetch full metadata for a single presentation: per-token view counts, `versionMode`, share URLs, and (for owners) the collaborator list. |
 | `export-presentation-pdf` | Convert a local HTML deck into a PDF via a bundled Puppeteer runner. |
 
 ## Lifecycle at a glance
@@ -28,21 +31,29 @@ setup-slideless (once)
   ↓
 generate-presentation → ./deck/ (folder with index.html + assets) OR ./deck.html
   ↓
-share-presentation ./deck "Q4 board"
+push-presentation ./deck "Q4 board"
   ↓
-  → returns shareUrl + shareId
+  → returns presentationId, writes slideless.json at the deck root
   ↓
-share-presentation-email <shareId> alice@x.com bob@y.com   (optional: email it out)
+share-presentation <presentationId>                                 (mint a public viewer URL)
+  ↓
+  → returns shareUrl + tokenId
+  ↓
+share-presentation-email <presentationId> alice@x.com bob@y.com     (optional: email it out)
   ↓
 [recipients open the URL; images, video, 3D assets load natively]
   ↓
-list-presentations / get-presentation <shareId>            (track views — per-recipient)
+list-presentations / get-presentation <presentationId>              (track views — per-recipient)
   ↓
-add-presentation-token <shareId> "Acme Corp"               (optional: extra recipient link)
+share-presentation <presentationId> --name "Acme Corp"              (optional: extra recipient link)
   ↓
-update-presentation <shareId> ./deck                       (re-publish, same URL, dedup)
+invite-collaborator <presentationId> --email teammate@x.com         (optional: grant edit access)
   ↓
-revoke-presentation <shareId> [--token <tokenId>]          (cut off a recipient or archive)
+push-presentation ./deck                                     (re-publish from same folder, dedup)
+  ↓
+unshare-presentation <presentationId> [--token <tokenId>]           (revoke one or every viewer URL)
+  ↓
+delete-presentation <presentationId>                                (hard-delete, irreversible)
 ```
 
 ## Bundled Styles
@@ -90,8 +101,11 @@ Both paths produce the same `/slideless:*` skills — Claude Code prefers the `.
 > use slideless to generate a 7-slide deck about <topic> in full-deck style
 [skill writes either ./deck.html or ./deck/ (folder) depending on what the content needs]
 
-> share that presentation as "<title>"
-[skill runs `slideless share ./deck --title "<title>" --json` and returns the public URL]
+> push that presentation as "<title>"
+[skill runs `slideless push ./deck --title "<title>" --json` and returns the presentationId + writes slideless.json]
+
+> share a public link
+[skill runs `slideless share <presentationId> --json` and returns the viewer URL]
 ```
 
 ## Adding a New Style

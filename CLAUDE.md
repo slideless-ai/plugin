@@ -25,9 +25,21 @@ Public agent plugin for generating, sharing, and managing HTML presentations. Pu
 │   │           ├── README.md
 │   │           ├── how-to-build.md
 │   │           └── example.html
+│   ├── push-presentation/
+│   │   └── SKILL.md
+│   ├── pull-presentation/
+│   │   └── SKILL.md
 │   ├── share-presentation/
 │   │   └── SKILL.md
-│   ├── update-presentation/
+│   ├── unshare-presentation/
+│   │   └── SKILL.md
+│   ├── delete-presentation/
+│   │   └── SKILL.md
+│   ├── invite-collaborator/
+│   │   └── SKILL.md
+│   ├── uninvite-collaborator/
+│   │   └── SKILL.md
+│   ├── share-presentation-email/
 │   │   └── SKILL.md
 │   ├── list-presentations/
 │   │   └── SKILL.md
@@ -74,21 +86,26 @@ When editing manifest metadata (`version`, `description`, `keywords`, …), upda
 
 ## Backend Dependency
 
-All non-`generate-presentation` and non-`export-presentation-pdf` skills delegate to the **`slideless` CLI** (npm package ≥ 0.3.0), which wraps the slideless-ai backend's HTTP API. Skills never call curl or hand-roll fetch; the CLI centralises auth, base URL, the three-step upload protocol, error decoding, and JSON output shape.
+All non-`generate-presentation` and non-`export-presentation-pdf` skills delegate to the **`slideless` CLI** (npm package ≥ 0.5.0), which wraps the slideless-ai backend's HTTP API. Skills never call curl or hand-roll fetch; the CLI centralises auth, base URL, the three-step upload protocol, error decoding, and JSON output shape.
 
 | Skill | CLI command | Backing endpoint(s) | Required scope |
 |---|---|---|---|
 | `setup-slideless` | `slideless auth signup-*/login-*` (primary), `slideless login` (fallback), `slideless whoami` / `verify` | `POST /cliRequestSignupOtp`, `/cliCompleteSignup`, `/cliRequestLoginOtp`, `/cliCompleteLogin`, `/verifyApiKey` | (mints its own `cko_` key with `presentations:read` + `presentations:write`) |
-| `share-presentation` | `slideless share <folder-or-file>` (or `slideless update` with `--update`) | `precheckAssets` → `uploadPresentationAsset` → `commitPresentationVersion` | `presentations:write` |
+| `push-presentation` | `slideless push <folder-or-file>` | `precheckAssets` → `uploadPresentationAsset` → `commitPresentationVersion` | `presentations:write` |
+| `pull-presentation` | `slideless pull <presentationId>` | `GET /getPresentationVersion` + `GET /downloadPresentationAsset` | `presentations:read` (owner or dev) |
+| `share-presentation` | `slideless share <presentationId> [--name <n>] [--pin <v>]` | `POST /addPresentationToken` | `presentations:write` |
+| `unshare-presentation` | `slideless unshare <presentationId> [--token <tokenId>]` | `POST /unsharePresentation` | `presentations:write` |
+| `delete-presentation` | `slideless delete <presentationId> --yes` | `POST /deletePresentation` | `presentations:write` |
+| `invite-collaborator` | `slideless invite <presentationId> --email <addr>` | `POST /inviteCollaborator` | `presentations:write` |
+| `uninvite-collaborator` | `slideless uninvite <presentationId> <collaboratorId>` | `POST /uninviteCollaborator` | `presentations:write` |
 | `share-presentation-email` | `slideless share-email` | `POST /sharePresentationViaEmail` | `presentations:write` |
-| `update-presentation` | `slideless update <shareId> <folder-or-file>` | Same three-step upload flow on an existing shareId | `presentations:write` |
 | `list-presentations` | `slideless list` | `GET /listMyPresentations` | `presentations:read` |
-| `get-presentation` | `slideless get` | `GET /getSharedPresentationInfo/<shareId>` | `presentations:read` |
-| `revoke-presentation` | `slideless revoke` | `POST /revokeSharedPresentation` | `presentations:write` |
-| `add-presentation-token` | `slideless token add` | `POST /addPresentationToken` | `presentations:write` |
-| (viewer, public) | (no CLI — recipients open the share URL) | `GET /getSharedPresentation/<shareId>/_t/<token>/<assetPath>` | unguessable token in URL |
+| `get-presentation` | `slideless get` | `GET /getSharedPresentationInfo/<presentationId>` | `presentations:read` |
+| (viewer, public) | (no CLI — recipients open the share URL) | `GET /getSharedPresentation/<presentationId>/_t/<token>/<assetPath>` | unguessable token in URL |
 
-The share-presentation and update-presentation skills accept a `source_path` that can be either a folder (with `index.html` + sibling assets) or a single `.html` file. Static scan catches parent-directory escapes (`../outside/foo.jpg`) as hard errors. Unchanged assets on update are deduplicated by SHA-256 — only modified files re-upload.
+The `push-presentation` skill accepts a `source_path` that can be either a folder (with `index.html` + sibling assets) or a single `.html` file. Static scan catches parent-directory escapes (`../outside/foo.jpg`) as hard errors. The CLI writes `slideless.json` at the deck root on the first push — the same skill handles subsequent updates because the CLI detects the file and sends `expectedBaseVersion`. Unchanged assets across versions are deduplicated by SHA-256 — only modified files re-upload.
+
+A fresh push does not mint a viewer URL. The agent must call `share-presentation` afterwards if the user wants a public link.
 
 Skills always pass `--json` so the response shape is stable: `{ success: true, data: ... }` or `{ success: false, status, error: { code, message } }`.
 

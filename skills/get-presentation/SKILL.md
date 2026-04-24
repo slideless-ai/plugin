@@ -11,7 +11,7 @@ Wraps `slideless get`. Returns full metadata + per-token info for a single share
 
 | Input | Required | Notes |
 |---|---|---|
-| `share_id` | yes | The `shareId` from a previous `share-presentation` call, the dashboard URL, or `slideless list` output. |
+| `presentation_id` | yes | The `presentationId` from a previous `share-presentation` call, the dashboard URL, or `slideless list` output. |
 
 ## Prerequisites
 
@@ -81,13 +81,13 @@ slideless get "$SHARE_ID" --json
 
 ## Pitfalls
 
-- **Wrong shareId** → `not-found`. Confirm with `slideless list` first if unsure.
+- **Wrong presentationId** → `not-found`. Confirm with `slideless list` first if unsure.
 - **Not the owner** → `permission-denied`.
 - **Per-token shareUrl includes the secret token** — surface them only when the user wants to share with a new recipient. Don't paste them in chat history that gets shared elsewhere.
 
 ## Output checklist
 
-- [ ] CLI returned `success: true` with the requested shareId
+- [ ] CLI returned `success: true` with the requested presentationId
 - [ ] Token list rendered in a scannable format
 - [ ] Total views and last-viewed-at surfaced clearly
 - [ ] Sensitive `shareUrl` values only quoted when the user is about to share them

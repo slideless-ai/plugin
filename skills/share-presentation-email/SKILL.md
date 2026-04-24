@@ -1,6 +1,6 @@
 ---
 name: share-presentation-email
-description: Email a shared slideless presentation to one or more recipients. Each recipient gets a unique named link so the sender can track per-recipient opens. Use this when the user says "send this deck to …", "email the presentation to …", or "share via mail to a@b.c". Requires an existing shareId — run `share-presentation` first if the deck isn't uploaded yet.
+description: Email a shared slideless presentation to one or more recipients. Each recipient gets a unique named link so the sender can track per-recipient opens. Use this when the user says "send this deck to …", "email the presentation to …", or "share via mail to a@b.c". Requires an existing presentationId — run `share-presentation` first if the deck isn't uploaded yet.
 ---
 
 # Share Presentation — Email
@@ -19,7 +19,7 @@ If the user says "share" but doesn't mention email, use `share-presentation` ins
 
 ## Preconditions
 
-- The presentation must already be uploaded — you need a `shareId`. If you don't have one, run `share-presentation` first.
+- The presentation must already be uploaded — you need a `presentationId`. If you don't have one, run `share-presentation` first.
 - `slideless` CLI installed and authenticated — if `slideless --version` fails with `command not found`, invoke the `setup-slideless` skill first, then retry.
 - Active profile must have `presentations:write` scope.
 
@@ -27,7 +27,7 @@ If the user says "share" but doesn't mention email, use `share-presentation` ins
 
 | Input | Required | Notes |
 |---|---|---|
-| `share_id` | yes | The presentation to send. Obtained from `share-presentation` or `list-presentations`. |
+| `presentation_id` | yes | The presentation to send. Obtained from `share-presentation` or `list-presentations`. |
 | `emails` | yes | Array of 1–20 recipient email addresses. |
 | `message` | optional | Personal note from the sender (≤2000 chars). Rendered in the email body. |
 | `subject` | optional | Custom subject line (≤200 chars). Defaults to `"{senderEmail} shared: {title}"`. |
@@ -56,7 +56,7 @@ If the user says "share" but doesn't mention email, use `share-presentation` ins
    {
      "success": true,
      "data": {
-       "shareId": "01a3b...",
+       "presentationId": "01a3b...",
        "sent": [
          { "email": "alice@x.com", "tokenId": "...", "resendMessageId": "re_...", "shareUrl": "https://app.slideless.ai/share/..." }
        ],
@@ -101,8 +101,8 @@ Every failure includes `error.code` and `error.nextAction`. Handle each without 
 | `error.code` | When it happens | What to do |
 |---|---|---|
 | `unauthenticated` | No key / invalid key | Ask the user to run `slideless auth login` or pass `--api-key`, then retry. |
-| `permission-denied` | Key doesn't own the share | Verify the key belongs to the org that owns the shareId. Ask user for the right key if not. |
-| `not-found` | `shareId` doesn't exist | Double-check the shareId. If the user just created it, retry once after 2s. |
+| `permission-denied` | Key doesn't own the share | Verify the key belongs to the org that owns the presentationId. Ask user for the right key if not. |
+| `not-found` | `presentationId` doesn't exist | Double-check the presentationId. If the user just created it, retry once after 2s. |
 | `archived` | Share is archived | Tell the user the presentation is archived. Offer to un-archive or create a new share with `share-presentation`. |
 | `missing-recipients` | No emails provided | Ask the user for at least one recipient address and retry. |
 | `invalid-email` | Bad email syntax | Appears in `failed[]`, not top-level. Show the user which addresses were rejected. |
@@ -110,7 +110,7 @@ Every failure includes `error.code` and `error.nextAction`. Handle each without 
 | `message-too-long` | Message >2000 chars | Shorten the message or omit it. |
 | `email-send-failed` | Resend API failure | Appears in `failed[]`. Retry once; if persistent, tell the user Resend is having issues. |
 | `rate-limited` | Too many calls | Back off 30s, retry. If persistent, stop and tell the user. |
-| `internal` | Unhandled backend error | Retry once. If still failing, stop and report verbatim with the shareId. |
+| `internal` | Unhandled backend error | Retry once. If still failing, stop and report verbatim with the presentationId. |
 
 ## Worked examples
 
@@ -143,7 +143,7 @@ slideless share-email "01a3b2c4d5e6f7" \
 
 ## Pitfalls
 
-- **No shareId yet** → run `share-presentation` first, then use the returned `shareId`.
+- **No presentationId yet** → run `share-presentation` first, then use the returned `presentationId`.
 - **Typos in email addresses** → land in `failed[]` with `invalid-email`. Surface them verbatim so the user can correct.
 - **"Send to my team"** → Don't invent addresses. Ask for explicit ones.
 - **Resend outage** → every recipient comes back as `email-send-failed`. The audit log still records attempts, so the user can see what happened.

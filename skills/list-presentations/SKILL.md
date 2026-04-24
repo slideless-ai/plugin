@@ -1,16 +1,16 @@
 ---
 name: list-presentations
-description: "List the user's shared presentations on slideless — id, title, currentVersion, view count, share URL. Use when the user asks 'what presentations have I shared', 'show me my decks', 'do I already have a share link for X', or before deciding whether to create a new share or update an existing one with update-presentation."
+description: "List every slideless presentation the user can access — both the ones they own and the ones shared with them as a dev collaborator. Each row has a `role` field (`owner` or `dev`). Use when the user asks 'what presentations do I have', 'show me my decks', 'do I have access to X', or before deciding between push (new) and push from an existing folder (update)."
 ---
 
 # List Presentations
 
-Wraps `slideless list`. Returns up to 100 of the user's most recently created shared presentations.
+Wraps `slideless list`. Returns a merged list: decks owned by the caller plus decks shared with them as an active dev collaborator. Each item carries `role: 'owner' | 'dev'` so agents can decide what's safe to act on.
 
 ## Prerequisites
 
-- `slideless` CLI installed and authenticated — if `slideless --version` fails with `command not found`, invoke the `setup-slideless` skill first, then retry.
-- Active profile must have `presentations:read` (granted by `presentations:write` too)
+- `slideless` CLI installed and authenticated (run `setup-slideless` otherwise).
+- Active profile has `presentations:read` (granted by `presentations:write` too).
 
 ## Steps
 
@@ -26,37 +26,52 @@ slideless list --json
   "data": {
     "presentations": [
       {
-        "id": "01a3b…",
+        "id": "01HXYZ...",
         "title": "Q4 board deck",
         "currentVersion": 3,
         "createdAt": "2026-04-18T12:34:56.000Z",
-        "updatedAt": "2026-04-18T15:00:00.000Z",
-        "archived": false,
+        "updatedAt": "2026-04-24T15:00:00.000Z",
         "totalViews": 12,
         "lastViewedAt": "2026-04-19T08:00:00.000Z",
-        "shareUrl": "https://…"
+        "shareUrl": "https://…",
+        "role": "owner",
+        "hasActiveCollaborators": true,
+        "ownerDisplayName": "Romain"
+      },
+      {
+        "id": "01AB...",
+        "title": "Partner pitch",
+        "currentVersion": 2,
+        "createdAt": "2026-04-15T00:00:00.000Z",
+        "updatedAt": "2026-04-22T09:00:00.000Z",
+        "totalViews": 0,
+        "lastViewedAt": null,
+        "shareUrl": null,
+        "role": "dev",
+        "hasActiveCollaborators": false,
+        "ownerDisplayName": "Alice"
       }
     ]
   }
 }
 ```
 
-Sorted by `createdAt` descending. `shareUrl` is `null` for archived presentations or those with no active token.
+Sorted by `updatedAt` descending. `shareUrl` is `null` when the presentation has no active token (unshared).
 
-## Presenting results to the user
+## Presenting results
 
-- If empty: "You haven't shared any presentations yet. Generate one with `generate-presentation` and share it with `share-presentation`."
-- If non-empty: render a compact list with title, `currentVersion` (`v3`), totalViews (`12 views`), and the share URL. A markdown table works well.
-- If the user asked for a specific presentation by name, filter results client-side and surface the matching `id` so they can pass it to `update-presentation` or `get-presentation`.
+- Lead with `role`. If the deck is shared (`role: 'dev'`), make it clear the user can edit but not mint new viewer URLs.
+- For `dev` rows, `ownerDisplayName` is useful: "Alice shared Partner pitch with you".
+- If empty: tell the user no decks yet, suggest `push-presentation ./folder --title "…"`.
 
 ## Pitfalls
 
-- **No results despite having uploaded** → check that the active profile belongs to the same user/org as the upload (each user owns their own presentations; cross-user listing isn't supported). `slideless whoami` confirms identity.
-- **Pagination** → capped at 100. v1 has no `cursor` parameter. If a power user has more, they'll only see the latest 100.
-- **Wrong scope** → `permission-denied`. Re-run `setup-slideless` and grant `presentations:read`.
+- **Empty despite uploads** — check the active profile via `slideless whoami`. Each user owns their own decks.
+- **No `role: dev` rows despite an invite** — the invite might still be pending (invitee hasn't signed up yet).
+- **Pagination** — capped at 100. No cursor yet.
 
 ## Output checklist
 
-- [ ] CLI returned `success: true`
-- [ ] Results presented in a scannable format
-- [ ] If the user asked for a specific deck, the matching `id` is highlighted so they can act on it
+- [ ] Report both owned and shared-with-me decks.
+- [ ] For each, surface `id`, `title`, `role`, `currentVersion`, and `shareUrl` (if present).
+- [ ] If the user asked about a specific deck, surface the matching `id` so they can act on it (push / share / invite / delete).
