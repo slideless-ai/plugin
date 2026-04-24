@@ -74,19 +74,21 @@ When editing manifest metadata (`version`, `description`, `keywords`, …), upda
 
 ## Backend Dependency
 
-All non-`generate-presentation` and non-`export-presentation-pdf` skills delegate to the **`slideless` CLI** (npm package), which wraps the slideless-ai backend's HTTP API. Skills never call curl or hand-roll fetch; the CLI centralises auth, base URL, error decoding, and JSON output shape.
+All non-`generate-presentation` and non-`export-presentation-pdf` skills delegate to the **`slideless` CLI** (npm package ≥ 0.3.0), which wraps the slideless-ai backend's HTTP API. Skills never call curl or hand-roll fetch; the CLI centralises auth, base URL, the three-step upload protocol, error decoding, and JSON output shape.
 
-| Skill | CLI command | Backing endpoint | Required scope |
+| Skill | CLI command | Backing endpoint(s) | Required scope |
 |---|---|---|---|
-| `setup-slideless` | `slideless auth signup-request/signup-complete/login-request/login-complete` (primary), `slideless login` (fallback), `slideless whoami` / `verify` | `POST /cliRequestSignupOtp`, `/cliCompleteSignup`, `/cliRequestLoginOtp`, `/cliCompleteLogin`, `/verifyApiKey` | (mints its own `cko_` key with `presentations:read` + `presentations:write`) |
-| `share-presentation` | `slideless share` (or `slideless update` with `--update`) | `POST /uploadSharedPresentation` / `POST /updateSharedPresentation` | `presentations:write` |
+| `setup-slideless` | `slideless auth signup-*/login-*` (primary), `slideless login` (fallback), `slideless whoami` / `verify` | `POST /cliRequestSignupOtp`, `/cliCompleteSignup`, `/cliRequestLoginOtp`, `/cliCompleteLogin`, `/verifyApiKey` | (mints its own `cko_` key with `presentations:read` + `presentations:write`) |
+| `share-presentation` | `slideless share <folder-or-file>` (or `slideless update` with `--update`) | `precheckAssets` → `uploadPresentationAsset` → `commitPresentationVersion` | `presentations:write` |
 | `share-presentation-email` | `slideless share-email` | `POST /sharePresentationViaEmail` | `presentations:write` |
-| `update-presentation` | `slideless update` | `POST /updateSharedPresentation` | `presentations:write` |
+| `update-presentation` | `slideless update <shareId> <folder-or-file>` | Same three-step upload flow on an existing shareId | `presentations:write` |
 | `list-presentations` | `slideless list` | `GET /listMyPresentations` | `presentations:read` |
 | `get-presentation` | `slideless get` | `GET /getSharedPresentationInfo/<shareId>` | `presentations:read` |
 | `revoke-presentation` | `slideless revoke` | `POST /revokeSharedPresentation` | `presentations:write` |
 | `add-presentation-token` | `slideless token add` | `POST /addPresentationToken` | `presentations:write` |
-| (viewer, public) | (no CLI) | `GET /getSharedPresentation/<shareId>?token=...` | unguessable token in URL |
+| (viewer, public) | (no CLI — recipients open the share URL) | `GET /getSharedPresentation/<shareId>/_t/<token>/<assetPath>` | unguessable token in URL |
+
+The share-presentation and update-presentation skills accept a `source_path` that can be either a folder (with `index.html` + sibling assets) or a single `.html` file. Static scan catches parent-directory escapes (`../outside/foo.jpg`) as hard errors. Unchanged assets on update are deduplicated by SHA-256 — only modified files re-upload.
 
 Skills always pass `--json` so the response shape is stable: `{ success: true, data: ... }` or `{ success: false, status, error: { code, message } }`.
 
