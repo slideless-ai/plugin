@@ -47,6 +47,8 @@ The folder is uploaded verbatim, except:
 
 External CDN references (`https://unpkg.com/...`, `https://fonts.googleapis.com/...`) remain valid — the viewer's browser fetches them at render time.
 
+**Bundled fonts**: if the deck uses `@font-face` with local font files (`.woff2`, `.woff`, `.ttf`), include them in the folder and reference them relatively (`src: url('./fonts/MyFont.woff2') format('woff2')`). Missing font files surface as pre-upload warnings like any other missing asset.
+
 ## Steps
 
 1. **Validate the input** — confirm the folder or file exists. If `source_path` is a folder, confirm it contains the entry HTML (`index.html` by default; override with `entry`).

@@ -85,6 +85,17 @@ When the user supplies images, video, or 3D models, save them alongside the HTML
 
 Do NOT reference anything outside the folder (`../anywhere`) — the deck must be self-contained within its root. CDN/external URLs (`https://...`) are fine.
 
+### Custom fonts
+
+Two options:
+
+1. **Google Fonts / Fontshare / Adobe Fonts** — `<link href="https://fonts.googleapis.com/css2?family=...">`. Simplest path. Works in both single-file and folder mode. Zero quota cost.
+2. **Bundled font files** — folder mode only. Put `.woff2` files inside the deck, reference them via `@font-face { src: url('./fonts/MyFont.woff2') format('woff2'); }`. `.woff2` is the right default (widely supported, ~60% smaller than TTF).
+
+Ship `.woff2` only unless the user explicitly needs older-browser fallbacks. Set `font-display: swap` so text stays visible while fonts load. Don't mix self-hosted and CDN for the same family unless the user asks.
+
+Ask the user which they want if brand fonts come up — licensing and offline behavior usually drive the choice.
+
 ## Don'ts
 
 - Don't add heavyweight CSS/JS frameworks to single-file decks (no Tailwind CDN, no Reveal.js, no jQuery)
