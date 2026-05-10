@@ -1,0 +1,40 @@
+sequenceDiagram
+    autonumber
+    participant Syndic
+    participant Cnd as Syndic conductor
+    participant CF as Cloud Functions
+    participant FS as Firestore
+    participant Storage as Cloud Storage
+    participant Email
+
+    Syndic->>Cnd: Generate PV draft
+    Cnd->>CF: generatePvDraft(aId)
+    CF->>FS: read attendance + resolutions + votes (collection-group)
+    CF->>CF: build structured body presence, per-resolution Pour/Contre/Abstention quotites, threshold, accept/reject, namedAgainst, namedAbstain
+    CF->>FS: write pv/document body, status=draft
+    CF-->>Cnd: pvId
+
+    Syndic->>Cnd: edits free-text sections (rapport CC, syndic narrative)
+    Cnd->>CF: updatePvFreeText(aId, sections)
+    CF->>FS: pv.body.freeText = sections
+
+    Syndic->>Cnd: Export PV (PDF)
+    Cnd->>CF: exportPvPdf(aId)
+    CF->>CF: render HTML template with body data (server-side templating)
+    CF->>CF: HTML to PDF (puppeteer-core / sparticuz chromium in CF)
+    CF->>Storage: upload organizations/{coproId}/assemblies/{aId}/pv/draft.pdf
+    CF->>FS: pv.pdfStorageUrl = signedUrl
+    CF-->>Cnd: pdfUrl
+
+    Note over Syndic: Syndic signs the PDF offline, uploads back as historic_pv Document via existing flow
+
+    Syndic->>Cnd: Distribute PV
+    Cnd->>CF: distributePv(aId, signedDocId)
+    CF->>FS: read all owners with email
+    CF->>Storage: get signed PDF URL
+    loop per owner
+        CF->>Email: send PV with PDF attachment
+    end
+    CF->>FS: pv.status=distributed, distributedAt=now
+    CF->>FS: log activity pv_distributed
+    CF-->>Cnd: sentCount, failedCount

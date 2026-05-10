@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title data-i18n-key="meta.title">Syndicable V1.1 — Plan complet</title>
+<meta name="description" data-i18n-key-attr="content" data-i18n-key="meta.description" content="Le plan d'implémentation canonique de Syndicable V1.1, rendu depuis le markdown source." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<script src="marked.min.js" defer></script>
+<script>
+  // Pre-paint language resolver — shares the localStorage key with article.html
+  // and roadmap.html so the user's choice persists across page navigation.
+  (function () {
+    try {
+      var saved = window.localStorage.getItem('syndicable.article.lang');
+      if (saved !== 'en' && saved !== 'fr') saved = 'fr';
+      document.documentElement.setAttribute('lang', saved);
+      document.documentElement.setAttribute('data-lang', saved);
+    } catch (e) {
+      document.documentElement.setAttribute('lang', 'fr');
+      document.documentElement.setAttribute('data-lang', 'fr');
+    }
+  })();
+</script>
+</head>
+<body>
+
+<header class="miniNav" aria-label="Deck pages">
+  <div class="miniNav-inner">
+    <span class="miniNav-mark"><span class="nav-dot"></span><span>Syndicable&nbsp;V1.1</span></span>
+    <nav class="miniNav-tabs" aria-label="Sibling pages">
+      <a class="miniNav-tab" href="./article.html" data-i18n-key="miniNav.article">Article</a>
+      <a class="miniNav-tab is-current" href="./plan.html" aria-current="page" data-i18n-key="miniNav.plan">Plan</a>
+      <a class="miniNav-tab" href="./roadmap.html" data-i18n-key="miniNav.roadmap">Roadmap</a>
+      <a class="miniNav-tab" href="./owner-view.html" data-i18n-key="miniNav.ownerView">Vue copropriétaire</a>
+      <a class="miniNav-tab" href="./cli.html" data-i18n-key="miniNav.cli">CLI</a>
+      <a class="miniNav-tab" href="./testing.html" data-i18n-key="miniNav.testing">Tests</a>
+    </nav>
+    <div class="miniNav-lang">
+      <button
+        type="button"
+        class="lang-switch"
+        id="lang-switch"
+        role="switch"
+        aria-checked="false"
+        aria-label="Basculer la langue entre français et anglais"
+        data-i18n-key-attr="aria-label"
+        data-i18n-key="lang.aria"
+      >
+        <span data-lang-opt="en">EN</span>
+        <span data-lang-opt="fr">FR</span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<div class="shell">
+
+  <aside class="toc" aria-label="Plan sections">
+    <div class="toc-eyebrow" data-i18n-key="toc.eyebrow">Sommaire</div>
+    <ol id="toc-list">
+      <li><a href="#" class="toc-loading" data-i18n-key="toc.loading">Chargement…</a></li>
+    </ol>
+  </aside>
+
+  <main class="padded">
+    <header class="page-header">
+      <span class="page-eyebrow" data-i18n-key="page.eyebrow">Plan canonique</span>
+      <h1 class="page-title" data-i18n-key="page.title">Syndicable V1.1 — plan d'implémentation complet.</h1>
+      <p class="page-sub" data-i18n-key="page.sub">
+        Le plan source, rendu directement depuis le markdown qui sert de référence à l'article. Aucun nouvel onglet, aucun téléchargement.
+      </p>
+      <p class="page-note" data-i18n-key="page.note">
+        <em>The plan is maintained in English; this rendering is the canonical version.</em>
+      </p>
+    </header>
+
+    <article class="plan-rendered" id="plan-rendered">
+      <p class="plan-loading" data-i18n-key="plan.loading">Chargement du plan…</p>
+    </article>
+
+    <aside class="source-strip">
+      <p class="source-strip-text" data-i18n-key="source.text">
+        Need the raw markdown for an agent or for diffing? Open the source file directly.
+      </p>
+      <a class="source-link" href="./quiet-painting-papert-v1-1.md" target="_blank" rel="noopener">
+        <span data-i18n-key="source.link">Source markdown</span>
+        <span class="source-link-icon" aria-hidden="true">↗</span>
+      </a>
+    </aside>
+  </main>
+
+</div>
+
+<footer>
+  <div data-i18n-key="footer.updated">Syndicable V1.1 — dernière mise à jour 2026-05-08.</div>
+</footer>
+
+<script>
+  window.I18N = {
+    en: {
+      "meta.title": "Syndicable V1.1 — Full Implementation Plan",
+      "meta.description": "The canonical Syndicable V1.1 implementation plan, rendered from the source markdown.",
+
+      "lang.aria": "Switch language between English and French",
+
+      "miniNav.article": "Article",
+      "miniNav.plan": "Plan",
+      "miniNav.roadmap": "Roadmap",
+      "miniNav.ownerView": "Owner view",
+      "miniNav.cli": "CLI",
+      "miniNav.testing": "Testing",
+
+      "toc.eyebrow": "Sections",
+      "toc.loading": "Loading…",
+
+      "page.eyebrow": "Canonical plan",
+      "page.title": "Syndicable V1.1 — full implementation plan.",
+      "page.sub": "The source plan, rendered straight from the markdown file the article is built from. No new tab, no download.",
+      "page.note": "<em>The plan is maintained in English; this rendering is the canonical version.</em>",
+
+      "plan.loading": "Loading the plan…",
+      "plan.unavailable": "Plan unavailable",
+
+      "source.text": "Need the raw markdown for an agent or for diffing? Open the source file directly.",
+      "source.link": "Source markdown",
+
+      "footer.updated": "Syndicable V1.1 — last updated 2026-05-08."
+    },
+
+    fr: {
+      "meta.title": "Syndicable V1.1 — Plan d'implémentation complet",
+      "meta.description": "Le plan d'implémentation canonique de Syndicable V1.1, rendu depuis le markdown source.",
+
+      "lang.aria": "Basculer la langue entre français et anglais",
+
+      "miniNav.article": "Article",
+      "miniNav.plan": "Plan",
+      "miniNav.roadmap": "Feuille de route",
+      "miniNav.ownerView": "Vue copropriétaire",
+      "miniNav.cli": "CLI",
+      "miniNav.testing": "Tests",
+
+      "toc.eyebrow": "Sommaire",
+      "toc.loading": "Chargement…",
+
+      "page.eyebrow": "Plan canonique",
+      "page.title": "Syndicable V1.1 — plan d'implémentation complet.",
+      "page.sub": "Le plan source, rendu directement depuis le fichier markdown qui sert de référence à l'article. Aucun nouvel onglet, aucun téléchargement.",
+      "page.note": "<em>The plan is maintained in English; this rendering is the canonical version.</em>",
+
+      "plan.loading": "Chargement du plan…",
+      "plan.unavailable": "Plan indisponible",
+
+      "source.text": "Besoin du markdown brut pour un agent ou pour faire un diff ? Ouvrez le fichier source directement.",
+      "source.link": "Markdown source",
+
+      "footer.updated": "Syndicable V1.1 — dernière mise à jour 2026-05-08."
+    }
+  };
+</script>
+
+<script src="app.js" defer></script>
+
+<script>
+  // ───────── Markdown render + TOC build ─────────
+  // Fetch quiet-painting-papert-v1-1.md (sibling asset), render through
+  // marked with `plan--<slug>` heading IDs, then walk the rendered DOM
+  // to build the sticky TOC from the h2 headings.
+  (function () {
+    var target = document.getElementById('plan-rendered');
+    var tocList = document.getElementById('toc-list');
+    if (!target) return;
+
+    function escapeHtml(s) {
+      return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function slugify(s) {
+      return String(s)
+        .toLowerCase()
+        .replace(/<[^>]+>/g, '')
+        .replace(/&[a-z0-9#]+;/gi, ' ')
+        .replace(/[^a-z0-9\s-]/g, '')
+        .trim()
+        .replace(/\s+/g, '-')
+        .slice(0, 80);
+    }
+
+    function buildToc() {
+      if (!tocList) return;
+      var h2s = target.querySelectorAll('h2');
+      if (!h2s.length) {
+        tocList.innerHTML = '';
+        return;
+      }
+      var html = '';
+      for (var i = 0; i < h2s.length; i++) {
+        var h = h2s[i];
+        var id = h.id;
+        if (!id) continue;
+        // strip any leading "N. " section number from the visible link label
+        var label = h.textContent.replace(/^\s*\d+\.\s*/, '').trim();
+        html += '<li><a href="#' + id + '">' + escapeHtml(label) + '</a></li>';
+      }
+      tocList.innerHTML = html;
+      // Re-wire the active-link highlighter against the new TOC <a>s.
+      if (window.SyndDeck && window.SyndDeck.wireSectionHighlight) {
+        window.SyndDeck.wireSectionHighlight();
+      }
+    }
+
+    function renderWhenReady() {
+      if (typeof window.marked === 'undefined' || !window.marked.parse) {
+        return window.requestAnimationFrame(renderWhenReady);
+      }
+
+      var renderer = new window.marked.Renderer();
+      var slugCounts = {};
+
+      renderer.heading = function (token) {
+        var depth = token.depth;
+        var rawText = token.text || '';
+        var text = this.parser.parseInline(token.tokens);
+        var base = slugify(rawText) || ('heading-' + depth);
+        slugCounts[base] = (slugCounts[base] || 0) + 1;
+        var id = 'plan--' + base + (slugCounts[base] > 1 ? '-' + slugCounts[base] : '');
+        return '<h' + depth + ' id="' + id + '">' + text + '</h' + depth + '>';
+      };
+
+      renderer.code = function (token) {
+        var lang = (token.lang || '').trim().split(/\s+/)[0];
+        var code = escapeHtml(token.text || '');
+        var attr = lang ? ' data-lang="' + escapeHtml(lang) + '"' : '';
+        var classAttr = lang ? ' class="language-' + escapeHtml(lang) + '"' : '';
+        return '<pre' + attr + '><code' + classAttr + '>' + code + '</code></pre>';
+      };
+
+      window.marked.use({ renderer: renderer, gfm: true, breaks: false });
+
+      fetch('quiet-painting-papert-v1-1.md', { credentials: 'same-origin' })
+        .then(function (res) {
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          return res.text();
+        })
+        .then(function (md) {
+          var stripped = md.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n+/, '');
+          var html = window.marked.parse(stripped);
+          target.innerHTML = html;
+          buildToc();
+          if (window.location.hash) {
+            var el = document.getElementById(window.location.hash.slice(1));
+            if (el && el.scrollIntoView) {
+              el.scrollIntoView({ block: 'start', behavior: 'auto' });
+            }
+          }
+        })
+        .catch(function (err) {
+          var lang = (window.SyndDeck && window.SyndDeck.currentLang())
+            ? window.SyndDeck.currentLang()
+            : 'fr';
+          var label = (window.I18N[lang] && window.I18N[lang]['plan.unavailable']) || 'Plan unavailable';
+          target.innerHTML =
+            '<p class="plan-loading">' + label + ' (' +
+            escapeHtml(err && err.message ? err.message : 'fetch failed') +
+            ').</p>';
+          if (tocList) tocList.innerHTML = '';
+        });
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', renderWhenReady);
+    } else {
+      renderWhenReady();
+    }
+  })();
+</script>
+
+</body>
+</html>

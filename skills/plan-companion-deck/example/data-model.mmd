@@ -1,0 +1,119 @@
+erDiagram
+    COPROPRIETE ||--o{ ASSEMBLY : "holds"
+    COPROPRIETE ||--o{ LOT : "contains"
+    COPROPRIETE ||--o{ OWNER : "registers"
+    COPROPRIETE ||--o{ DISTRIBUTION_KEY : "defines"
+
+    LOT }o--|| OWNER : "owned by (Lot.ownerId)"
+    LOT }o--o{ DISTRIBUTION_KEY : "weighted by Lot.quotities map"
+
+    ASSEMBLY ||--o{ RESOLUTION : "agenda contains"
+    ASSEMBLY ||--o{ ATTENDANCE : "tracks (1 per Lot)"
+    ASSEMBLY ||--o{ ACCESS_TOKEN : "issues (1 per recipient)"
+    ASSEMBLY ||--o{ CONVOCATION_DELIVERY : "tracks email send (1 per recipient)"
+    ASSEMBLY ||--|| PV : "produces (singleton)"
+
+    RESOLUTION ||--o{ VOTE : "tallies (1 per Lot per Resolution)"
+    RESOLUTION }o--|| DISTRIBUTION_KEY : "voted with weights from"
+
+    LOT ||--o{ ATTENDANCE : "represented by"
+    LOT ||--o{ VOTE : "casts"
+
+    ACCESS_TOKEN }o--|| OWNER : "scoped to (whose lots can vote)"
+    ATTENDANCE }o--o| ACCESS_TOKEN : "joined via"
+    VOTE }o--o| ACCESS_TOKEN : "cast via"
+
+    ASSEMBLY {
+        string id PK
+        string coproprieteId FK
+        string type "ordinary | extraordinary | urgent"
+        string title
+        timestamp scheduledAt
+        object location
+        string mode "in_person | online | hybrid"
+        string defaultLanguage
+        string status "draft | convoked | live | ended | cancelled"
+        object session "EMBEDDED state, currentResolutionId, openedAt, closedAt"
+        timestamp convocationSentAt
+        string convocationPdfStorageUrl
+    }
+
+    RESOLUTION {
+        string id PK "R001, R002"
+        string assemblyId FK
+        string coproprieteId FK
+        number order
+        object title "LocalizedText fr-nl-en"
+        object description "LocalizedText"
+        string distributionKeyId FK
+        string majorityRule "absolute | two_thirds | four_fifths | unanimous"
+        string itemType "vote | information"
+        string status "pending | voting_open | voting_closed | skipped"
+        timestamp openedAt
+        timestamp closedAt
+        object tally "EMBEDDED, only at close"
+    }
+
+    VOTE {
+        string id PK "= lotId one ballot per Lot per Resolution"
+        string resolutionId FK
+        string assemblyId FK
+        string coproprieteId FK
+        string lotId FK
+        string ownerId FK "snapshot from Lot.ownerId at cast"
+        string accessTokenId FK "EMBEDDED ref, null if syndic-cast"
+        string castByUserId FK "Member UID if syndic-cast"
+        string choice "for | against | abstain"
+        number quotityUsed "snapshot at cast time"
+        string source "token | syndic_manual | auto_default_at_close"
+        timestamp castAt
+    }
+
+    ATTENDANCE {
+        string id PK "= lotId"
+        string assemblyId FK
+        string lotId FK
+        string ownerId FK
+        string state "absent | present_online | present_in_person | left"
+        string accessTokenId FK "EMBEDDED ref"
+        string representativeName "for procuration"
+        timestamp joinedAt
+        timestamp lastActiveAt
+        timestamp leftAt
+    }
+
+    ACCESS_TOKEN {
+        string id PK "= sha256 hash of secret token"
+        string assemblyId FK
+        string coproprieteId FK
+        string recipientType "owner | procuration_holder"
+        string ownerId FK
+        string recipientEmail
+        string recipientName
+        timestamp expiresAt
+        timestamp revokedAt
+        timestamp lastUsedAt
+        number usageCount
+        string createdByUserId
+        timestamp createdAt
+    }
+
+    CONVOCATION_DELIVERY {
+        string id PK "= ownerId or token-id"
+        string assemblyId FK
+        string accessTokenId FK
+        string channel "email"
+        string status "pending | sent | failed | bounced"
+        string emailMessageId
+        timestamp sentAt
+    }
+
+    PV {
+        string id PK "= 'document'"
+        string assemblyId FK
+        object body "EMBEDDED presence, perResolution, freeText"
+        string status "draft | finalized | distributed"
+        string pdfStorageUrl
+        string signedPdfStorageUrl
+        timestamp distributedAt
+    }

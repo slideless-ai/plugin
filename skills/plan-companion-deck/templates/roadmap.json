@@ -1,0 +1,125 @@
+{
+  "$schema": "https://example.com/schemas/roadmap-v1.json",
+  "presentation": {
+    "id": "REPLACE-WITH-SLIDELESS-PRESENTATION-ID",
+    "title": {
+      "en": "PROJECT — Implementation Roadmap",
+      "fr": "PROJECT — Feuille de route d'implémentation"
+    }
+  },
+  "lastUpdatedAt": "2026-01-01T00:00:00Z",
+  "phases": [
+    {
+      "phase": "A",
+      "version": "v1.0",
+      "repo": "your-repo",
+      "title": {
+        "en": "First shippable slice",
+        "fr": "Premier morceau livrable"
+      },
+      "scope": {
+        "en": "One paragraph lifted from the plan's phasing section, describing what Phase A delivers and what 'done' looks like.",
+        "fr": "Un paragraphe repris de la section de phasage du plan, décrivant ce que livre la Phase A et à quoi ressemble « terminé »."
+      },
+      "status": "shipped",
+      "branch": "feat/phase-a",
+      "branchDeleted": true,
+      "prUrl": "https://github.com/your-org/your-repo/pull/1",
+      "prNumber": 1,
+      "mergeCommit": "0000000",
+      "commits": [
+        {
+          "sha": "abcdef0",
+          "message": "feat(area): backend + tests for Phase A",
+          "githubUrl": "https://github.com/your-org/your-repo/commit/abcdef0"
+        },
+        {
+          "sha": "1234567",
+          "message": "feat(area-ui): frontend pages and dialogs",
+          "githubUrl": "https://github.com/your-org/your-repo/commit/1234567"
+        }
+      ],
+      "agent": {
+        "runtimeMs": 3000000,
+        "totalTokens": 250000
+      },
+      "deviations": [
+        "List of intentional deviations from the plan that future readers should know about.",
+        "Each item is a short, specific statement — not a vague 'we tweaked X'."
+      ],
+      "notesForLater": "Anything Phase B (or later) should remember about how Phase A landed. Optional.",
+      "shippedAt": "2026-01-01T00:00:00Z"
+    },
+    {
+      "phase": "B",
+      "version": "v1.0",
+      "repo": "your-repo",
+      "title": {
+        "en": "Phase B title",
+        "fr": "Titre Phase B"
+      },
+      "scope": {
+        "en": "Phase B scope summary, lifted from the plan.",
+        "fr": "Résumé du périmètre Phase B, repris du plan."
+      },
+      "status": "in_progress"
+    },
+    {
+      "phase": "C",
+      "version": "v1.0",
+      "repo": "your-repo",
+      "title": {
+        "en": "Phase C title",
+        "fr": "Titre Phase C"
+      },
+      "scope": {
+        "en": "Phase C scope summary.",
+        "fr": "Résumé du périmètre Phase C."
+      },
+      "status": "pending"
+    },
+    {
+      "phase": "D",
+      "version": "v1.0",
+      "repo": "your-repo",
+      "title": {
+        "en": "Phase D title",
+        "fr": "Titre Phase D"
+      },
+      "scope": {
+        "en": "Phase D scope summary.",
+        "fr": "Résumé du périmètre Phase D."
+      },
+      "status": "pending"
+    },
+    {
+      "phase": "TEST-F",
+      "version": "v1.0+qa",
+      "repo": "multi",
+      "title": {
+        "en": "TEST · F — Happy-path replay",
+        "fr": "TEST · F — Replay du chemin heureux"
+      },
+      "scope": {
+        "en": "End-to-end CLI-driven replay of the canonical scenario against the deployed surface. Fix bugs found, redeploy individual functions, iterate.",
+        "fr": "Replay bout-en-bout d'un scénario canonique piloté par le CLI contre la surface déployée. Corriger les bugs trouvés, redéployer les fonctions individuelles, itérer."
+      },
+      "status": "pending"
+    },
+    {
+      "phase": "TEST-G",
+      "version": "v1.0+qa",
+      "repo": "multi",
+      "title": {
+        "en": "TEST · G — Negative-testing sweep",
+        "fr": "TEST · G — Tests négatifs systématiques"
+      },
+      "scope": {
+        "en": "Exercise every guard: auth, state, rate limits, token expiry. Each must produce the expected error code + mapped CLI exit code.",
+        "fr": "Exercer chaque garde : auth, état, rate limits, expiration de token. Chacun doit produire le code d'erreur attendu + code de sortie CLI mappé."
+      },
+      "status": "pending",
+      "_comment": "If one agent run ships both TEST-F and TEST-G, put runtime+tokens on TEST-F and set agent.sharedWith='TEST-F' on TEST-G so the summary table doesn't double-count. See SKILL.md, 'Tracking time + tokens + PRs on the roadmap'."
+    }
+  ]
+}

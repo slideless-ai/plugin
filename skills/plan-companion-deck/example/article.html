@@ -1,0 +1,1292 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title data-i18n-key="meta.title">Syndicable V1.1 — Plan d'implémentation du module Assemblée Générale</title>
+<meta name="description" data-i18n-key-attr="content" data-i18n-key="meta.description" content="Le plan d'implémentation de Syndicable V1.1 : rédiger une AG, envoyer les convocations, animer la session de vote en direct, et générer le PV." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<script>
+  // Pre-paint language resolver — avoids FOUC on language switch.
+  // Same localStorage key as the other deck pages (plan, roadmap)
+  // so the user's choice survives cross-page navigation.
+  (function () {
+    try {
+      var saved = window.localStorage.getItem('syndicable.article.lang');
+      if (saved !== 'en' && saved !== 'fr') saved = 'fr';
+      document.documentElement.setAttribute('lang', saved);
+      document.documentElement.setAttribute('data-lang', saved);
+    } catch (e) {
+      document.documentElement.setAttribute('lang', 'fr');
+      document.documentElement.setAttribute('data-lang', 'fr');
+    }
+  })();
+</script>
+</head>
+<body>
+
+<header class="miniNav" aria-label="Deck pages">
+  <div class="miniNav-inner">
+    <span class="miniNav-mark"><span class="nav-dot"></span><span>Syndicable&nbsp;V1.1</span></span>
+    <nav class="miniNav-tabs" aria-label="Sibling pages">
+      <a class="miniNav-tab is-current" href="./article.html" aria-current="page" data-i18n-key="miniNav.article">Article</a>
+      <a class="miniNav-tab" href="./plan.html" data-i18n-key="miniNav.plan">Plan</a>
+      <a class="miniNav-tab" href="./roadmap.html" data-i18n-key="miniNav.roadmap">Roadmap</a>
+      <a class="miniNav-tab" href="./owner-view.html" data-i18n-key="miniNav.ownerView">Vue copropriétaire</a>
+      <a class="miniNav-tab" href="./cli.html" data-i18n-key="miniNav.cli">CLI</a>
+      <a class="miniNav-tab" href="./testing.html" data-i18n-key="miniNav.testing">Tests</a>
+    </nav>
+    <div class="miniNav-lang">
+      <button
+        type="button"
+        class="lang-switch"
+        id="lang-switch"
+        role="switch"
+        aria-checked="false"
+        aria-label="Basculer la langue entre français et anglais"
+        data-i18n-key-attr="aria-label"
+        data-i18n-key="lang.aria"
+      >
+        <span data-lang-opt="en">EN</span>
+        <span data-lang-opt="fr">FR</span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<div class="shell">
+
+  <aside class="nav" aria-label="Sections">
+    <div class="nav-mark">
+      <span class="nav-dot"></span>
+      <span>Syndicable&nbsp;V1.1</span>
+    </div>
+    <div class="nav-eyebrow" data-i18n-key="nav.eyebrow">Sections</div>
+    <ol>
+      <li><a href="#thesis" data-i18n-key="nav.thesis">La thèse</a></li>
+      <li><a href="#scope" data-i18n-key="nav.scope">Périmètre, figé</a></li>
+      <li><a href="#choices" data-i18n-key="nav.choices">Trois choix d'architecture</a></li>
+      <li><a href="#data-model" data-i18n-key="nav.dataModel">Le modèle de données</a></li>
+      <li><a href="#auth" data-i18n-key="nav.auth">Auth — magic links publics</a></li>
+      <li><a href="#state-machines" data-i18n-key="nav.stateMachines">Machines à états</a></li>
+      <li><a href="#live-session" data-i18n-key="nav.liveSession">La session en direct</a></li>
+      <li><a href="#vote-cast" data-i18n-key="nav.voteCast">Sécurité de l'écriture du vote</a></li>
+      <li><a href="#bookends" data-i18n-key="nav.bookends">Avant-AG et après-AG</a></li>
+      <li><a href="#phasing" data-i18n-key="nav.phasing">Phasage</a></li>
+      <li><a href="#open-questions" data-i18n-key="nav.openQuestions">Questions ouvertes</a></li>
+      <li><a href="#annex" data-i18n-key="nav.annex">Annexe légale</a></li>
+      <li><a href="#colophon" data-i18n-key="nav.colophon">Colophon</a></li>
+    </ol>
+
+</aside>
+
+  <main>
+
+    <!-- ─────────── HERO ─────────── -->
+    <section id="hero" aria-labelledby="hero-h">
+      <div class="hero-meta">
+        <span class="pill brand"><span class="dot"></span>Version&nbsp;V1.1</span>
+        <span class="pill purple" data-i18n-key="hero.pill.module">Module&nbsp;·&nbsp;Assemblée&nbsp;Générale</span>
+        <span class="pill">2026-05-08</span>
+      </div>
+      <h1 id="hero-h" class="hero-title" data-i18n-key="hero.title">Le module AG, de bout&nbsp;en&nbsp;bout.</h1>
+      <p class="hero-sub" data-i18n-key="hero.sub">
+        Rédiger une assemblée, envoyer les convocations, animer la session de vote en direct
+        avec le syndic en chef d'orchestre, et produire le procès-verbal.
+        Voici le plan d'implémentation — design et phasage figés, le code démarre à la validation.
+      </p>
+      <div class="hero-rule"></div>
+    </section>
+
+    <!-- ─────────── 1. THESIS ─────────── -->
+    <section id="thesis">
+      <div class="prose">
+        <span class="eyebrow" data-i18n-key="thesis.eyebrow">01 · La thèse</span>
+        <h2 data-i18n-key="thesis.h2">Ce que fait V1.1, qui l'utilise, et pourquoi c'est important.</h2>
+        <p data-i18n-key="thesis.p1">
+          Syndicable V1.0 livre déjà l'ossature d'une copropriété : copropriétés, lots,
+          copropriétaires, lot-ownerships, clés de répartition, documents, journal d'activité, et le
+          modèle de représentants de la Phase 14. Le nettoyage G6 récent a rendu le lien Lot-vers-Copropriétaire
+          strictement 1:1 (<code>Lot.ownerId</code>, <code>LotOwnership</code> allégé). C'est sur ce
+          socle que V1.1 s'appuie.
+        </p>
+        <p data-i18n-key="thesis.p2">
+          V1.1, c'est le <strong>module Assemblée Générale</strong>. Le syndic rédige une AG,
+          envoie les convocations par e-mail avec un magic link, anime la session en direct
+          en chef d'orchestre (ouvrir une résolution, suivre le décompte en direct, la clôturer), et
+          génère le PV à la fin. Rien d'autre. Pas d'appels de fonds, pas de bancaire,
+          pas de décomptes, pas de signature du PV in-app.
+        </p>
+        <p data-i18n-key="thesis.p3">
+          Le fil rouge, c'est l'exemple <strong>IGS&nbsp;/ Brugmann Ferme&nbsp;Rose</strong> :
+          166 copropriétaires, ~300 lots répartis sur trois clés de répartition
+          (GEN, ASCENSEUR_9A, GARAGE), 18 résolutions à l'ordre du jour. Si V1.1 sait
+          recréer le PV 2024 de Brugmann à partir d'une AG de test recréée, V1.1 est terminé.
+        </p>
+        <p data-i18n-key="thesis.p4">
+          Le substrat légal (Code civil belge, Livre&nbsp;3, articles 3.84–3.100,
+          réforme post-2018) est vérifié. Les références doc ont été corrigées pour ne plus
+          renvoyer à l'ancienne numérotation 577-x. L'architecture est figée dans
+          <code>app-architecture.md §3.3</code> ; cet article en est la feuille de route.
+        </p>
+      </div>
+    </section>
+
+    <!-- ─────────── 2. SCOPE ─────────── -->
+    <section id="scope">
+      <div class="prose-wide">
+        <span class="eyebrow" data-i18n-key="scope.eyebrow">02 · Périmètre, figé</span>
+        <h2 data-i18n-key="scope.h2">Ce qui sort en V1.1 — et ce qui ne sort pas.</h2>
+        <p class="prose" data-i18n-key="scope.intro">
+          L'entrée du journal des décisions du 2026-05-08 a figé ceci. Tout ce qui n'est pas dans
+          la colonne IN est mis en pause. La colonne OUT est la liste de travail de
+          « tout ce qu'on veut un jour mais qu'on ne construira pas maintenant ».
+        </p>
+        <div class="twocol">
+
+          <div class="col-card in">
+            <h4 data-i18n-key="scope.in.title">Inclus · livré en V1.1</h4>
+            <ul>
+              <li data-i18n-key="scope.in.li1">Création d'AG + saisie manuelle de l'ordre du jour</li>
+              <li data-i18n-key="scope.in.li2">Convocation par e-mail avec magic link PWA, ordre du jour manuel, consentement à la transmission électronique présumé</li>
+              <li data-i18n-key="scope.in.li3">Page de vote publique, basée sur token — pas de Firebase Auth requis</li>
+              <li data-i18n-key="scope.in.li4">Même mécanisme de magic link pour le copropriétaire en propre et pour le titulaire d'une procuration</li>
+              <li data-i18n-key="scope.in.li5">Présence du copropriétaire via la page publique (en ligne) ; le syndic marque les présences physiques manuellement</li>
+              <li data-i18n-key="scope.in.li6">Flux syndic-chef-d'orchestre en direct : démarrer l'AG → ouvrir R<sub>n</sub> → décompte en direct → clôturer → terminer l'AG</li>
+              <li data-i18n-key="scope.in.li7">Bascule auto en abstention à la clôture pour les copropriétaires présents-mais-silencieux (DV3)</li>
+              <li data-i18n-key="scope.in.li8">UX « Cette résolution ne vous concerne pas » pour les lots à zéro quotité</li>
+              <li data-i18n-key="scope.in.li9">Arrivée tardive + sortie explicite pendant la session</li>
+              <li data-i18n-key="scope.in.li10">PV : auto-rédaction + édition libre + export PDF + envoi par e-mail + stockage en tant que <code>historic_pv</code></li>
+              <li data-i18n-key="scope.in.li11">Obligations légales : avertissement préavis 15 jours, double quorum, vote en quotités, indivision = 1 bulletin, marqueur AG hybride, pour/contre nominatifs au PV</li>
+            </ul>
+          </div>
+
+          <div class="col-card out">
+            <h4 data-i18n-key="scope.out.title">Hors · différé en phase 2 ou plus tard</h4>
+            <ul>
+              <li data-i18n-key="scope.out.li1">Extraction auto de la convocation depuis Word/PDF (différenciateur n°1 de Kevin)</li>
+              <li data-i18n-key="scope.out.li2">Canal convocation postal / recommandé — géré hors du système</li>
+              <li data-i18n-key="scope.out.li3">Surface de signature du PV in-app — le syndic signe le PDF hors-ligne et le ré-uploade</li>
+              <li data-i18n-key="scope.out.li4">Boîtiers de vote USB</li>
+              <li data-i18n-key="scope.out.li5">Flux automatique d'AG sur deuxième convocation — le syndic crée une nouvelle AG manuellement</li>
+              <li data-i18n-key="scope.out.li6">Points d'ordre du jour §3 soumis par les copropriétaires</li>
+              <li data-i18n-key="scope.out.li7">Pipeline d'upload des annexes — lien externe pour l'instant</li>
+              <li data-i18n-key="scope.out.li8">Automatisation du rappel de transmission du PV à 30 jours</li>
+              <li data-i18n-key="scope.out.li9">UI de la fenêtre de contestation 4 mois</li>
+            </ul>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────── 3. ARCHITECTURAL CHOICES ─────────── -->
+    <section id="choices">
+      <div class="prose-wide">
+        <span class="eyebrow" data-i18n-key="choices.eyebrow">03 · Trois choix d'architecture</span>
+        <h2 data-i18n-key="choices.h2">Les décisions dont tout le reste découle.</h2>
+        <p class="prose" data-i18n-key="choices.intro">
+          Chacun de ces choix était une bifurcation. Chacun est désormais arrêté. La suite du plan
+          part de l'hypothèse qu'ils sont actés.
+        </p>
+
+        <div class="choice">
+          <span class="choice-num" data-i18n-key="choices.c1.num">CHOIX&nbsp;01</span>
+          <h3 data-i18n-key="choices.c1.h3">Vote public basé sur token, pas Firebase Auth.</h3>
+          <p data-i18n-key="choices.c1.p1">
+            Les copropriétaires votent depuis une page publique du site, sans création de compte,
+            sans mot de passe, sans OTP. Le token dans l'URL <em>est</em> l'identifiant. On a envisagé
+            de réutiliser le flux d'invitation Phase 14 existant qui crée un doc Member avec rôle
+            et scopes — mais ça laisse des artefacts d'adhésion persistants à nettoyer après l'AG,
+            et ça oblige une copropriétaire de 75 ans, sur son téléphone, à passer par un OTP par
+            e-mail à chaque fois.
+          </p>
+          <p data-i18n-key="choices.c1.p2">
+            La voie du token est plus légère et colle à l'UX réellement nécessaire.
+            <strong>La Phase 14 reste responsable de la gestion des données copropriétaires</strong>
+            entre les AG ; l'auth au moment du vote, c'est le token public. Les deux coexistent
+            proprement.
+          </p>
+        </div>
+
+        <div class="choice">
+          <span class="choice-num" data-i18n-key="choices.c2.num">CHOIX&nbsp;02</span>
+          <h3 data-i18n-key="choices.c2.h3">Firestore uniquement — pas de Realtime Database pour V1.1.</h3>
+          <p data-i18n-key="choices.c2.p1">
+            Les écritures de vote demandent des transactions et de l'interrogation — c'est Firestore.
+            Décompte en direct via listener de collection sur <code>votes</code> — c'est Firestore.
+            Pointeur sur la résolution courante via listener sur <code>Assembly.session.currentResolutionId</code>
+            — c'est Firestore. Le seul endroit où la RTDB l'emporterait, c'est la présence avec
+            <code>onDisconnect()</code>, et on n'en a pas encore besoin.
+          </p>
+          <p data-i18n-key="choices.c2.p2">
+            À la place, un heartbeat de 60 secondes met à jour <code>Attendance.lastActiveAt</code> ;
+            une Cloud Function planifiée bascule les lots en <code>left</code> après 3 minutes
+            de silence. Pour une AG à 166 lots sur 2 heures, ça fait environ 20K écritures au total —
+            confortablement dans le free-tier. <strong>Si on a un jour besoin de la RTDB pour la
+            présence sur des AG à 1000+ lots, on l'ajoute plus tard</strong> sans toucher au modèle
+            de données.
+          </p>
+        </div>
+
+        <div class="choice">
+          <span class="choice-num" data-i18n-key="choices.c3.num">CHOIX&nbsp;03</span>
+          <h3 data-i18n-key="choices.c3.h3">Contrôle manuel de la session de bout en bout.</h3>
+          <p data-i18n-key="choices.c3.p1">
+            Le syndic, c'est le chef d'orchestre. Rien ne s'auto-ouvre, rien ne s'auto-clôture, rien
+            ne s'auto-transitionne. <code>startAssembly</code> est un bouton. <code>openResolution</code>
+            est un bouton. <code>closeResolution</code> est un bouton — avec un dialogue de confirmation
+            si un lot présent-et-concerné n'a pas voté, qui applique transactionnellement la règle
+            d'auto-bascule en abstention à la confirmation. <code>endAssembly</code> est un bouton qui
+            clôt d'abord automatiquement toute résolution encore ouverte.
+          </p>
+          <p data-i18n-key="choices.c3.p2">
+            C'est ainsi que les AG se déroulent <em>réellement</em> en salle : un président appelle
+            chaque point, prend le vote, le déclare clôturé. On n'a pas besoin d'une machine à états
+            qui remette en cause la main du syndic au volant.
+          </p>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ─────────── 4. DATA MODEL ─────────── -->
+    <section id="data-model">
+      <div class="prose">
+        <span class="eyebrow" data-i18n-key="data.eyebrow">04 · Le modèle de données</span>
+        <h2 data-i18n-key="data.h2">Six nouvelles entités, un singleton.</h2>
+        <p data-i18n-key="data.p1">
+          V1.1 introduit sept nouvelles collections sous
+          <code>organizations/{coproId}/assemblies/{aId}/</code> :
+          <strong>Assembly</strong> elle-même (avec le sous-objet <code>session</code> embarqué),
+          <strong>Resolution</strong> (avec <code>tally</code> embarqué à la clôture),
+          <strong>Vote</strong> (un par Lot par Resolution, ID déterministe),
+          <strong>Attendance</strong> (un par Lot, avec son état),
+          <strong>AccessToken</strong> (clé = SHA-256 du secret — le secret n'atterrit jamais en base),
+          <strong>ConvocationDelivery</strong> (suivi d'envoi e-mail par destinataire),
+          et le document singleton <strong>PV</strong>.
+        </p>
+        <p data-i18n-key="data.p2">
+          Rien dans V1.0 ne change de forme. <code>Lot.ownerId</code>,
+          <code>Lot.quotities[distributionKeyId]</code> et le registre Owner sont
+          lus par V1.1 mais jamais écrits. Pas de migration à prévoir : V1.1 est purement
+          additif.
+        </p>
+      </div>
+
+      <figure class="figure">
+        <div class="figure-frame">
+          <img src="data-model.png" alt="Diagramme entité-relation pour Syndicable V1.1 : Copropriété, Lot, Owner, DistributionKey, Assembly, Resolution, Vote, Attendance, AccessToken, ConvocationDelivery, PV." data-i18n-key-attr="alt" data-i18n-key="data.fig1.alt" />
+        </div>
+        <figcaption class="figure-cap"><b data-i18n-key="data.fig1.label">Fig. 1</b><span data-i18n-key="data.fig1.cap">Entité-relation pour V1.1, dessinée sur le substrat V1.0.</span></figcaption>
+      </figure>
+
+      <div class="prose">
+        <p data-i18n-key="data.p3">
+          Trois décisions de stockage méritent d'être nommées explicitement.
+          <strong>Un doc Vote par Lot par Resolution</strong> signifie pas de contention
+          (docs distincts par lot), une sémantique « le dernier cast écrase le précédent » gratuite,
+          et un ID déterministe. <strong>Le tally est embarqué sur Resolution et calculé
+          uniquement à la clôture</strong> — pas de hot-spot pendant le vote en direct.
+          <strong>Le quorum est calculé à la demande</strong> à partir d'Attendance + <code>Lot.quotities</code> ;
+          aucun compteur à maintenir.
+        </p>
+      </div>
+    </section>
+
+    <!-- ─────────── 5. AUTH ─────────── -->
+    <section id="auth">
+      <div class="prose">
+        <span class="eyebrow" data-i18n-key="auth.eyebrow">05 · Auth</span>
+        <h2 data-i18n-key="auth.h2">Magic links publics, hashés au repos.</h2>
+        <p data-i18n-key="auth.p1">
+          Quand le syndic clique sur « Envoyer la convocation », une Cloud Function lit chaque
+          Lot actif, parcourt l'ensemble des Owner uniques et, pour chaque Owner, génère un secret
+          frais — 32 octets d'aléa cryptographique, encodés en base64url. Ce secret part à un seul
+          endroit : le lien dans l'e-mail. Ce qui atterrit dans Firestore, c'est le hash
+          <code>SHA-256</code> du secret comme clé du document. Le secret lui-même n'apparaît
+          jamais dans notre base.
+        </p>
+        <p data-i18n-key="auth.p2">
+          Quand le destinataire clique sur le lien, la validation re-hash le paramètre d'URL et
+          va chercher le doc. Une fuite de la base ne fuite aucun token actif —
+          retrouver une pré-image en 256 bits est infaisable.
+        </p>
+      </div>
+
+      <figure class="figure">
+        <div class="figure-frame">
+          <img src="auth-flow.png" alt="Diagramme de séquence de la génération de token, de la validation, et du cast de vote pour le flux de magic link public." data-i18n-key-attr="alt" data-i18n-key="auth.fig2.alt" />
+        </div>
+        <figcaption class="figure-cap"><b data-i18n-key="auth.fig2.label">Fig. 2</b><span data-i18n-key="auth.fig2.cap">Flux d'auth — émission du token → validation → écriture du vote.</span></figcaption>
+      </figure>
+
+      <div class="prose">
+        <h3 data-i18n-key="auth.h3">Sécurité du token en un coup d'œil</h3>
+        <ul>
+          <li data-i18n-key="auth.li1"><strong>Aléa URL-safe sur 256 bits</strong>, généré côté serveur avec <code>crypto.randomBytes(32).toString('base64url')</code>.</li>
+          <li data-i18n-key="auth.li2"><strong>Hashé en SHA-256</strong> avant stockage. Le lookup, c'est <code>db.doc(`.../${sha256(secret)}`).get()</code>.</li>
+          <li data-i18n-key="auth.li3"><strong>HTTPS uniquement</strong> pour la route publique.</li>
+          <li data-i18n-key="auth.li4"><strong>Validation rate-limited</strong> — 5/sec, 60/min par IP — défense en profondeur par-dessus la taille de l'espace de recherche.</li>
+          <li data-i18n-key="auth.li5"><strong>Limité à une seule Assembly</strong> via <code>assemblyId</code> ; impossible de voter sur une autre AG même en cas de fuite du token.</li>
+          <li data-i18n-key="auth.li6"><strong>Lié au Owner côté serveur</strong> ; le client ne peut pas dire au serveur « je veux voter pour un autre lot » — le serveur résout owner→lots tout seul.</li>
+          <li data-i18n-key="auth.li7"><strong>Révocable</strong> par le syndic via <code>revokeAccessToken</code> ; les appels suivants échouent.</li>
+          <li data-i18n-key="auth.li8"><strong>Expire automatiquement</strong> 24 heures après <code>Assembly.scheduledAt</code>.</li>
+        </ul>
+        <p data-i18n-key="auth.p3">
+          La même forme de token couvre la procuration : le syndic émet un token avec
+          <code>recipientType = 'procuration_holder'</code>, l'<code>ownerId</code> du copropriétaire
+          absent, et le nom et l'e-mail du mandataire. Le mandataire vote au nom des lots du
+          copropriétaire absent ; le PV enregistre le nom du mandataire dans les tableaux
+          <code>namedAgainst</code> / <code>namedAbstain</code>.
+        </p>
+      </div>
+    </section>
+
+    <!-- ─────────── 6. STATE MACHINES ─────────── -->
+    <section id="state-machines">
+      <div class="prose">
+        <span class="eyebrow" data-i18n-key="states.eyebrow">06 · Machines à états</span>
+        <h2 data-i18n-key="states.h2">Trois petites machines à états finies.</h2>
+        <p data-i18n-key="states.p1">
+          Trois choses ont un cycle de vie : l'Assembly elle-même, chaque Resolution à l'ordre
+          du jour, et l'Attendance par Lot. Aucune n'est large. Aucune ne s'auto-avance.
+        </p>
+      </div>
+
+      <div class="figrow">
+        <figure class="figure" style="margin-top:0;margin-bottom:0;">
+          <div class="figure-frame">
+            <img src="assembly-lifecycle.png" alt="Machine à états de l'Assembly : draft → convoked → live → ended, avec branches d'annulation." data-i18n-key-attr="alt" data-i18n-key="states.fig3a.alt" />
+          </div>
+          <figcaption class="figure-cap"><b data-i18n-key="states.fig3a.label">Fig. 3a</b><span data-i18n-key="states.fig3a.cap">Cycle de vie de l'Assembly. L'annulation est bloquée une fois en <code>live</code>.</span></figcaption>
+        </figure>
+
+        <figure class="figure" style="margin-top:0;margin-bottom:0;">
+          <div class="figure-frame">
+            <img src="resolution-lifecycle.png" alt="Machine à états de la Resolution : pending → voting_open → voting_closed, avec une branche skipped." data-i18n-key-attr="alt" data-i18n-key="states.fig3b.alt" />
+          </div>
+          <figcaption class="figure-cap"><b data-i18n-key="states.fig3b.label">Fig. 3b</b><span data-i18n-key="states.fig3b.cap">Cycle de vie de la Resolution. Rouvrir une résolution clôturée est interdit en V1.1 — on ajoute une nouvelle résolution à la place.</span></figcaption>
+        </figure>
+
+        <figure class="figure" style="margin-top:0;margin-bottom:0;">
+          <div class="figure-frame">
+            <img src="attendance-states.png" alt="Machine à états de l'Attendance : absent / present_online / present_in_person / left." data-i18n-key-attr="alt" data-i18n-key="states.fig3c.alt" />
+          </div>
+          <figcaption class="figure-cap"><b data-i18n-key="states.fig3c.label">Fig. 3c</b><span data-i18n-key="states.fig3c.cap">Attendance par Lot. Les lots <code>absent</code> ne sont jamais comptés ; une fois rejoint, on figure au registre.</span></figcaption>
+        </figure>
+      </div>
+
+      <div class="prose">
+        <p data-i18n-key="states.p2">
+          La règle intéressante porte sur l'Attendance. <strong>Les lots <code>absent</code> ne sont
+          jamais comptés</strong> dans aucun tally — c'est le tas des « pas venus » de l'AG.
+          <strong>Les lots <code>present_*</code> et <code>left</code> sont tous deux comptés comme
+          « présents à un moment »</strong> pour l'auto-bascule en abstention. Une fois rejoint,
+          on ne peut pas se soustraire au registre pour/contre/abstention en fermant son navigateur.
+          C'est la lecture légale conservatrice et ça correspond au comportement d'une AG en
+          présentiel : si on arrive et qu'on s'éclipse en silence, on figure comme ayant été là.
+        </p>
+      </div>
+    </section>
+
+    <!-- ─────────── 7. LIVE SESSION ─────────── -->
+    <section id="live-session">
+      <div class="prose">
+        <span class="eyebrow" data-i18n-key="live.eyebrow">07 · La session en direct</span>
+        <h2 data-i18n-key="live.h2">Animer une AG, pas à pas.</h2>
+        <p data-i18n-key="live.p1">
+          C'est le cœur de V1.1. Le syndic ouvre la vue chef d'orchestre ; les copropriétaires
+          cliquent sur leur magic link et rejoignent depuis leur téléphone. Le chef d'orchestre voit
+          une jauge de quorum en direct, la timeline de l'ordre du jour, un panneau de présence,
+          et — une fois une résolution ouverte — le décompte en direct avec la liste des lots
+          présents-et-concernés qui n'ont pas encore voté.
+        </p>
+      </div>
+
+      <figure class="figure">
+        <div class="figure-frame">
+          <img src="flow-live-session.png" alt="Séquence complète de session en direct : démarrage de l'AG, copropriétaires rejoignant via magic link, heartbeat, ouverture de résolution, vote, clôture avec dialogue d'auto-bascule, départ, fin de l'AG." data-i18n-key-attr="alt" data-i18n-key="live.fig4.alt" />
+        </div>
+        <figcaption class="figure-cap"><b data-i18n-key="live.fig4.label">Fig. 4</b><span data-i18n-key="live.fig4.cap">La session en direct, complète. Démarrer l'AG → les copropriétaires rejoignent → ouvrir R<sub>n</sub> → voter → clôturer → terminer l'AG.</span></figcaption>
+      </figure>
+
+      <div class="prose">
+        <p data-i18n-key="live.p2">
+          Trois moments méritent un coup d'œil plus rapproché :
+        </p>
+        <ul>
+          <li data-i18n-key="live.li.join">
+            <strong>Rejoindre.</strong> Quand un copropriétaire arrive pour la première fois sur la
+            page publique, le serveur fait un upsert d'une ligne Attendance par lot qu'il possède
+            avec <code>state = 'present_online'</code> dans une seule transaction. À partir de là,
+            un heartbeat tourne toutes les 60 secondes.
+          </li>
+          <li data-i18n-key="live.li.open">
+            <strong>Ouvrir R<sub>n</sub>.</strong> Le chef d'orchestre bascule la résolution en
+            <code>voting_open</code> et met à jour <code>Assembly.session.currentResolutionId</code>.
+            Toutes les pages publiques reçoivent le changement via listener Firestore. Les lots à
+            zéro quotité dans la clé de répartition de la résolution voient « Cette résolution ne
+            vous concerne pas » ; tous les autres voient Pour / Contre / Abstention.
+          </li>
+          <li data-i18n-key="live.li.close">
+            <strong>Clôturer R<sub>n</sub>.</strong> Le chef d'orchestre clique sur Clôturer. Si
+            quelqu'un de présent-et-concerné n'a pas voté, le serveur renvoie la liste et l'UI
+            affiche un dialogue : <em>« X présents n'ont pas voté. Enregistrer en abstention ? »</em>
+            À la confirmation, le serveur écrit les docs Vote d'auto-bascule <em>et</em> le
+            tally <em>et</em> bascule le statut — le tout dans une seule transaction.
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ─────────── 8. VOTE-CAST SAFETY ─────────── -->
+    <section id="vote-cast">
+      <div class="prose">
+        <span class="eyebrow" data-i18n-key="vote.eyebrow">08 · Sécurité de l'écriture du vote</span>
+        <h2 data-i18n-key="vote.h2">La transaction qui doit être juste.</h2>
+        <p data-i18n-key="vote.p1">
+          Toutes les autres surfaces peuvent être ré-rendues, retentées, ou rattrapées. L'écriture
+          du vote, non. <code>castVote</code>, c'est la fonction qu'on ne regrettera pas d'avoir
+          écrite avec paranoïa.
+        </p>
+      </div>
+
+      <figure class="figure">
+        <div class="figure-frame">
+          <img src="flow-vote-cast.png" alt="Chemin critique du cast de vote avec rate-limit, validation du token, et une transaction Firestore qui re-lit assembly, resolution, lot, key, et attendance avant d'écrire." data-i18n-key-attr="alt" data-i18n-key="vote.fig5.alt" />
+        </div>
+        <figcaption class="figure-cap"><b data-i18n-key="vote.fig5.label">Fig. 5</b><span data-i18n-key="vote.fig5.cap">Chemin critique du cast de vote. Chaque vérification est faite côté serveur, dans une transaction.</span></figcaption>
+      </figure>
+
+      <div class="prose">
+        <p data-i18n-key="vote.p2">À l'intérieur de la transaction :</p>
+        <ul>
+          <li data-i18n-key="vote.li1">Le token doit exister, ne doit pas être expiré, ne doit pas être révoqué.</li>
+          <li data-i18n-key="vote.li2">L'<code>assemblyId</code> de la requête doit correspondre au token.</li>
+          <li data-i18n-key="vote.li3">L'Assembly doit être en <code>session.state = 'live'</code>.</li>
+          <li data-i18n-key="vote.li4">La Resolution doit être en <code>status = 'voting_open'</code>.</li>
+          <li data-i18n-key="vote.li5">Le Lot doit appartenir à l'Owner du token et à la même copropriété.</li>
+          <li data-i18n-key="vote.li6">Le Lot doit avoir <code>quotities[R.distributionKeyId] &gt; 0</code>.</li>
+          <li data-i18n-key="vote.li7">La ligne Attendance doit exister et être dans un état <code>present_*</code>.</li>
+        </ul>
+        <p data-i18n-key="vote.p3">
+          Si quoi que ce soit échoue, l'appel renvoie <code>failed-precondition</code>. Si tout
+          passe, le serveur écrit <code>votes/{lotId}</code> avec
+          <code>quotityUsed</code> figé au moment du cast, incrémente l'<code>usageCount</code>
+          du token, et commit.
+        </p>
+        <p data-i18n-key="vote.p4">
+          <strong>La sémantique de re-cast tombe gratuitement.</strong> L'ID du doc, c'est le
+          <code>lotId</code> ; un deuxième cast écrase le premier. Last write wins.
+          Le journal d'activité enregistre chaque cast — y compris les écrasements — donc la trace
+          d'audit survit même quand le vote en direct ne survit pas.
+        </p>
+
+        <div class="callout">
+          <p data-i18n-key="vote.callout"><strong>Que se passe-t-il si le syndic clique sur Clôturer pendant qu'un vote est en vol ?</strong>
+          La transaction sérialise. Soit le vote atterrit avant la clôture (et est compté), soit
+          la clôture atterrit en premier et le vote est rejeté avec
+          <code>failed-precondition</code>. Pas de troisième issue.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────── 9. PRE-AG / POST-AG ─────────── -->
+    <section id="bookends">
+      <div class="prose">
+        <span class="eyebrow" data-i18n-key="book.eyebrow">09 · Avant-AG et après-AG</span>
+        <h2 data-i18n-key="book.h2">Convocation à l'entrée, procès-verbal à la sortie.</h2>
+        <p data-i18n-key="book.p1">
+          La session en direct, c'est le milieu bruyant. Les deux extrémités font autant de travail,
+          plus discrètement. La convocation émet les tokens qui authentifient la session ; le PV
+          fige la trace légale après.
+        </p>
+
+        <h3 data-i18n-key="book.h3a">Avant-AG : rédaction et convocation</h3>
+        <p data-i18n-key="book.p2">
+          Le syndic crée l'AG (date, lieu, type, mode), ajoute les résolutions une par une, puis
+          clique sur « Envoyer la convocation ». La CF lit les lots actifs et les copropriétaires
+          uniques, applique le contrôle des 15 jours (avertissement-puis-passer-outre, pas un blocage
+          dur, conformément au §3 de la loi), génère un secret par copropriétaire, écrit le doc
+          access-token avec le hash en clé, construit la convocation HTML et PDF par langue, envoie
+          l'e-mail via Resend, et enregistre la livraison. <strong>Les procurations</strong> peuvent
+          être émises à n'importe quel moment avant l'AG par le même type d'appel —
+          <code>recipientType = 'procuration_holder'</code> avec l'identifiant du copropriétaire absent
+          et l'e-mail du mandataire.
+        </p>
+      </div>
+
+      <figure class="figure">
+        <div class="figure-frame">
+          <img src="flow-pre-ag.png" alt="Séquence avant-AG : créer l'assemblée, ajouter les résolutions, envoyer la convocation, générer les tokens par copropriétaire, envoyer l'e-mail + le PDF, émettre les tokens de procuration." data-i18n-key-attr="alt" data-i18n-key="book.fig6.alt" />
+        </div>
+        <figcaption class="figure-cap"><b data-i18n-key="book.fig6.label">Fig. 6</b><span data-i18n-key="book.fig6.cap">Séquence avant-AG. Envoi des convocations + émission des procurations.</span></figcaption>
+      </figure>
+
+      <div class="prose">
+        <h3 data-i18n-key="book.h3b">Après-AG : rédaction du PV et distribution</h3>
+        <p data-i18n-key="book.p3">
+          Quand l'AG se termine, le chef d'orchestre fait apparaître un bouton « Générer le brouillon
+          de PV ». La CF parcourt l'attendance, les résolutions et les votes (collection-group), et
+          écrit un corps PV structuré : liste de présence, par résolution {Pour, Contre,
+          Abstention en quotités, seuil, accept/reject, contre nominatifs, abstentions nominatives}.
+          Le syndic édite les sections en texte libre (rapport CC, narratif), exporte en PDF, et
+          distribue par e-mail — le PDF atterrit en stockage en tant que Document
+          <code>historic_pv</code>. La signature du PV se fait hors-ligne ; le PDF signé est ré-uploadé
+          via le flux documentaire existant.
+        </p>
+      </div>
+
+      <figure class="figure">
+        <div class="figure-frame">
+          <img src="flow-post-ag-pv.png" alt="Séquence après-AG : générer le brouillon de PV, éditer le texte libre, exporter le PDF via puppeteer, distribuer par e-mail." data-i18n-key-attr="alt" data-i18n-key="book.fig7.alt" />
+        </div>
+        <figcaption class="figure-cap"><b data-i18n-key="book.fig7.label">Fig. 7</b><span data-i18n-key="book.fig7.cap">Séquence après-AG. Auto-rédaction → édition → PDF → distribution.</span></figcaption>
+      </figure>
+
+      <div class="prose">
+        <div class="callout purple">
+          <p data-i18n-key="book.callout">
+            Le corps du PV fige tous les tallies et les votes nominatifs au moment de la clôture.
+            Même si la donnée Firestore est éditée plus tard, <strong>le PV reste la trace légale</strong>.
+            Cette décision de snapshot, c'est ce qui nous permet de garder le modèle de données
+            en direct épuré.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────── 10. PHASING ─────────── -->
+    <section id="phasing">
+      <div class="prose-wide">
+        <span class="eyebrow" data-i18n-key="phase.eyebrow">10 · Phasage</span>
+        <h2 data-i18n-key="phase.h2">Cinq phases, chacune livrable.</h2>
+        <p class="prose" data-i18n-key="phase.intro">
+          Chaque phase fait grosso modo une à deux semaines de travail concentré et se termine sur
+          quelque chose qu'un vrai syndic pourrait utiliser sans le reste. On ne livre pas V1.1 en
+          ratifiant le plan ; on le livre en clôturant chaque phase contre la recréation de Brugmann.
+        </p>
+
+        <div class="phases">
+
+          <div class="phase">
+            <span class="phase-tag" data-i18n-key="phase.A.tag">Phase&nbsp;A</span>
+            <h3 data-i18n-key="phase.A.h3">Schéma + rédaction d'AG</h3>
+            <p data-i18n-key="phase.A.p">Types et Cloud Functions pour create / update / cancel / CRUD de l'ordre du jour. Liste des AG en frontend et éditeur d'avant-AG. Vérification : les 18 résolutions Brugmann saisies, éditées, annulées.</p>
+          </div>
+
+          <div class="phase">
+            <span class="phase-tag" data-i18n-key="phase.B.tag">Phase&nbsp;B</span>
+            <h3 data-i18n-key="phase.B.h3">Convocation + magic links</h3>
+            <p data-i18n-key="phase.B.p"><code>sendConvocation</code>, tokens de procuration, révocation, templates d'e-mail, génération de PDF, squelette de la route publique, <code>validateToken</code>. Vérification : 166 e-mails partent, les magic links arrivent au nom de la bonne personne.</p>
+          </div>
+
+          <div class="phase">
+            <span class="phase-tag" data-i18n-key="phase.C.tag">Phase&nbsp;C</span>
+            <h3 data-i18n-key="phase.C.h3">Session en direct</h3>
+            <p data-i18n-key="phase.C.p">Démarrer / terminer, rejoindre / quitter / heartbeat, ouvrir / clôturer / passer une résolution, <code>castVote</code>, basculer en présentiel, nettoyage des attendances obsolètes. UI en direct du chef d'orchestre et de la page publique. Vérification : bout-en-bout avec 5 copropriétaires de test et auto-bascule à la clôture.</p>
+          </div>
+
+          <div class="phase">
+            <span class="phase-tag" data-i18n-key="phase.D.tag">Phase&nbsp;D</span>
+            <h3 data-i18n-key="phase.D.h3">Polish quorum + tally</h3>
+            <p data-i18n-key="phase.D.p">Helper de quorum côté serveur, helpers de query symétriques, snapshot du tally avec exceptions nominatives. Jauge de double quorum en direct dans la vue chef d'orchestre. Vérification : reproduire les chiffres par résolution de Brugmann.</p>
+          </div>
+
+          <div class="phase">
+            <span class="phase-tag" data-i18n-key="phase.E.tag">Phase&nbsp;E</span>
+            <h3 data-i18n-key="phase.E.h3">Brouillon de PV + distribution</h3>
+            <p data-i18n-key="phase.E.p"><code>generatePvDraft</code>, édition libre, <code>exportPvPdf</code>, <code>distributePv</code>, template d'e-mail. Mode après-AG du chef d'orchestre. Vérification : le PDF du PV correspond à l'échantillon IGS dans une tolérance raisonnable.</p>
+          </div>
+
+        </div>
+
+        <p class="prose" data-i18n-key="phase.outro"><em>Une fois la Phase E livrée, V1.1 est terminé.</em></p>
+      </div>
+    </section>
+
+    <!-- ─────────── 11. OPEN QUESTIONS ─────────── -->
+    <section id="open-questions">
+      <div class="prose-wide">
+        <span class="eyebrow" data-i18n-key="oq.eyebrow">11 · Questions ouvertes</span>
+        <h2 data-i18n-key="oq.h2">Dix points à trancher au fil des phases.</h2>
+        <p class="prose" data-i18n-key="oq.intro">
+          Aucun ne bloque la Phase A. Ils sont signalés pour qu'on en tranche un à chaque phase qui
+          les rencontre. La colonne recommandation est ma meilleure lecture actuelle ;
+          la décision finale revient à l'utilisateur.
+        </p>
+
+        <div class="tablewrap">
+          <table>
+            <thead>
+              <tr>
+                <th data-i18n-key="oq.th.num">#</th>
+                <th data-i18n-key="oq.th.q">Question</th>
+                <th data-i18n-key="oq.th.r">Recommandation</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="q-num">01</td>
+                <td data-i18n-key="oq.q1">Rôle des lots <code>left</code> dans l'auto-bascule en abstention à la clôture.</td>
+                <td data-i18n-key="oq.r1">Les traiter comme <strong>présents</strong> (auto-abstention) — lecture légale conservatrice, conforme à IGS.</td>
+              </tr>
+              <tr>
+                <td class="q-num">02</td>
+                <td data-i18n-key="oq.q2">Pipeline de génération PDF — Puppeteer + Chromium vs <code>pdfkit</code> vs service externe.</td>
+                <td data-i18n-key="oq.r2"><strong>Puppeteer en CF</strong> — HTML/CSS complet, même approche que pour le PV. Pré-chauffage pendant l'AG.</td>
+              </tr>
+              <tr>
+                <td class="q-num">03</td>
+                <td data-i18n-key="oq.q3">Intervalle du heartbeat et seuil d'obsolescence.</td>
+                <td data-i18n-key="oq.r3"><strong>Heartbeat 60s / seuil 3min.</strong> Si problème de coût sur des AG à 360 lots, ajouter la présence RTDB plus tard.</td>
+              </tr>
+              <tr>
+                <td class="q-num">04</td>
+                <td data-i18n-key="oq.q4">Collision sur le pointeur de résolution-courante quand deux navigateurs syndic se tirent la bourre.</td>
+                <td data-i18n-key="oq.r4">Concurrence optimiste via précondition <code>ifMatch</code> sur <code>session.currentResolutionId</code>.</td>
+              </tr>
+              <tr>
+                <td class="q-num">05</td>
+                <td data-i18n-key="oq.q5">Sémantique de re-cast — un copropriétaire peut-il changer son vote jusqu'à la clôture ?</td>
+                <td data-i18n-key="oq.r5"><strong>Oui</strong> — last write wins, chaque cast journalisé. À confirmer avec l'utilisateur.</td>
+              </tr>
+              <tr>
+                <td class="q-num">06</td>
+                <td data-i18n-key="oq.q6">Procuration + vote pour ses propres lots — un mandataire qui est aussi copropriétaire.</td>
+                <td data-i18n-key="oq.r6"><strong>Deux magic links distincts</strong> — trace d'audit plus claire, résolution plus simple.</td>
+              </tr>
+              <tr>
+                <td class="q-num">07</td>
+                <td data-i18n-key="oq.q7">Choix de la langue de convocation — PDF localisé par copropriétaire ou PDF unique ?</td>
+                <td data-i18n-key="oq.r7"><strong>PDF localisé par copropriétaire.</strong> Le compromis est acceptable ; la qualité de l'artefact légal compte.</td>
+              </tr>
+              <tr>
+                <td class="q-num">08</td>
+                <td data-i18n-key="oq.q8">Présents en physique sur AG hybride — leur faut-il aussi un magic link pour voter ?</td>
+                <td data-i18n-key="oq.r8"><strong>Oui</strong>, même page publique sur leur propre téléphone. La bascule du syndic enregistre le fait « présent en physique » pour le PV.</td>
+              </tr>
+              <tr>
+                <td class="q-num">09</td>
+                <td data-i18n-key="oq.q9">Journal d'audit pour les changements de vote — entrée <code>activity_log</code> distincte par re-cast ?</td>
+                <td data-i18n-key="oq.r9"><strong>Oui</strong> — trace d'audit par vote ; le syndic peut filtrer après l'AG.</td>
+              </tr>
+              <tr>
+                <td class="q-num">10</td>
+                <td data-i18n-key="oq.q10"><code>Resolution.itemType = 'information'</code> — listée au PV ou suivie autrement ?</td>
+                <td data-i18n-key="oq.r10">À confirmer avec l'utilisateur. Le plan le gère via <code>itemType: 'vote' | 'information'</code>.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────── 12. LEGAL ANNEX ─────────── -->
+    <section id="annex">
+      <div class="prose-wide">
+        <span class="eyebrow" data-i18n-key="annex.eyebrow">12 · Annexe légale</span>
+        <h2 data-i18n-key="annex.h2">Six contraintes belges, gravées dans le module.</h2>
+        <p class="prose" data-i18n-key="annex.intro">
+          Le Code civil belge (Livre&nbsp;3, réforme post-2018) prescrit comment une AG de
+          copropriétaires se convoque, se tient, se vote, et se consigne. Six règles sont en amont
+          de chaque décision de design dans V1.1 — le modèle d'auth, le modèle de données, le flux
+          de session en direct, et le PV. Elles ne sont pas une checklist de conformité ajoutée
+          après coup ; elles ont façonné le système. Voici où chacune affleure dans le code.
+        </p>
+
+        <div class="tablewrap">
+          <table>
+            <thead>
+              <tr>
+                <th data-i18n-key="annex.th.constraint">Contrainte</th>
+                <th data-i18n-key="annex.th.what">Ce que ça veut dire</th>
+                <th data-i18n-key="annex.th.where">Où ça affleure dans le système</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td data-i18n-key="annex.row.notice15.c"><strong>Préavis de 15&nbsp;jours</strong><br/><span class="smallcaps">Art.&nbsp;3.87&nbsp;§3</span></td>
+                <td data-i18n-key="annex.row.notice15.what">La convocation doit être envoyée ≥&nbsp;15&nbsp;jours avant l'AG. Les 21&nbsp;jours qu'utilisent certains immeubles relèvent d'une bonne pratique du règlement d'ordre intérieur, pas du Code.</td>
+                <td data-i18n-key="annex.row.notice15.where"><code>sendConvocation</code> vérifie <code>assembly.scheduledAt - now ≥ 15&nbsp;jours</code> ; en deçà, renvoie un avertissement souple que le syndic peut passer outre (vraie urgence, ou risque assumé par les copropriétaires).</td>
+              </tr>
+              <tr>
+                <td data-i18n-key="annex.row.quorum.c"><strong>Double quorum à l'ouverture</strong><br/><span class="smallcaps">Art.&nbsp;3.87&nbsp;§5</span></td>
+                <td data-i18n-key="annex.row.quorum.what">L'AG ne délibère valablement que si à l'ouverture <strong>soit</strong> (a)&nbsp;>½ des copropriétaires sont présents/représentés <em>et</em> détiennent ≥½ des quotités, <strong>soit</strong> (b)&nbsp;les présents/représentés détiennent >¾ des quotités. À défaut : seconde AG ≥&nbsp;15&nbsp;jours plus tard, sans condition de quorum (§6).</td>
+                <td data-i18n-key="annex.row.quorum.where">Calculé en direct pendant l'AG depuis Attendance + <code>Lot.quotities[GEN]</code>. La vue chef d'orchestre affiche la jauge. Aucune résolution ne peut être ouverte si le quorum n'est pas atteint.</td>
+              </tr>
+              <tr>
+                <td data-i18n-key="annex.row.quotites.c"><strong>Vote en quotités</strong><br/><span class="smallcaps">Art.&nbsp;3.87&nbsp;§2</span></td>
+                <td data-i18n-key="annex.row.quotites.what">Les votes sont pondérés par les quotités du lot (sa part de l'immeuble, sommée à 10&nbsp;000). Jamais en têtes. Un Pour d'un lot à 500 quotités pèse 500 dans le décompte.</td>
+                <td data-i18n-key="annex.row.quotites.where"><code>Vote.quotityUsed</code> fige la quotité du lot dans la clé de répartition de la résolution au moment du cast. Les tallies somment ces quotités, ne comptent jamais les bulletins.</td>
+              </tr>
+              <tr>
+                <td data-i18n-key="annex.row.indivision.c"><strong>Indivision = 1 bulletin par lot</strong><br/><span class="smallcaps">Art.&nbsp;3.87&nbsp;§1</span></td>
+                <td data-i18n-key="annex.row.indivision.what">Un lot détenu en indivision (couple, fratrie en succession) est une seule entité votante — un bulletin, pas un par personne. Ils doivent désigner un seul mandataire.</td>
+                <td data-i18n-key="annex.row.indivision.where">Déjà acté par la décision&nbsp;D14 (un seul Owner par entité de propriété). Garanti par <code>Lot.ownerId</code> en 1:1.</td>
+              </tr>
+              <tr>
+                <td data-i18n-key="annex.row.hybrid.c"><strong>Marqueur AG hybride dans la convocation</strong><br/><span class="smallcaps">Art.&nbsp;3.87&nbsp;§1</span></td>
+                <td data-i18n-key="annex.row.hybrid.what">Si l'AG est hybride (certains présents en salle, d'autres en ligne), <strong>cela doit</strong> être annoncé dans la convocation. Pas d'improvisation au démarrage de la séance.</td>
+                <td data-i18n-key="annex.row.hybrid.where"><code>Assembly.mode = 'hybrid'</code> est posé à la création de l'AG ; la génération du PDF de convocation lit ce champ et insère le langage légal sur la participation à distance. Un changement de mode après convocation impose un renvoi.</td>
+              </tr>
+              <tr>
+                <td data-i18n-key="annex.row.named.c"><strong>« Contre » et « abstention » nominatifs au PV</strong><br/><span class="smallcaps">Art.&nbsp;3.87&nbsp;§10</span></td>
+                <td data-i18n-key="annex.row.named.what">Le PV doit lister les noms des copropriétaires qui ont voté contre et de ceux qui se sont abstenus — pas seulement les totaux. Le PV de Brugmann fait littéralement ça.</td>
+                <td data-i18n-key="annex.row.named.where"><code>Resolution.tally.namedAgainst[]</code> et <code>namedAbstain[]</code> sont snapshotés à la clôture du vote (depuis <code>Vote.castByOwnerId → Owner.displayName</code>). Rendus dans le brouillon de PV.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout purple">
+          <p data-i18n-key="annex.glossary">
+            <strong>« Tally » / « Décompte ».</strong> Le tally embarqué sur <code>Resolution.tally</code>
+            est écrit <strong>une fois, à la clôture</strong> (per V1.0 spec D4 — jamais en direct
+            pendant le vote), avec les totaux, le contrôle de seuil, et les tableaux nominatifs figés
+            pour le PV. La barre de progression que voit le chef d'orchestre pendant le vote ouvert
+            est calculée <strong>côté client</strong> en sommant la sous-collection <code>votes/{lotId}</code>
+            — les listeners Firestore poussent des mises à jour sub-secondes sans jamais toucher au
+            doc Resolution. C'est ce qui nous évite un hot-spot sur le doc Resolution pendant les
+            30&nbsp;secondes où 100&nbsp;votants cliquent Pour en même temps.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────── 13. COLOPHON ─────────── -->
+    <section id="colophon">
+      <div class="prose">
+        <span class="eyebrow" data-i18n-key="colo.eyebrow">13 · Colophon</span>
+        <h2 data-i18n-key="colo.h2">Ce qu'est ce plan — et ce qu'il n'est pas.</h2>
+        <p data-i18n-key="colo.p1">
+          C'est la feuille de route d'implémentation. Ce n'est pas un patch de code — aucun fichier
+          n'est modifié par sa validation. Ce n'est pas la spec durable — celle-ci vit dans
+          <code>app-architecture.md §2.7 / §2.8</code> et dans le journal des décisions. Ce n'est
+          pas un engagement de livraison à N semaines — le phasage suppose un seul implémenteur
+          concentré.
+        </p>
+        <p data-i18n-key="colo.p2">
+          Ce qui est couvert : rédaction d'AG, convocation, vote en direct, brouillon et
+          distribution du PV. Ce qui n'est explicitement <em>pas</em> couvert : appels de fonds,
+          décomptes, bancaire, boîtiers de vote USB, signature du PV in-app, extraction
+          automatique de la convocation. Tout cela vit dans la liste différée selon le
+          périmètre figé.
+        </p>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<footer>
+  <div data-i18n-key="footer.updated">Syndicable V1.1 — dernière mise à jour 2026-05-08.</div>
+</footer>
+
+<script>
+  // ───────── i18n dictionary ─────────
+  window.I18N = {
+    en: {
+      "meta.title": "Syndicable V1.1 — Assemblée Générale Implementation Plan",
+      "meta.description": "The implementation plan for Syndicable V1.1: drafting an AG, sending convocations, running the live voting session, and generating the PV.",
+
+      "lang.label": "Language",
+      "lang.aria": "Switch language between English and French",
+
+      "nav.eyebrow": "Sections",
+      "nav.thesis": "The thesis",
+      "nav.scope": "Scope, locked",
+      "nav.choices": "Three architectural choices",
+      "nav.dataModel": "The data model",
+      "nav.auth": "Auth — public magic links",
+      "nav.stateMachines": "State machines",
+      "nav.liveSession": "The live session",
+      "nav.voteCast": "Vote-cast safety",
+      "nav.bookends": "Pre-AG and post-AG",
+      "nav.phasing": "Phasing",
+      "nav.openQuestions": "Open questions",
+      "nav.annex": "Legal annex",
+      "nav.colophon": "Colophon",
+      "hero.pill.module": "Module&nbsp;·&nbsp;Assemblée&nbsp;Générale",
+      "hero.title": "The AG module, end&nbsp;to&nbsp;end.",
+      "hero.sub": "Drafting an assembly, sending the convocations, running the live voting session with the syndic as conductor, and producing the procès-verbal. This is the implementation plan — design and phasing locked, code starts on sign-off.",
+
+      "thesis.eyebrow": "01 · The thesis",
+      "thesis.h2": "What V1.1 does, who uses it, and why it matters.",
+      "thesis.p1": "Syndicable V1.0 already ships the bones of a co-ownership: copropriétés, lots, owners, lot-ownerships, distribution keys, documents, an activity log, and the Phase-14 representative model. The recent G6 cleanup made Lot-to-Owner strictly 1:1 (<code>Lot.ownerId</code>, <code>LotOwnership</code> lean). That groundwork is what V1.1 stands on.",
+      "thesis.p2": "V1.1 is the <strong>Assemblée Générale module</strong>. The syndic drafts an AG, sends convocations by email with a magic link, runs the live session as conductor (open a resolution, watch the live tally, close it), and generates the PV at the end. Nothing else. No appels de fonds, no banking, no decomptes, no in-app PV signing.",
+      "thesis.p3": "The throughline is the <strong>IGS&nbsp;/ Brugmann Ferme&nbsp;Rose</strong> worked example: 166 owners, ~300 lots across three distribution keys (GEN, ASCENSEUR_9A, GARAGE), 18 resolutions on the agenda. If V1.1 can recreate Brugmann's 2024 PV from a recreated test AG, V1.1 is done.",
+      "thesis.p4": "The legal substrate (Belgian Civil Code Book&nbsp;3, Articles 3.84–3.100, post-2018 reform) is verified. Doc references corrected away from the old 577-x numbering. The architecture is locked in <code>app-architecture.md §3.3</code>; this article is the roadmap on top.",
+
+      "scope.eyebrow": "02 · Scope, locked",
+      "scope.h2": "What ships in V1.1 — and what doesn't.",
+      "scope.intro": "The decisions log entry on 2026-05-08 froze this. Anything not in the IN column is parked. The OUT column is the working list of \"everything we want eventually but won't build now.\"",
+      "scope.in.title": "In · V1.1 ships",
+      "scope.in.li1": "AG creation + manual agenda entry",
+      "scope.in.li2": "Convocation by email with PWA magic link, manual agenda, electronic-delivery consent assumed",
+      "scope.in.li3": "Public, token-based voting page — no Firebase Auth required",
+      "scope.in.li4": "Same magic-link mechanism for owner-self and procuration-holder",
+      "scope.in.li5": "Owner attendance via the public page (online); syndic flags in-person manually",
+      "scope.in.li6": "Live syndic-conductor flow: start AG → open R<sub>n</sub> → live tally → close → end AG",
+      "scope.in.li7": "Auto-default-to-abstain at close for present-but-silent owners (DV3)",
+      "scope.in.li8": "\"Cette résolution ne vous concerne pas\" UX for zero-quotité lots",
+      "scope.in.li9": "Late join + explicit leave during the session",
+      "scope.in.li10": "PV: auto-draft + free-text edit + PDF export + email distribution + storage as <code>historic_pv</code>",
+      "scope.in.li11": "Legal must-haves: 15-day notice warning, double quorum, vote in quotités, indivision = 1 ballot, hybrid AG flag, named for/against in PV",
+      "scope.out.title": "Out · deferred to phase 2 or later",
+      "scope.out.li1": "Convocation auto-extraction from Word/PDF (Kevin's #1 differentiator)",
+      "scope.out.li2": "Postal / registered convocation channel — handled outside the system",
+      "scope.out.li3": "In-app PV signing surface — syndic signs PDF offline + uploads back",
+      "scope.out.li4": "USB voting devices (boîtiers de vote)",
+      "scope.out.li5": "Second-call AG auto-flow — syndic creates a new AG manually",
+      "scope.out.li6": "Owner-submitted §3 agenda items",
+      "scope.out.li7": "Annexes upload pipeline — link externally for now",
+      "scope.out.li8": "30-day PV transmission reminder automation",
+      "scope.out.li9": "4-month contestation window UI",
+
+      "choices.eyebrow": "03 · Three architectural choices",
+      "choices.h2": "The decisions everything else hangs from.",
+      "choices.intro": "Each of these was a fork in the road. Each is now closed. The rest of the plan assumes them.",
+      "choices.c1.num": "CHOICE&nbsp;01",
+      "choices.c1.h3": "Public token-based voting, not Firebase Auth.",
+      "choices.c1.p1": "Owners vote from a public page on the website with no account creation, no password, no OTP. The token in the URL <em>is</em> the credential. We considered piggy-backing on the existing Phase-14 invitation flow that creates a Member doc with role and scopes — but that leaves persistent membership artifacts that need to be cleaned up post-AG, and forces a 75-year-old copropriétaire on their phone through an email-OTP each time.",
+      "choices.c1.p2": "The token route is leaner and matches the actual UX needed. <strong>Phase-14 still owns owner-data management</strong> between AGs; vote-time auth is the public token. The two coexist cleanly.",
+      "choices.c2.num": "CHOICE&nbsp;02",
+      "choices.c2.h3": "Firestore-only — no Realtime Database for V1.1.",
+      "choices.c2.p1": "Vote writes need transactions and queryability — that's Firestore. Live tally via collection listener on <code>votes</code> — that's Firestore. Current-resolution pointer via listener on <code>Assembly.session.currentResolutionId</code> — that's Firestore. The only place RTDB would win is presence with <code>onDisconnect()</code>, and we don't need it yet.",
+      "choices.c2.p2": "Instead, a 60-second heartbeat updates <code>Attendance.lastActiveAt</code>; a scheduled Cloud Function flips lots to <code>left</code> after 3 minutes of silence. For a 166-lot AG over 2 hours that's around 20K writes total — comfortably inside free-tier. <strong>If we ever need RTDB for presence on 1000+ lot AGs, we add it later</strong> without changing the data model.",
+      "choices.c3.num": "CHOICE&nbsp;03",
+      "choices.c3.h3": "Manual session control end-to-end.",
+      "choices.c3.p1": "The syndic is the conductor. Nothing auto-opens, nothing auto-closes, nothing auto-transitions. <code>startAssembly</code> is a button. <code>openResolution</code> is a button. <code>closeResolution</code> is a button — with a confirmation dialog if any present-and-concerned lot hasn't voted, applying the auto-default-to-abstain rule transactionally on confirm. <code>endAssembly</code> is a button that auto-closes any still-open resolution first.",
+      "choices.c3.p2": "This matches how AGs <em>actually</em> happen in the room: a chair calls each point, takes the vote, declares it closed. We don't need a state machine that second-guesses the syndic's hand on the wheel.",
+
+      "data.eyebrow": "04 · The data model",
+      "data.h2": "Six new entities, one singleton.",
+      "data.p1": "V1.1 introduces seven new collections under <code>organizations/{coproId}/assemblies/{aId}/</code>: <strong>Assembly</strong> itself (with the embedded <code>session</code> sub-object), <strong>Resolution</strong> (with embedded <code>tally</code> on close), <strong>Vote</strong> (one per Lot per Resolution, deterministic ID), <strong>Attendance</strong> (one per Lot, with state), <strong>AccessToken</strong> (keyed by SHA-256 hash of the secret — the secret never lands in storage), <strong>ConvocationDelivery</strong> (per-recipient email send tracking), and the singleton <strong>PV</strong> document.",
+      "data.p2": "Nothing in V1.0 changes shape. <code>Lot.ownerId</code>, <code>Lot.quotities[distributionKeyId]</code>, and the Owner registry are read by V1.1 but never written. There is no migration to plan: V1.1 is purely additive.",
+      "data.fig1.alt": "Entity-relationship diagram for Syndicable V1.1: Copropriété, Lot, Owner, DistributionKey, Assembly, Resolution, Vote, Attendance, AccessToken, ConvocationDelivery, PV.",
+      "data.fig1.label": "Fig. 1",
+      "data.fig1.cap": "Entity-relationship for V1.1, drawn against the V1.0 substrate.",
+      "data.p3": "Three storage decisions are worth naming explicitly. <strong>One Vote doc per Lot per Resolution</strong> means no contention (different docs per lot), one-cast-overwrites-previous semantics for free, and a deterministic ID. <strong>Tally is embedded on Resolution and computed only at close</strong> — no hot-spot during live voting. <strong>Quorum is computed on demand</strong> from Attendance + <code>Lot.quotities</code>; there is no counter to maintain.",
+
+      "auth.eyebrow": "05 · Auth",
+      "auth.h2": "Public magic links, hashed at rest.",
+      "auth.p1": "When the syndic clicks \"Send convocation,\" a Cloud Function reads every active Lot, walks the unique Owner set, and for each Owner generates a fresh secret — 32 bytes of cryptographic randomness, base64url-encoded. That secret goes into one place: the email link. What lands in Firestore is the <code>SHA-256</code> hash of the secret as the document key. The secret itself never appears in our database.",
+      "auth.p2": "When the recipient clicks the link, validation re-hashes the URL parameter and looks up the doc. A leak of the database doesn't leak any active token — recovering a 256-bit pre-image is infeasible.",
+      "auth.fig2.alt": "Sequence diagram of token generation, validation, and vote-cast for the public magic-link flow.",
+      "auth.fig2.label": "Fig. 2",
+      "auth.fig2.cap": "Auth flow — token issue → validation → vote-cast.",
+      "auth.h3": "Token security at a glance",
+      "auth.li1": "<strong>256-bit URL-safe random</strong>, generated server-side with <code>crypto.randomBytes(32).toString('base64url')</code>.",
+      "auth.li2": "<strong>SHA-256 hashed</strong> before storage. Lookup is <code>db.doc(`.../${sha256(secret)}`).get()</code>.",
+      "auth.li3": "<strong>HTTPS only</strong> for the public route.",
+      "auth.li4": "<strong>Rate-limited</strong> validation — 5/sec, 60/min per IP — defence in depth on top of the search-space size.",
+      "auth.li5": "<strong>Scoped to one Assembly</strong> via <code>assemblyId</code>; cannot vote on a different AG even if the token leaks.",
+      "auth.li6": "<strong>Server-side bound to Owner</strong>; the client cannot tell the server \"I want to vote for a different lot\" — the server resolves owner→lots itself.",
+      "auth.li7": "<strong>Revocable</strong> by the syndic via <code>revokeAccessToken</code>; subsequent calls fail.",
+      "auth.li8": "<strong>Auto-expires</strong> 24 hours after <code>Assembly.scheduledAt</code>.",
+      "auth.p3": "The same token shape covers procuration: the syndic issues a token whose <code>recipientType = 'procuration_holder'</code>, with the absent owner's <code>ownerId</code> and the proxy holder's name and email. The proxy votes on behalf of the absent owner's lots; the PV records the proxy holder's name in the <code>namedAgainst</code> / <code>namedAbstain</code> arrays.",
+
+      "states.eyebrow": "06 · State machines",
+      "states.h2": "Three small, finite state machines.",
+      "states.p1": "Three things have lifecycle: the Assembly itself, each Resolution on the agenda, and Attendance per Lot. None are large. None auto-advance.",
+      "states.fig3a.alt": "Assembly state machine: draft → convoked → live → ended, with cancelled branches.",
+      "states.fig3a.label": "Fig. 3a",
+      "states.fig3a.cap": "Assembly lifecycle. Cancellation is blocked once <code>live</code>.",
+      "states.fig3b.alt": "Resolution state machine: pending → voting_open → voting_closed, with skipped branch.",
+      "states.fig3b.label": "Fig. 3b",
+      "states.fig3b.cap": "Resolution lifecycle. Re-opening a closed resolution is forbidden in V1.1 — append a fresh resolution instead.",
+      "states.fig3c.alt": "Attendance state machine: absent / present_online / present_in_person / left.",
+      "states.fig3c.label": "Fig. 3c",
+      "states.fig3c.cap": "Attendance per Lot. <code>absent</code> lots are never counted; once you've joined, you're on the ledger.",
+      "states.p2": "The interesting rule is on Attendance. <strong><code>absent</code> lots are never counted</strong> for any tally — they're the AG's \"didn't show up\" pile. <strong><code>present_*</code> and <code>left</code> lots are both counted as \"present at some point\"</strong> for auto-default-to-abstain. Once you've joined, you can't dodge the for/against/abstain ledger by closing your browser. This is the conservative legal reading and matches in-person AG behaviour: if you arrive and silently slip out, you're recorded as having been there.",
+
+      "live.eyebrow": "07 · The live session",
+      "live.h2": "Conducting an AG, step by step.",
+      "live.p1": "This is the heart of V1.1. The syndic pulls up the conductor view; owners click their magic links and join from their phones. The conductor sees a live quorum gauge, the agenda timeline, an attendance panel, and — once a resolution is open — the live tally with the list of present-and-concerned lots that haven't voted yet.",
+      "live.fig4.alt": "Full live session sequence: start AG, owners join via magic link, heartbeat, open resolution, vote, close with auto-default dialog, leave, end AG.",
+      "live.fig4.label": "Fig. 4",
+      "live.fig4.cap": "The full live session. Start AG → owners join → open R<sub>n</sub> → vote → close → end AG.",
+      "live.p2": "Three moments deserve a closer look:",
+      "live.li.join": "<strong>Join.</strong> When an owner first hits the public page, the server upserts an Attendance row per lot they own with <code>state = 'present_online'</code> in a single transaction. From that moment, a heartbeat ticks every 60 seconds.",
+      "live.li.open": "<strong>Open R<sub>n</sub>.</strong> The conductor flips the resolution to <code>voting_open</code> and updates <code>Assembly.session.currentResolutionId</code>. All public pages receive the change via Firestore listener. Lots with zero quotités in the resolution's distribution key see \"Cette résolution ne vous concerne pas\"; everyone else sees Pour / Contre / Abstention.",
+      "live.li.close": "<strong>Close R<sub>n</sub>.</strong> The conductor clicks Close. If anyone present-and-concerned hasn't voted, the server returns the list and the UI shows a dialog: <em>\"X présents n'ont pas voté. Enregistrer en abstention?\"</em> On confirm, the server writes the auto-default Vote docs <em>and</em> the tally <em>and</em> flips the status — all in one transaction.",
+
+      "vote.eyebrow": "08 · Vote-cast safety",
+      "vote.h2": "The transaction that has to be right.",
+      "vote.p1": "Every other surface can be re-rendered, retried, or smoothed over. The vote write cannot. <code>castVote</code> is the function we will not regret writing paranoidly.",
+      "vote.fig5.alt": "Vote-cast critical path with rate-limit, token validation, and a Firestore transaction that re-reads assembly, resolution, lot, key, and attendance before writing.",
+      "vote.fig5.label": "Fig. 5",
+      "vote.fig5.cap": "Vote-cast critical path. Every check happens server-side, inside a transaction.",
+      "vote.p2": "Inside the transaction:",
+      "vote.li1": "The token must exist, must not be expired, must not be revoked.",
+      "vote.li2": "The <code>assemblyId</code> on the request must match the token.",
+      "vote.li3": "The Assembly must be <code>session.state = 'live'</code>.",
+      "vote.li4": "The Resolution must be <code>status = 'voting_open'</code>.",
+      "vote.li5": "The Lot must belong to the token's owner and the same copropriété.",
+      "vote.li6": "The Lot must have <code>quotities[R.distributionKeyId] &gt; 0</code>.",
+      "vote.li7": "The Attendance row must exist and be in a <code>present_*</code> state.",
+      "vote.p3": "If anything fails, the call returns <code>failed-precondition</code>. If everything passes, the server writes <code>votes/{lotId}</code> with <code>quotityUsed</code> snapshotted at cast time, bumps the token's <code>usageCount</code>, and commits.",
+      "vote.p4": "<strong>Re-cast semantics fall out for free.</strong> The doc ID is the <code>lotId</code>; a second cast overwrites the first. Last write wins. The activity log records every cast — including overwrites — so the audit trail survives even when the live vote does not.",
+      "vote.callout": "<strong>What happens if the syndic clicks Close while a vote is in flight?</strong> The transaction serializes. Either the vote lands before the close (and is counted), or the close lands first and the vote is rejected with <code>failed-precondition</code>. There is no third outcome.",
+
+      "book.eyebrow": "09 · Pre-AG and post-AG",
+      "book.h2": "Convocation in, procès-verbal out.",
+      "book.p1": "The live session is the loud middle. The bookends do as much work, more quietly. Convocation issues the tokens that auth the session; the PV freezes the legal record after.",
+      "book.h3a": "Pre-AG: drafting and convocation",
+      "book.p2": "The syndic creates the AG (date, location, type, mode), adds resolutions one by one, and clicks \"Send convocation.\" The CF reads active lots and unique owners, applies the 15-day check (warn-and-override, not hard block, per legal §3), generates a per-owner secret, writes the access-token doc keyed by its hash, builds the per-language convocation HTML and PDF, sends the email via Resend, and records the delivery. <strong>Procurations</strong> can be issued at any time before the AG by the same shape of call — <code>recipientType = 'procuration_holder'</code> with the absent owner's id and the proxy holder's email.",
+      "book.fig6.alt": "Pre-AG sequence: create assembly, add resolutions, send convocation, generate per-owner tokens, send email + PDF, issue procuration tokens.",
+      "book.fig6.label": "Fig. 6",
+      "book.fig6.cap": "Pre-AG sequence. Convocation send + procuration issuance.",
+      "book.h3b": "Post-AG: PV draft and distribution",
+      "book.p3": "When the AG ends, the conductor surfaces a \"Generate PV draft\" button. The CF walks attendance, resolutions, and votes (collection-group), and writes a structured PV body: presence list, per-resolution {Pour, Contre, Abstention quotités, threshold, accept/reject, named against, named abstain}. The syndic edits free-text sections (CC report, narrative), exports to PDF, and distributes by email — the PDF lands in storage as the <code>historic_pv</code> Document. PV signing happens offline; the signed PDF is re-uploaded through the existing document flow.",
+      "book.fig7.alt": "Post-AG sequence: generate PV draft, edit free-text, export PDF via puppeteer, distribute by email.",
+      "book.fig7.label": "Fig. 7",
+      "book.fig7.cap": "Post-AG sequence. Auto-draft → edit → PDF → distribute.",
+      "book.callout": "The PV body snapshots all tallies and nominative votes at close. Even if Firestore data is later edited, <strong>the PV stays the legal record</strong>. That snapshot decision is what lets us keep the live data model lean.",
+
+      "phase.eyebrow": "10 · Phasing",
+      "phase.h2": "Five phases, each shippable.",
+      "phase.intro": "Each phase is roughly one to two weeks of focused work and ends in something a real syndic could use without the rest. We don't ship V1.1 by ratifying the plan; we ship it by closing each phase against the Brugmann recreation.",
+      "phase.A.tag": "Phase&nbsp;A",
+      "phase.A.h3": "Schema + AG drafting",
+      "phase.A.p": "Types and Cloud Functions for create / update / cancel / agenda CRUD. Frontend AGs list and pre-AG editor. Verify: 18 Brugmann resolutions in, edit, cancel.",
+      "phase.B.tag": "Phase&nbsp;B",
+      "phase.B.h3": "Convocation + magic links",
+      "phase.B.p": "<code>sendConvocation</code>, procuration tokens, revocation, email templates, PDF generation, public route skeleton, <code>validateToken</code>. Verify: 166 emails go out, magic links land on the right person's name.",
+      "phase.C.tag": "Phase&nbsp;C",
+      "phase.C.h3": "Live session",
+      "phase.C.p": "Start / end, join / leave / heartbeat, open / close / skip resolution, <code>castVote</code>, in-person flips, stale-attendance cleanup. Conductor and public-page live UIs. Verify: end-to-end with 5 test owners and auto-default at close.",
+      "phase.D.tag": "Phase&nbsp;D",
+      "phase.D.h3": "Quorum + tally polish",
+      "phase.D.p": "Server-side quorum helper, symmetric query helpers, tally snapshot with named exceptions. Live double-quorum gauge in the conductor. Verify: replicate Brugmann's per-resolution numbers.",
+      "phase.E.tag": "Phase&nbsp;E",
+      "phase.E.h3": "PV draft + distribute",
+      "phase.E.p": "<code>generatePvDraft</code>, free-text edit, <code>exportPvPdf</code>, <code>distributePv</code>, email template. Conductor post-AG mode. Verify: PV PDF matches the IGS sample within reasonable tolerance.",
+      "phase.outro": "<em>After Phase E ships, V1.1 is done.</em>",
+
+      "oq.eyebrow": "11 · Open questions",
+      "oq.h2": "Ten things to resolve as we hit each phase.",
+      "oq.intro": "None of these block Phase A. They're flagged so we resolve each at the phase that hits it. The recommendation column is my current best read; the user has the final call.",
+      "oq.th.num": "#",
+      "oq.th.q": "Question",
+      "oq.th.r": "Recommendation",
+      "oq.q1": "<code>left</code> lots' role in auto-default-to-abstain at close.",
+      "oq.r1": "Treat as <strong>present</strong> (auto-abstain) — conservative legal reading, matches IGS.",
+      "oq.q2": "PDF generation pipeline — Puppeteer + Chromium vs <code>pdfkit</code> vs external service.",
+      "oq.r2": "<strong>Puppeteer in CF</strong> — full HTML/CSS, same approach as PV. Pre-warm during AG-time.",
+      "oq.q3": "Heartbeat interval and stale threshold.",
+      "oq.r3": "<strong>60s heartbeat / 3min stale.</strong> If cost issues on 360-lot AGs, add RTDB presence later.",
+      "oq.q4": "Currently-open-resolution pointer collision when two syndic browsers race.",
+      "oq.r4": "Optimistic concurrency via <code>ifMatch</code> precondition on <code>session.currentResolutionId</code>.",
+      "oq.q5": "Vote re-cast semantics — can a user change their vote up until close?",
+      "oq.r5": "<strong>Yes</strong> — last write wins, every cast logged. Confirm with user.",
+      "oq.q6": "Procuration + own-lot voting — proxy holder who is also an owner.",
+      "oq.r6": "<strong>Two separate magic links</strong> — clearer audit trail, simpler resolution.",
+      "oq.q7": "Convocation language selection — per-owner localized PDF or single PDF?",
+      "oq.r7": "<strong>Per-owner localized PDF.</strong> Trade-off is acceptable; quality of legal artifact matters.",
+      "oq.q8": "Hybrid AG in-person attendees — do they still need a magic link to vote?",
+      "oq.r8": "<strong>Yes</strong>, same public page on their own phone. Syndic flip records in-person fact for PV.",
+      "oq.q9": "Audit log for vote changes — separate <code>activity_log</code> entry per re-cast?",
+      "oq.r9": "<strong>Yes</strong> — per-vote audit trail; syndic can filter post-AG.",
+      "oq.q10": "<code>Resolution.itemType = 'information'</code> — listed in PV or tracked otherwise?",
+      "oq.r10": "Confirm with user. Plan handles via <code>itemType: 'vote' | 'information'</code>.",
+
+      "annex.eyebrow": "12 · Legal annex",
+      "annex.h2": "Six Belgian constraints, baked into the module.",
+      "annex.intro": "Belgian Civil Code Book&nbsp;3 (post-2018 reform) prescribes how an AG of copropriétaires is convened, attended, voted, and recorded. Six rules sit upstream of every design decision in V1.1 — the auth model, the data model, the live session flow, and the PV. They are not a compliance checklist applied on top; they shaped the system. Here is where each surfaces in the code.",
+      "annex.th.constraint": "Constraint",
+      "annex.th.what": "What it means",
+      "annex.th.where": "Where it surfaces in the system",
+      "annex.row.notice15.c": "<strong>15-day notice</strong><br/><span class=\"smallcaps\">Art.&nbsp;3.87&nbsp;§3</span>",
+      "annex.row.notice15.what": "Convocation must be sent ≥&nbsp;15&nbsp;days before the AG. The 21&nbsp;days some buildings use is a best-practice from the règlement d'ordre intérieur, not statutory.",
+      "annex.row.notice15.where": "<code>sendConvocation</code> checks <code>assembly.scheduledAt - now ≥ 15&nbsp;days</code>; under the threshold, returns a soft warning the syndic can override (true emergency or owner-acknowledged risk).",
+      "annex.row.quorum.c": "<strong>Double quorum at AG opening</strong><br/><span class=\"smallcaps\">Art.&nbsp;3.87&nbsp;§5</span>",
+      "annex.row.quorum.what": "The AG can deliberate validly only if at opening <strong>either</strong> (a)&nbsp;>½ of copropriétaires are present/represented <em>and</em> they hold ≥½ of the quotités, <strong>or</strong> (b)&nbsp;those present/represented hold >¾ of the quotités. If neither: second-call AG required ≥&nbsp;15&nbsp;days later, no quorum requirement (§6).",
+      "annex.row.quorum.where": "Computed live during AG from Attendance + <code>Lot.quotities[GEN]</code>. Conductor view shows the gauge. Resolutions cannot be opened if quorum not met.",
+      "annex.row.quotites.c": "<strong>Vote in quotités</strong><br/><span class=\"smallcaps\">Art.&nbsp;3.87&nbsp;§2</span>",
+      "annex.row.quotites.what": "Votes are weighted by each lot's quotités (its share of the building, summed to 10&nbsp;000). Never head count. So a 500-quotités lot's Pour weighs 500 in the tally.",
+      "annex.row.quotites.where": "<code>Vote.quotityUsed</code> snapshots the lot's quotité in the resolution's distribution key at cast time. Tallies sum these, never count ballots.",
+      "annex.row.indivision.c": "<strong>Indivision = 1 ballot per lot</strong><br/><span class=\"smallcaps\">Art.&nbsp;3.87&nbsp;§1</span>",
+      "annex.row.indivision.what": "A lot owned in indivision (couple, siblings inheriting) is a single voting entity — one ballot, not one per person. They must designate a single mandataire.",
+      "annex.row.indivision.where": "Already done by D14 (one Owner record per ownership entity). Enforced by <code>Lot.ownerId</code> being 1:1.",
+      "annex.row.hybrid.c": "<strong>Hybrid AG flag in convocation</strong><br/><span class=\"smallcaps\">Art.&nbsp;3.87&nbsp;§1</span>",
+      "annex.row.hybrid.what": "If the AG is hybrid (some attendees in person, some online), this <strong>must</strong> be announced in the convocation. It can't be improvised at session start.",
+      "annex.row.hybrid.where": "<code>Assembly.mode = 'hybrid'</code> set at AG creation; convocation PDF generation reads this and inserts the legal language about distance participation. Mode change post-convocation requires a re-send.",
+      "annex.row.named.c": "<strong>Named &laquo; against &raquo; + &laquo; abstain &raquo; in PV</strong><br/><span class=\"smallcaps\">Art.&nbsp;3.87&nbsp;§10</span>",
+      "annex.row.named.what": "The PV must list the names of copropriétaires who voted against and those who abstained — not just the totals. The Brugmann PV does this literally.",
+      "annex.row.named.where": "<code>Resolution.tally.namedAgainst[]</code> and <code>namedAbstain[]</code> snapshot at vote close (from <code>Vote.castByOwnerId → Owner.displayName</code>). Rendered into the PV draft.",
+      "annex.glossary": "<strong>&laquo; Tally &raquo; / &laquo; Décompte &raquo;.</strong> The tally embedded on <code>Resolution.tally</code> is written <strong>once, at vote close</strong> (per V1.0 spec D4 — never live during voting), with totals, the threshold check, and the nominative arrays frozen for the PV. The progress bar the conductor sees while voting is open is computed <strong>client-side</strong> by summing the <code>votes/{lotId}</code> sub-collection — Firestore listeners push sub-second updates without ever touching the Resolution doc. That is what lets us avoid a hot-spot on the Resolution doc during the 30&nbsp;seconds when 100&nbsp;voters click Pour at once.",
+
+      "colo.eyebrow": "13 · Colophon",
+      "colo.h2": "What this plan is — and is not.",
+      "colo.p1": "This is the implementation roadmap. It is not a code patch — no file is modified by approving it. It is not the durable spec — that lives in <code>app-architecture.md §2.7 / §2.8</code> and the decisions log. It is not a delivery commitment in N weeks — phasing assumes one focused implementer.",
+      "colo.p2": "What's covered: AG drafting, convocation, live voting, PV draft and distribution. What is explicitly <em>not</em> covered: appels de fonds, decomptes, banking, USB voting devices, in-app PV signing, convocation auto-extraction. Those live in the deferred list per the locked scope.",
+
+      "miniNav.article": "Article",
+      "miniNav.plan": "Plan",
+      "miniNav.roadmap": "Roadmap",
+      "miniNav.ownerView": "Owner view",
+      "miniNav.cli": "CLI",
+      "miniNav.testing": "Testing",
+
+      "footer.updated": "Syndicable V1.1 — last updated 2026-05-08."
+    },
+
+    fr: {
+      "meta.title": "Syndicable V1.1 — Plan d'implémentation du module Assemblée Générale",
+      "meta.description": "Le plan d'implémentation de Syndicable V1.1 : rédiger une AG, envoyer les convocations, animer la session de vote en direct, et générer le PV.",
+
+      "lang.label": "Langue",
+      "lang.aria": "Basculer la langue entre français et anglais",
+
+      "nav.eyebrow": "Sections",
+      "nav.thesis": "La thèse",
+      "nav.scope": "Périmètre, figé",
+      "nav.choices": "Trois choix d'architecture",
+      "nav.dataModel": "Le modèle de données",
+      "nav.auth": "Auth — magic links publics",
+      "nav.stateMachines": "Machines à états",
+      "nav.liveSession": "La session en direct",
+      "nav.voteCast": "Sécurité de l'écriture du vote",
+      "nav.bookends": "Avant-AG et après-AG",
+      "nav.phasing": "Phasage",
+      "nav.openQuestions": "Questions ouvertes",
+      "nav.annex": "Annexe légale",
+      "nav.colophon": "Colophon",
+      "hero.pill.module": "Module&nbsp;·&nbsp;Assemblée&nbsp;Générale",
+      "hero.title": "Le module AG, de bout&nbsp;en&nbsp;bout.",
+      "hero.sub": "Rédiger une assemblée, envoyer les convocations, animer la session de vote en direct avec le syndic en chef d'orchestre, et produire le procès-verbal. Voici le plan d'implémentation — design et phasage figés, le code démarre à la validation.",
+
+      "thesis.eyebrow": "01 · La thèse",
+      "thesis.h2": "Ce que fait V1.1, qui l'utilise, et pourquoi c'est important.",
+      "thesis.p1": "Syndicable V1.0 livre déjà l'ossature d'une copropriété : copropriétés, lots, copropriétaires, lot-ownerships, clés de répartition, documents, journal d'activité, et le modèle de représentants de la Phase 14. Le nettoyage G6 récent a rendu le lien Lot-vers-Copropriétaire strictement 1:1 (<code>Lot.ownerId</code>, <code>LotOwnership</code> allégé). C'est sur ce socle que V1.1 s'appuie.",
+      "thesis.p2": "V1.1, c'est le <strong>module Assemblée Générale</strong>. Le syndic rédige une AG, envoie les convocations par e-mail avec un magic link, anime la session en direct en chef d'orchestre (ouvrir une résolution, suivre le décompte en direct, la clôturer), et génère le PV à la fin. Rien d'autre. Pas d'appels de fonds, pas de bancaire, pas de décomptes, pas de signature du PV in-app.",
+      "thesis.p3": "Le fil rouge, c'est l'exemple <strong>IGS&nbsp;/ Brugmann Ferme&nbsp;Rose</strong> : 166 copropriétaires, ~300 lots répartis sur trois clés de répartition (GEN, ASCENSEUR_9A, GARAGE), 18 résolutions à l'ordre du jour. Si V1.1 sait recréer le PV 2024 de Brugmann à partir d'une AG de test recréée, V1.1 est terminé.",
+      "thesis.p4": "Le substrat légal (Code civil belge, Livre&nbsp;3, articles 3.84–3.100, réforme post-2018) est vérifié. Les références doc ont été corrigées pour ne plus renvoyer à l'ancienne numérotation 577-x. L'architecture est figée dans <code>app-architecture.md §3.3</code> ; cet article en est la feuille de route.",
+
+      "scope.eyebrow": "02 · Périmètre, figé",
+      "scope.h2": "Ce qui sort en V1.1 — et ce qui ne sort pas.",
+      "scope.intro": "L'entrée du journal des décisions du 2026-05-08 a figé ceci. Tout ce qui n'est pas dans la colonne IN est mis en pause. La colonne OUT est la liste de travail de « tout ce qu'on veut un jour mais qu'on ne construira pas maintenant ».",
+      "scope.in.title": "Inclus · livré en V1.1",
+      "scope.in.li1": "Création d'AG + saisie manuelle de l'ordre du jour",
+      "scope.in.li2": "Convocation par e-mail avec magic link PWA, ordre du jour manuel, consentement à la transmission électronique présumé",
+      "scope.in.li3": "Page de vote publique, basée sur token — pas de Firebase Auth requis",
+      "scope.in.li4": "Même mécanisme de magic link pour le copropriétaire en propre et pour le titulaire d'une procuration",
+      "scope.in.li5": "Présence du copropriétaire via la page publique (en ligne) ; le syndic marque les présences physiques manuellement",
+      "scope.in.li6": "Flux syndic-chef-d'orchestre en direct : démarrer l'AG → ouvrir R<sub>n</sub> → décompte en direct → clôturer → terminer l'AG",
+      "scope.in.li7": "Bascule auto en abstention à la clôture pour les copropriétaires présents-mais-silencieux (DV3)",
+      "scope.in.li8": "UX « Cette résolution ne vous concerne pas » pour les lots à zéro quotité",
+      "scope.in.li9": "Arrivée tardive + sortie explicite pendant la session",
+      "scope.in.li10": "PV : auto-rédaction + édition libre + export PDF + envoi par e-mail + stockage en tant que <code>historic_pv</code>",
+      "scope.in.li11": "Obligations légales : avertissement préavis 15 jours, double quorum, vote en quotités, indivision = 1 bulletin, marqueur AG hybride, pour/contre nominatifs au PV",
+      "scope.out.title": "Hors · différé en phase 2 ou plus tard",
+      "scope.out.li1": "Extraction auto de la convocation depuis Word/PDF (différenciateur n°1 de Kevin)",
+      "scope.out.li2": "Canal convocation postal / recommandé — géré hors du système",
+      "scope.out.li3": "Surface de signature du PV in-app — le syndic signe le PDF hors-ligne et le ré-uploade",
+      "scope.out.li4": "Boîtiers de vote USB",
+      "scope.out.li5": "Flux automatique d'AG sur deuxième convocation — le syndic crée une nouvelle AG manuellement",
+      "scope.out.li6": "Points d'ordre du jour §3 soumis par les copropriétaires",
+      "scope.out.li7": "Pipeline d'upload des annexes — lien externe pour l'instant",
+      "scope.out.li8": "Automatisation du rappel de transmission du PV à 30 jours",
+      "scope.out.li9": "UI de la fenêtre de contestation 4 mois",
+
+      "choices.eyebrow": "03 · Trois choix d'architecture",
+      "choices.h2": "Les décisions dont tout le reste découle.",
+      "choices.intro": "Chacun de ces choix était une bifurcation. Chacun est désormais arrêté. La suite du plan part de l'hypothèse qu'ils sont actés.",
+      "choices.c1.num": "CHOIX&nbsp;01",
+      "choices.c1.h3": "Vote public basé sur token, pas Firebase Auth.",
+      "choices.c1.p1": "Les copropriétaires votent depuis une page publique du site, sans création de compte, sans mot de passe, sans OTP. Le token dans l'URL <em>est</em> l'identifiant. On a envisagé de réutiliser le flux d'invitation Phase 14 existant qui crée un doc Member avec rôle et scopes — mais ça laisse des artefacts d'adhésion persistants à nettoyer après l'AG, et ça oblige une copropriétaire de 75 ans, sur son téléphone, à passer par un OTP par e-mail à chaque fois.",
+      "choices.c1.p2": "La voie du token est plus légère et colle à l'UX réellement nécessaire. <strong>La Phase 14 reste responsable de la gestion des données copropriétaires</strong> entre les AG ; l'auth au moment du vote, c'est le token public. Les deux coexistent proprement.",
+      "choices.c2.num": "CHOIX&nbsp;02",
+      "choices.c2.h3": "Firestore uniquement — pas de Realtime Database pour V1.1.",
+      "choices.c2.p1": "Les écritures de vote demandent des transactions et de l'interrogation — c'est Firestore. Décompte en direct via listener de collection sur <code>votes</code> — c'est Firestore. Pointeur sur la résolution courante via listener sur <code>Assembly.session.currentResolutionId</code> — c'est Firestore. Le seul endroit où la RTDB l'emporterait, c'est la présence avec <code>onDisconnect()</code>, et on n'en a pas encore besoin.",
+      "choices.c2.p2": "À la place, un heartbeat de 60 secondes met à jour <code>Attendance.lastActiveAt</code> ; une Cloud Function planifiée bascule les lots en <code>left</code> après 3 minutes de silence. Pour une AG à 166 lots sur 2 heures, ça fait environ 20K écritures au total — confortablement dans le free-tier. <strong>Si on a un jour besoin de la RTDB pour la présence sur des AG à 1000+ lots, on l'ajoute plus tard</strong> sans toucher au modèle de données.",
+      "choices.c3.num": "CHOIX&nbsp;03",
+      "choices.c3.h3": "Contrôle manuel de la session de bout en bout.",
+      "choices.c3.p1": "Le syndic, c'est le chef d'orchestre. Rien ne s'auto-ouvre, rien ne s'auto-clôture, rien ne s'auto-transitionne. <code>startAssembly</code> est un bouton. <code>openResolution</code> est un bouton. <code>closeResolution</code> est un bouton — avec un dialogue de confirmation si un lot présent-et-concerné n'a pas voté, qui applique transactionnellement la règle d'auto-bascule en abstention à la confirmation. <code>endAssembly</code> est un bouton qui clôt d'abord automatiquement toute résolution encore ouverte.",
+      "choices.c3.p2": "C'est ainsi que les AG se déroulent <em>réellement</em> en salle : un président appelle chaque point, prend le vote, le déclare clôturé. On n'a pas besoin d'une machine à états qui remette en cause la main du syndic au volant.",
+
+      "data.eyebrow": "04 · Le modèle de données",
+      "data.h2": "Six nouvelles entités, un singleton.",
+      "data.p1": "V1.1 introduit sept nouvelles collections sous <code>organizations/{coproId}/assemblies/{aId}/</code> : <strong>Assembly</strong> elle-même (avec le sous-objet <code>session</code> embarqué), <strong>Resolution</strong> (avec <code>tally</code> embarqué à la clôture), <strong>Vote</strong> (un par Lot par Resolution, ID déterministe), <strong>Attendance</strong> (un par Lot, avec son état), <strong>AccessToken</strong> (clé = SHA-256 du secret — le secret n'atterrit jamais en base), <strong>ConvocationDelivery</strong> (suivi d'envoi e-mail par destinataire), et le document singleton <strong>PV</strong>.",
+      "data.p2": "Rien dans V1.0 ne change de forme. <code>Lot.ownerId</code>, <code>Lot.quotities[distributionKeyId]</code> et le registre Owner sont lus par V1.1 mais jamais écrits. Pas de migration à prévoir : V1.1 est purement additif.",
+      "data.fig1.alt": "Diagramme entité-relation pour Syndicable V1.1 : Copropriété, Lot, Owner, DistributionKey, Assembly, Resolution, Vote, Attendance, AccessToken, ConvocationDelivery, PV.",
+      "data.fig1.label": "Fig. 1",
+      "data.fig1.cap": "Entité-relation pour V1.1, dessinée sur le substrat V1.0.",
+      "data.p3": "Trois décisions de stockage méritent d'être nommées explicitement. <strong>Un doc Vote par Lot par Resolution</strong> signifie pas de contention (docs distincts par lot), une sémantique « le dernier cast écrase le précédent » gratuite, et un ID déterministe. <strong>Le tally est embarqué sur Resolution et calculé uniquement à la clôture</strong> — pas de hot-spot pendant le vote en direct. <strong>Le quorum est calculé à la demande</strong> à partir d'Attendance + <code>Lot.quotities</code> ; aucun compteur à maintenir.",
+
+      "auth.eyebrow": "05 · Auth",
+      "auth.h2": "Magic links publics, hashés au repos.",
+      "auth.p1": "Quand le syndic clique sur « Envoyer la convocation », une Cloud Function lit chaque Lot actif, parcourt l'ensemble des Owner uniques et, pour chaque Owner, génère un secret frais — 32 octets d'aléa cryptographique, encodés en base64url. Ce secret part à un seul endroit : le lien dans l'e-mail. Ce qui atterrit dans Firestore, c'est le hash <code>SHA-256</code> du secret comme clé du document. Le secret lui-même n'apparaît jamais dans notre base.",
+      "auth.p2": "Quand le destinataire clique sur le lien, la validation re-hash le paramètre d'URL et va chercher le doc. Une fuite de la base ne fuite aucun token actif — retrouver une pré-image en 256 bits est infaisable.",
+      "auth.fig2.alt": "Diagramme de séquence de la génération de token, de la validation, et du cast de vote pour le flux de magic link public.",
+      "auth.fig2.label": "Fig. 2",
+      "auth.fig2.cap": "Flux d'auth — émission du token → validation → écriture du vote.",
+      "auth.h3": "Sécurité du token en un coup d'œil",
+      "auth.li1": "<strong>Aléa URL-safe sur 256 bits</strong>, généré côté serveur avec <code>crypto.randomBytes(32).toString('base64url')</code>.",
+      "auth.li2": "<strong>Hashé en SHA-256</strong> avant stockage. Le lookup, c'est <code>db.doc(`.../${sha256(secret)}`).get()</code>.",
+      "auth.li3": "<strong>HTTPS uniquement</strong> pour la route publique.",
+      "auth.li4": "<strong>Validation rate-limited</strong> — 5/sec, 60/min par IP — défense en profondeur par-dessus la taille de l'espace de recherche.",
+      "auth.li5": "<strong>Limité à une seule Assembly</strong> via <code>assemblyId</code> ; impossible de voter sur une autre AG même en cas de fuite du token.",
+      "auth.li6": "<strong>Lié au Owner côté serveur</strong> ; le client ne peut pas dire au serveur « je veux voter pour un autre lot » — le serveur résout owner→lots tout seul.",
+      "auth.li7": "<strong>Révocable</strong> par le syndic via <code>revokeAccessToken</code> ; les appels suivants échouent.",
+      "auth.li8": "<strong>Expire automatiquement</strong> 24 heures après <code>Assembly.scheduledAt</code>.",
+      "auth.p3": "La même forme de token couvre la procuration : le syndic émet un token avec <code>recipientType = 'procuration_holder'</code>, l'<code>ownerId</code> du copropriétaire absent, et le nom et l'e-mail du mandataire. Le mandataire vote au nom des lots du copropriétaire absent ; le PV enregistre le nom du mandataire dans les tableaux <code>namedAgainst</code> / <code>namedAbstain</code>.",
+
+      "states.eyebrow": "06 · Machines à états",
+      "states.h2": "Trois petites machines à états finies.",
+      "states.p1": "Trois choses ont un cycle de vie : l'Assembly elle-même, chaque Resolution à l'ordre du jour, et l'Attendance par Lot. Aucune n'est large. Aucune ne s'auto-avance.",
+      "states.fig3a.alt": "Machine à états de l'Assembly : draft → convoked → live → ended, avec branches d'annulation.",
+      "states.fig3a.label": "Fig. 3a",
+      "states.fig3a.cap": "Cycle de vie de l'Assembly. L'annulation est bloquée une fois en <code>live</code>.",
+      "states.fig3b.alt": "Machine à états de la Resolution : pending → voting_open → voting_closed, avec une branche skipped.",
+      "states.fig3b.label": "Fig. 3b",
+      "states.fig3b.cap": "Cycle de vie de la Resolution. Rouvrir une résolution clôturée est interdit en V1.1 — on ajoute une nouvelle résolution à la place.",
+      "states.fig3c.alt": "Machine à états de l'Attendance : absent / present_online / present_in_person / left.",
+      "states.fig3c.label": "Fig. 3c",
+      "states.fig3c.cap": "Attendance par Lot. Les lots <code>absent</code> ne sont jamais comptés ; une fois rejoint, on figure au registre.",
+      "states.p2": "La règle intéressante porte sur l'Attendance. <strong>Les lots <code>absent</code> ne sont jamais comptés</strong> dans aucun tally — c'est le tas des « pas venus » de l'AG. <strong>Les lots <code>present_*</code> et <code>left</code> sont tous deux comptés comme « présents à un moment »</strong> pour l'auto-bascule en abstention. Une fois rejoint, on ne peut pas se soustraire au registre pour/contre/abstention en fermant son navigateur. C'est la lecture légale conservatrice et ça correspond au comportement d'une AG en présentiel : si on arrive et qu'on s'éclipse en silence, on figure comme ayant été là.",
+
+      "live.eyebrow": "07 · La session en direct",
+      "live.h2": "Animer une AG, pas à pas.",
+      "live.p1": "C'est le cœur de V1.1. Le syndic ouvre la vue chef d'orchestre ; les copropriétaires cliquent sur leur magic link et rejoignent depuis leur téléphone. Le chef d'orchestre voit une jauge de quorum en direct, la timeline de l'ordre du jour, un panneau de présence, et — une fois une résolution ouverte — le décompte en direct avec la liste des lots présents-et-concernés qui n'ont pas encore voté.",
+      "live.fig4.alt": "Séquence complète de session en direct : démarrage de l'AG, copropriétaires rejoignant via magic link, heartbeat, ouverture de résolution, vote, clôture avec dialogue d'auto-bascule, départ, fin de l'AG.",
+      "live.fig4.label": "Fig. 4",
+      "live.fig4.cap": "La session en direct, complète. Démarrer l'AG → les copropriétaires rejoignent → ouvrir R<sub>n</sub> → voter → clôturer → terminer l'AG.",
+      "live.p2": "Trois moments méritent un coup d'œil plus rapproché :",
+      "live.li.join": "<strong>Rejoindre.</strong> Quand un copropriétaire arrive pour la première fois sur la page publique, le serveur fait un upsert d'une ligne Attendance par lot qu'il possède avec <code>state = 'present_online'</code> dans une seule transaction. À partir de là, un heartbeat tourne toutes les 60 secondes.",
+      "live.li.open": "<strong>Ouvrir R<sub>n</sub>.</strong> Le chef d'orchestre bascule la résolution en <code>voting_open</code> et met à jour <code>Assembly.session.currentResolutionId</code>. Toutes les pages publiques reçoivent le changement via listener Firestore. Les lots à zéro quotité dans la clé de répartition de la résolution voient « Cette résolution ne vous concerne pas » ; tous les autres voient Pour / Contre / Abstention.",
+      "live.li.close": "<strong>Clôturer R<sub>n</sub>.</strong> Le chef d'orchestre clique sur Clôturer. Si quelqu'un de présent-et-concerné n'a pas voté, le serveur renvoie la liste et l'UI affiche un dialogue : <em>« X présents n'ont pas voté. Enregistrer en abstention ? »</em> À la confirmation, le serveur écrit les docs Vote d'auto-bascule <em>et</em> le tally <em>et</em> bascule le statut — le tout dans une seule transaction.",
+
+      "vote.eyebrow": "08 · Sécurité de l'écriture du vote",
+      "vote.h2": "La transaction qui doit être juste.",
+      "vote.p1": "Toutes les autres surfaces peuvent être ré-rendues, retentées, ou rattrapées. L'écriture du vote, non. <code>castVote</code>, c'est la fonction qu'on ne regrettera pas d'avoir écrite avec paranoïa.",
+      "vote.fig5.alt": "Chemin critique du cast de vote avec rate-limit, validation du token, et une transaction Firestore qui re-lit assembly, resolution, lot, key, et attendance avant d'écrire.",
+      "vote.fig5.label": "Fig. 5",
+      "vote.fig5.cap": "Chemin critique du cast de vote. Chaque vérification est faite côté serveur, dans une transaction.",
+      "vote.p2": "À l'intérieur de la transaction :",
+      "vote.li1": "Le token doit exister, ne doit pas être expiré, ne doit pas être révoqué.",
+      "vote.li2": "L'<code>assemblyId</code> de la requête doit correspondre au token.",
+      "vote.li3": "L'Assembly doit être en <code>session.state = 'live'</code>.",
+      "vote.li4": "La Resolution doit être en <code>status = 'voting_open'</code>.",
+      "vote.li5": "Le Lot doit appartenir à l'Owner du token et à la même copropriété.",
+      "vote.li6": "Le Lot doit avoir <code>quotities[R.distributionKeyId] &gt; 0</code>.",
+      "vote.li7": "La ligne Attendance doit exister et être dans un état <code>present_*</code>.",
+      "vote.p3": "Si quoi que ce soit échoue, l'appel renvoie <code>failed-precondition</code>. Si tout passe, le serveur écrit <code>votes/{lotId}</code> avec <code>quotityUsed</code> figé au moment du cast, incrémente l'<code>usageCount</code> du token, et commit.",
+      "vote.p4": "<strong>La sémantique de re-cast tombe gratuitement.</strong> L'ID du doc, c'est le <code>lotId</code> ; un deuxième cast écrase le premier. Last write wins. Le journal d'activité enregistre chaque cast — y compris les écrasements — donc la trace d'audit survit même quand le vote en direct ne survit pas.",
+      "vote.callout": "<strong>Que se passe-t-il si le syndic clique sur Clôturer pendant qu'un vote est en vol ?</strong> La transaction sérialise. Soit le vote atterrit avant la clôture (et est compté), soit la clôture atterrit en premier et le vote est rejeté avec <code>failed-precondition</code>. Pas de troisième issue.",
+
+      "book.eyebrow": "09 · Avant-AG et après-AG",
+      "book.h2": "Convocation à l'entrée, procès-verbal à la sortie.",
+      "book.p1": "La session en direct, c'est le milieu bruyant. Les deux extrémités font autant de travail, plus discrètement. La convocation émet les tokens qui authentifient la session ; le PV fige la trace légale après.",
+      "book.h3a": "Avant-AG : rédaction et convocation",
+      "book.p2": "Le syndic crée l'AG (date, lieu, type, mode), ajoute les résolutions une par une, puis clique sur « Envoyer la convocation ». La CF lit les lots actifs et les copropriétaires uniques, applique le contrôle des 15 jours (avertissement-puis-passer-outre, pas un blocage dur, conformément au §3 de la loi), génère un secret par copropriétaire, écrit le doc access-token avec le hash en clé, construit la convocation HTML et PDF par langue, envoie l'e-mail via Resend, et enregistre la livraison. <strong>Les procurations</strong> peuvent être émises à n'importe quel moment avant l'AG par le même type d'appel — <code>recipientType = 'procuration_holder'</code> avec l'identifiant du copropriétaire absent et l'e-mail du mandataire.",
+      "book.fig6.alt": "Séquence avant-AG : créer l'assemblée, ajouter les résolutions, envoyer la convocation, générer les tokens par copropriétaire, envoyer l'e-mail + le PDF, émettre les tokens de procuration.",
+      "book.fig6.label": "Fig. 6",
+      "book.fig6.cap": "Séquence avant-AG. Envoi des convocations + émission des procurations.",
+      "book.h3b": "Après-AG : rédaction du PV et distribution",
+      "book.p3": "Quand l'AG se termine, le chef d'orchestre fait apparaître un bouton « Générer le brouillon de PV ». La CF parcourt l'attendance, les résolutions et les votes (collection-group), et écrit un corps PV structuré : liste de présence, par résolution {Pour, Contre, Abstention en quotités, seuil, accept/reject, contre nominatifs, abstentions nominatives}. Le syndic édite les sections en texte libre (rapport CC, narratif), exporte en PDF, et distribue par e-mail — le PDF atterrit en stockage en tant que Document <code>historic_pv</code>. La signature du PV se fait hors-ligne ; le PDF signé est ré-uploadé via le flux documentaire existant.",
+      "book.fig7.alt": "Séquence après-AG : générer le brouillon de PV, éditer le texte libre, exporter le PDF via puppeteer, distribuer par e-mail.",
+      "book.fig7.label": "Fig. 7",
+      "book.fig7.cap": "Séquence après-AG. Auto-rédaction → édition → PDF → distribution.",
+      "book.callout": "Le corps du PV fige tous les tallies et les votes nominatifs au moment de la clôture. Même si la donnée Firestore est éditée plus tard, <strong>le PV reste la trace légale</strong>. Cette décision de snapshot, c'est ce qui nous permet de garder le modèle de données en direct épuré.",
+
+      "phase.eyebrow": "10 · Phasage",
+      "phase.h2": "Cinq phases, chacune livrable.",
+      "phase.intro": "Chaque phase fait grosso modo une à deux semaines de travail concentré et se termine sur quelque chose qu'un vrai syndic pourrait utiliser sans le reste. On ne livre pas V1.1 en ratifiant le plan ; on le livre en clôturant chaque phase contre la recréation de Brugmann.",
+      "phase.A.tag": "Phase&nbsp;A",
+      "phase.A.h3": "Schéma + rédaction d'AG",
+      "phase.A.p": "Types et Cloud Functions pour create / update / cancel / CRUD de l'ordre du jour. Liste des AG en frontend et éditeur d'avant-AG. Vérification : les 18 résolutions Brugmann saisies, éditées, annulées.",
+      "phase.B.tag": "Phase&nbsp;B",
+      "phase.B.h3": "Convocation + magic links",
+      "phase.B.p": "<code>sendConvocation</code>, tokens de procuration, révocation, templates d'e-mail, génération de PDF, squelette de la route publique, <code>validateToken</code>. Vérification : 166 e-mails partent, les magic links arrivent au nom de la bonne personne.",
+      "phase.C.tag": "Phase&nbsp;C",
+      "phase.C.h3": "Session en direct",
+      "phase.C.p": "Démarrer / terminer, rejoindre / quitter / heartbeat, ouvrir / clôturer / passer une résolution, <code>castVote</code>, basculer en présentiel, nettoyage des attendances obsolètes. UI en direct du chef d'orchestre et de la page publique. Vérification : bout-en-bout avec 5 copropriétaires de test et auto-bascule à la clôture.",
+      "phase.D.tag": "Phase&nbsp;D",
+      "phase.D.h3": "Polish quorum + tally",
+      "phase.D.p": "Helper de quorum côté serveur, helpers de query symétriques, snapshot du tally avec exceptions nominatives. Jauge de double quorum en direct dans la vue chef d'orchestre. Vérification : reproduire les chiffres par résolution de Brugmann.",
+      "phase.E.tag": "Phase&nbsp;E",
+      "phase.E.h3": "Brouillon de PV + distribution",
+      "phase.E.p": "<code>generatePvDraft</code>, édition libre, <code>exportPvPdf</code>, <code>distributePv</code>, template d'e-mail. Mode après-AG du chef d'orchestre. Vérification : le PDF du PV correspond à l'échantillon IGS dans une tolérance raisonnable.",
+      "phase.outro": "<em>Une fois la Phase E livrée, V1.1 est terminé.</em>",
+
+      "oq.eyebrow": "11 · Questions ouvertes",
+      "oq.h2": "Dix points à trancher au fil des phases.",
+      "oq.intro": "Aucun ne bloque la Phase A. Ils sont signalés pour qu'on en tranche un à chaque phase qui les rencontre. La colonne recommandation est ma meilleure lecture actuelle ; la décision finale revient à l'utilisateur.",
+      "oq.th.num": "#",
+      "oq.th.q": "Question",
+      "oq.th.r": "Recommandation",
+      "oq.q1": "Rôle des lots <code>left</code> dans l'auto-bascule en abstention à la clôture.",
+      "oq.r1": "Les traiter comme <strong>présents</strong> (auto-abstention) — lecture légale conservatrice, conforme à IGS.",
+      "oq.q2": "Pipeline de génération PDF — Puppeteer + Chromium vs <code>pdfkit</code> vs service externe.",
+      "oq.r2": "<strong>Puppeteer en CF</strong> — HTML/CSS complet, même approche que pour le PV. Pré-chauffage pendant l'AG.",
+      "oq.q3": "Intervalle du heartbeat et seuil d'obsolescence.",
+      "oq.r3": "<strong>Heartbeat 60s / seuil 3min.</strong> Si problème de coût sur des AG à 360 lots, ajouter la présence RTDB plus tard.",
+      "oq.q4": "Collision sur le pointeur de résolution-courante quand deux navigateurs syndic se tirent la bourre.",
+      "oq.r4": "Concurrence optimiste via précondition <code>ifMatch</code> sur <code>session.currentResolutionId</code>.",
+      "oq.q5": "Sémantique de re-cast — un copropriétaire peut-il changer son vote jusqu'à la clôture ?",
+      "oq.r5": "<strong>Oui</strong> — last write wins, chaque cast journalisé. À confirmer avec l'utilisateur.",
+      "oq.q6": "Procuration + vote pour ses propres lots — un mandataire qui est aussi copropriétaire.",
+      "oq.r6": "<strong>Deux magic links distincts</strong> — trace d'audit plus claire, résolution plus simple.",
+      "oq.q7": "Choix de la langue de convocation — PDF localisé par copropriétaire ou PDF unique ?",
+      "oq.r7": "<strong>PDF localisé par copropriétaire.</strong> Le compromis est acceptable ; la qualité de l'artefact légal compte.",
+      "oq.q8": "Présents en physique sur AG hybride — leur faut-il aussi un magic link pour voter ?",
+      "oq.r8": "<strong>Oui</strong>, même page publique sur leur propre téléphone. La bascule du syndic enregistre le fait « présent en physique » pour le PV.",
+      "oq.q9": "Journal d'audit pour les changements de vote — entrée <code>activity_log</code> distincte par re-cast ?",
+      "oq.r9": "<strong>Oui</strong> — trace d'audit par vote ; le syndic peut filtrer après l'AG.",
+      "oq.q10": "<code>Resolution.itemType = 'information'</code> — listée au PV ou suivie autrement ?",
+      "oq.r10": "À confirmer avec l'utilisateur. Le plan le gère via <code>itemType: 'vote' | 'information'</code>.",
+
+      "annex.eyebrow": "12 · Annexe légale",
+      "annex.h2": "Six contraintes belges, gravées dans le module.",
+      "annex.intro": "Le Code civil belge (Livre&nbsp;3, réforme post-2018) prescrit comment une AG de copropriétaires se convoque, se tient, se vote, et se consigne. Six règles sont en amont de chaque décision de design dans V1.1 — le modèle d'auth, le modèle de données, le flux de session en direct, et le PV. Elles ne sont pas une checklist de conformité ajoutée après coup ; elles ont façonné le système. Voici où chacune affleure dans le code.",
+      "annex.th.constraint": "Contrainte",
+      "annex.th.what": "Ce que ça veut dire",
+      "annex.th.where": "Où ça affleure dans le système",
+      "annex.row.notice15.c": "<strong>Préavis de 15&nbsp;jours</strong><br/><span class=\"smallcaps\">Art.&nbsp;3.87&nbsp;§3</span>",
+      "annex.row.notice15.what": "La convocation doit être envoyée ≥&nbsp;15&nbsp;jours avant l'AG. Les 21&nbsp;jours qu'utilisent certains immeubles relèvent d'une bonne pratique du règlement d'ordre intérieur, pas du Code.",
+      "annex.row.notice15.where": "<code>sendConvocation</code> vérifie <code>assembly.scheduledAt - now ≥ 15&nbsp;jours</code> ; en deçà, renvoie un avertissement souple que le syndic peut passer outre (vraie urgence, ou risque assumé par les copropriétaires).",
+      "annex.row.quorum.c": "<strong>Double quorum à l'ouverture</strong><br/><span class=\"smallcaps\">Art.&nbsp;3.87&nbsp;§5</span>",
+      "annex.row.quorum.what": "L'AG ne délibère valablement que si à l'ouverture <strong>soit</strong> (a)&nbsp;>½ des copropriétaires sont présents/représentés <em>et</em> détiennent ≥½ des quotités, <strong>soit</strong> (b)&nbsp;les présents/représentés détiennent >¾ des quotités. À défaut : seconde AG ≥&nbsp;15&nbsp;jours plus tard, sans condition de quorum (§6).",
+      "annex.row.quorum.where": "Calculé en direct pendant l'AG depuis Attendance + <code>Lot.quotities[GEN]</code>. La vue chef d'orchestre affiche la jauge. Aucune résolution ne peut être ouverte si le quorum n'est pas atteint.",
+      "annex.row.quotites.c": "<strong>Vote en quotités</strong><br/><span class=\"smallcaps\">Art.&nbsp;3.87&nbsp;§2</span>",
+      "annex.row.quotites.what": "Les votes sont pondérés par les quotités du lot (sa part de l'immeuble, sommée à 10&nbsp;000). Jamais en têtes. Un Pour d'un lot à 500 quotités pèse 500 dans le décompte.",
+      "annex.row.quotites.where": "<code>Vote.quotityUsed</code> fige la quotité du lot dans la clé de répartition de la résolution au moment du cast. Les tallies somment ces quotités, ne comptent jamais les bulletins.",
+      "annex.row.indivision.c": "<strong>Indivision = 1 bulletin par lot</strong><br/><span class=\"smallcaps\">Art.&nbsp;3.87&nbsp;§1</span>",
+      "annex.row.indivision.what": "Un lot détenu en indivision (couple, fratrie en succession) est une seule entité votante — un bulletin, pas un par personne. Ils doivent désigner un seul mandataire.",
+      "annex.row.indivision.where": "Déjà acté par la décision&nbsp;D14 (un seul Owner par entité de propriété). Garanti par <code>Lot.ownerId</code> en 1:1.",
+      "annex.row.hybrid.c": "<strong>Marqueur AG hybride dans la convocation</strong><br/><span class=\"smallcaps\">Art.&nbsp;3.87&nbsp;§1</span>",
+      "annex.row.hybrid.what": "Si l'AG est hybride (certains présents en salle, d'autres en ligne), <strong>cela doit</strong> être annoncé dans la convocation. Pas d'improvisation au démarrage de la séance.",
+      "annex.row.hybrid.where": "<code>Assembly.mode = 'hybrid'</code> est posé à la création de l'AG ; la génération du PDF de convocation lit ce champ et insère le langage légal sur la participation à distance. Un changement de mode après convocation impose un renvoi.",
+      "annex.row.named.c": "<strong>&laquo; Contre &raquo; et &laquo; abstention &raquo; nominatifs au PV</strong><br/><span class=\"smallcaps\">Art.&nbsp;3.87&nbsp;§10</span>",
+      "annex.row.named.what": "Le PV doit lister les noms des copropriétaires qui ont voté contre et de ceux qui se sont abstenus — pas seulement les totaux. Le PV de Brugmann fait littéralement ça.",
+      "annex.row.named.where": "<code>Resolution.tally.namedAgainst[]</code> et <code>namedAbstain[]</code> sont snapshotés à la clôture du vote (depuis <code>Vote.castByOwnerId → Owner.displayName</code>). Rendus dans le brouillon de PV.",
+      "annex.glossary": "<strong>&laquo; Tally &raquo; / &laquo; Décompte &raquo;.</strong> Le tally embarqué sur <code>Resolution.tally</code> est écrit <strong>une fois, à la clôture</strong> (per V1.0 spec D4 — jamais en direct pendant le vote), avec les totaux, le contrôle de seuil, et les tableaux nominatifs figés pour le PV. La barre de progression que voit le chef d'orchestre pendant le vote ouvert est calculée <strong>côté client</strong> en sommant la sous-collection <code>votes/{lotId}</code> — les listeners Firestore poussent des mises à jour sub-secondes sans jamais toucher au doc Resolution. C'est ce qui nous évite un hot-spot sur le doc Resolution pendant les 30&nbsp;secondes où 100&nbsp;votants cliquent Pour en même temps.",
+
+      "colo.eyebrow": "13 · Colophon",
+      "colo.h2": "Ce qu'est ce plan — et ce qu'il n'est pas.",
+      "colo.p1": "C'est la feuille de route d'implémentation. Ce n'est pas un patch de code — aucun fichier n'est modifié par sa validation. Ce n'est pas la spec durable — celle-ci vit dans <code>app-architecture.md §2.7 / §2.8</code> et dans le journal des décisions. Ce n'est pas un engagement de livraison à N semaines — le phasage suppose un seul implémenteur concentré.",
+      "colo.p2": "Ce qui est couvert : rédaction d'AG, convocation, vote en direct, brouillon et distribution du PV. Ce qui n'est explicitement <em>pas</em> couvert : appels de fonds, décomptes, bancaire, boîtiers de vote USB, signature du PV in-app, extraction automatique de la convocation. Tout cela vit dans la liste différée selon le périmètre figé.",
+
+      "miniNav.article": "Article",
+      "miniNav.plan": "Plan",
+      "miniNav.roadmap": "Feuille de route",
+      "miniNav.ownerView": "Vue copropriétaire",
+      "miniNav.cli": "CLI",
+      "miniNav.testing": "Tests",
+
+      "footer.updated": "Syndicable V1.1 — dernière mise à jour 2026-05-08."
+    }
+  };
+</script>
+
+<script src="app.js" defer></script>
+
+</body>
+</html>

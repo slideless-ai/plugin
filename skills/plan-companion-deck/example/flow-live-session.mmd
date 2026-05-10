@@ -1,0 +1,80 @@
+sequenceDiagram
+    autonumber
+    actor Syndic
+    actor Owner
+    participant Pub as Public voter page
+    participant Cnd as Syndic conductor
+    participant CF as Cloud Functions
+    participant FS as Firestore
+
+    Syndic->>Cnd: Start AG
+    Cnd->>CF: startAssembly(aId)
+    CF->>FS: assembly.session.state=live, openedAt=now, status=live
+    CF-->>Cnd: ok
+    Cnd->>FS: subscribe (assembly, attendance, resolutions, votes)
+
+    Note over Owner: Owner clicks magic link
+    Owner->>Pub: GET /vote/{secret}
+    Pub->>CF: validateToken(secret)
+    CF->>FS: get access_tokens/{sha256(secret)}
+    CF->>FS: read assembly + owner + lots(ownerId=token.ownerId)
+    CF-->>Pub: ownerName, lots, assemblyState, currentResolutionId
+    Pub->>CF: joinAssembly(secret)
+    CF->>FS: tx upsert attendance/{lotId} state=present_online, joinedAt
+    CF-->>Pub: ok
+    Pub->>FS: subscribe assembly.session, currentResolution
+
+    loop while AG live
+        Pub->>CF: heartbeat(secret) every 60s
+        CF->>FS: tx update attendance/{lotId}.lastActiveAt
+    end
+
+    Note over Syndic: For each agenda item
+
+    Syndic->>Cnd: Open R_n
+    Cnd->>CF: openResolution(aId, rId)
+    CF->>FS: tx set resolution.status=voting_open, openedAt, assembly.session.currentResolutionId=rId
+    CF-->>Cnd: ok
+    Note over Pub: All public pages receive change via listener
+
+    alt lot HAS quotites in R.distributionKeyId
+        Pub->>Owner: show Pour / Contre / Abstention
+    else lot has 0 quotites
+        Pub->>Owner: show "Cette resolution ne vous concerne pas"
+    end
+
+    Owner->>Pub: clicks Pour
+    Pub->>CF: castVote(secret, rId, lotId, choice=for)
+    CF->>FS: tx validate token + R.status=voting_open + lot.ownerId match + quotite>0 + Attendance present
+    CF->>FS: tx write votes/{lotId} quotityUsed snapshot, source=token
+    CF-->>Pub: ok
+    Pub->>Owner: "Vous avez vote Pour. Vous pouvez changer jusqu'a la cloture."
+    Note over Cnd: Conductor sees live count update via listener
+
+    Note over Syndic: Manual close
+    Syndic->>Cnd: Close R_n
+    Cnd->>CF: closeResolution(aId, rId, confirmAutoDefault=false)
+    alt all present-concerned lots have voted
+        CF->>FS: tx write Resolution.tally + status=voting_closed
+        CF-->>Cnd: ok
+    else some present-concerned lots have not voted
+        CF-->>Cnd: pendingLotIds
+        Cnd->>Syndic: dialog "X presents non votes. Enregistrer en abstention?"
+        Syndic->>Cnd: confirms
+        Cnd->>CF: closeResolution(aId, rId, confirmAutoDefault=true)
+        CF->>FS: tx write auto-default abstain votes (source=auto_default_at_close) + tally + status=voting_closed
+        CF-->>Cnd: ok
+    end
+    Note over Pub: Public pages see status change
+
+    Note over Syndic: People can leave during the session
+    Owner->>Pub: clicks Quitter l'AG
+    Pub->>CF: leaveAssembly(secret)
+    CF->>FS: attendance/{lotId}.state=left, leftAt
+
+    Note over Syndic: End AG
+    Syndic->>Cnd: End AG
+    Cnd->>CF: endAssembly(aId)
+    CF->>FS: tx auto-close any open R then set session.state=ended and status=ended
+    CF-->>Cnd: ok
+    Note over Pub: Public pages show "L'AG est terminee"

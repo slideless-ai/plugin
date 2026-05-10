@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title data-i18n-key="meta.title">PROJECT — Plan</title>
+<meta name="description" data-i18n-key-attr="content" data-i18n-key="meta.description" content="Editorial write-up of the PROJECT plan." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<script>
+  // Pre-paint language resolver — avoids FOUC on language switch.
+  // Same localStorage key as plan.html + roadmap.html so the user's
+  // choice survives cross-page navigation. Update LS_KEY in app.js too.
+  (function () {
+    try {
+      var saved = window.localStorage.getItem('plan-companion.lang');
+      if (saved !== 'en' && saved !== 'fr') saved = 'en';
+      document.documentElement.setAttribute('lang', saved);
+      document.documentElement.setAttribute('data-lang', saved);
+    } catch (e) {
+      document.documentElement.setAttribute('lang', 'en');
+      document.documentElement.setAttribute('data-lang', 'en');
+    }
+  })();
+</script>
+</head>
+<body>
+
+<!-- Cross-page mini-nav (shared on all 3 pages, only the is-current tab changes) -->
+<header class="miniNav" aria-label="Deck pages">
+  <div class="miniNav-inner">
+    <span class="miniNav-mark"><span class="nav-dot"></span><span>PROJECT</span></span>
+    <nav class="miniNav-tabs" aria-label="Sibling pages">
+      <a class="miniNav-tab is-current" href="./article.html" aria-current="page" data-i18n-key="miniNav.article">Article</a>
+      <a class="miniNav-tab" href="./plan.html" data-i18n-key="miniNav.plan">Plan</a>
+      <a class="miniNav-tab" href="./roadmap.html" data-i18n-key="miniNav.roadmap">Roadmap</a>
+    </nav>
+  </div>
+</header>
+
+<div class="shell">
+
+  <aside class="nav" aria-label="Sections">
+    <div class="nav-mark">
+      <span class="nav-dot"></span>
+      <span>PROJECT</span>
+    </div>
+    <div class="nav-eyebrow" data-i18n-key="nav.eyebrow">Sections</div>
+    <ol>
+      <!-- Replace with your section list. Each item maps to a section[id]. -->
+      <li><a href="#thesis" data-i18n-key="nav.thesis">The thesis</a></li>
+      <li><a href="#scope" data-i18n-key="nav.scope">Scope</a></li>
+      <li><a href="#choices" data-i18n-key="nav.choices">Architectural choices</a></li>
+      <li><a href="#data-model" data-i18n-key="nav.dataModel">Data model</a></li>
+      <li><a href="#phasing" data-i18n-key="nav.phasing">Phasing</a></li>
+      <li><a href="#colophon" data-i18n-key="nav.colophon">Colophon</a></li>
+    </ol>
+
+    <div class="lang-toggle">
+      <span class="lang-toggle-label" data-i18n-key="lang.label">Language</span>
+      <button
+        type="button"
+        class="lang-switch"
+        id="lang-switch"
+        role="switch"
+        aria-checked="false"
+        aria-label="Switch language between English and French"
+        data-i18n-key-attr="aria-label"
+        data-i18n-key="lang.aria"
+      >
+        <span data-lang-opt="en">EN</span>
+        <span data-lang-opt="fr">FR</span>
+      </button>
+    </div>
+  </aside>
+
+  <main>
+
+    <!-- ─────────── HERO ─────────── -->
+    <section id="hero" aria-labelledby="hero-h">
+      <div class="hero-meta">
+        <span class="pill brand"><span class="dot"></span>Version&nbsp;X.Y</span>
+        <span class="pill purple" data-i18n-key="hero.pill.module">Module&nbsp;·&nbsp;NAME</span>
+        <span class="pill">YYYY-MM-DD</span>
+      </div>
+      <h1 id="hero-h" class="hero-title" data-i18n-key="hero.title">A short, evocative title.</h1>
+      <p class="hero-sub" data-i18n-key="hero.sub">
+        Two-sentence pitch of what this plan covers and why anyone reading it should care.
+      </p>
+      <div class="hero-rule"></div>
+    </section>
+
+    <!-- ─────────── 1. THESIS ─────────── -->
+    <section id="thesis">
+      <div class="prose">
+        <span class="eyebrow" data-i18n-key="thesis.eyebrow">01 · The thesis</span>
+        <h2 data-i18n-key="thesis.h2">What this plan does, who uses it, and why it matters.</h2>
+        <p data-i18n-key="thesis.p1">…</p>
+      </div>
+    </section>
+
+    <!-- Add 8–12 more sections matching your plan's structure. -->
+    <!-- See the canonical example deck for: scope (twocol), choices (choice cards), data-model (figure breakouts), phasing (5-phase strip), tables (legal annex), callouts. -->
+
+    <!-- ─────────── PHASING ─────────── -->
+    <section id="phasing">
+      <div class="prose-wide">
+        <span class="eyebrow" data-i18n-key="phase.eyebrow">N · Phasing</span>
+        <h2 data-i18n-key="phase.h2">Five phases, each shippable.</h2>
+        <p class="prose" data-i18n-key="phase.intro">Each phase ends in something a real user could use without the rest.</p>
+
+        <div class="phases">
+          <div class="phase">
+            <span class="phase-tag">Phase&nbsp;A</span>
+            <h3 data-i18n-key="phase.A.h3">Phase A title</h3>
+            <p data-i18n-key="phase.A.p">One-sentence description.</p>
+          </div>
+          <div class="phase">
+            <span class="phase-tag">Phase&nbsp;B</span>
+            <h3 data-i18n-key="phase.B.h3">Phase B title</h3>
+            <p data-i18n-key="phase.B.p">One-sentence description.</p>
+          </div>
+          <div class="phase">
+            <span class="phase-tag">Phase&nbsp;C</span>
+            <h3 data-i18n-key="phase.C.h3">Phase C title</h3>
+            <p data-i18n-key="phase.C.p">One-sentence description.</p>
+          </div>
+          <div class="phase">
+            <span class="phase-tag">Phase&nbsp;D</span>
+            <h3 data-i18n-key="phase.D.h3">Phase D title</h3>
+            <p data-i18n-key="phase.D.p">One-sentence description.</p>
+          </div>
+          <div class="phase">
+            <span class="phase-tag">Phase&nbsp;E</span>
+            <h3 data-i18n-key="phase.E.h3">Phase E title</h3>
+            <p data-i18n-key="phase.E.p">One-sentence description.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────── COLOPHON ─────────── -->
+    <section id="colophon">
+      <div class="prose">
+        <span class="eyebrow" data-i18n-key="colo.eyebrow">N+1 · Colophon</span>
+        <h2 data-i18n-key="colo.h2">What this plan is — and is not.</h2>
+        <p data-i18n-key="colo.p1">…</p>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<footer>
+  <div data-i18n-key="footer.updated">PROJECT — last updated YYYY-MM-DD.</div>
+</footer>
+
+<script>
+  // Fill in BOTH languages. The keys are referenced from `data-i18n-key="..."`
+  // attributes above. Keep keys identical between en/fr.
+  window.I18N = {
+    en: {
+      "meta.title": "PROJECT — Plan",
+      "meta.description": "Editorial write-up of the PROJECT plan.",
+
+      "lang.label": "Language",
+      "lang.aria": "Switch language between English and French",
+
+      "miniNav.article": "Article",
+      "miniNav.plan": "Plan",
+      "miniNav.roadmap": "Roadmap",
+
+      "nav.eyebrow": "Sections",
+      "nav.thesis": "The thesis",
+      "nav.scope": "Scope",
+      "nav.choices": "Architectural choices",
+      "nav.dataModel": "Data model",
+      "nav.phasing": "Phasing",
+      "nav.colophon": "Colophon",
+
+      "hero.pill.module": "Module&nbsp;·&nbsp;NAME",
+      "hero.title": "A short, evocative title.",
+      "hero.sub": "Two-sentence pitch of what this plan covers and why anyone reading it should care.",
+
+      "thesis.eyebrow": "01 · The thesis",
+      "thesis.h2": "What this plan does, who uses it, and why it matters.",
+      "thesis.p1": "…",
+
+      "phase.eyebrow": "N · Phasing",
+      "phase.h2": "Five phases, each shippable.",
+      "phase.intro": "Each phase ends in something a real user could use without the rest.",
+      "phase.A.h3": "Phase A title", "phase.A.p": "One-sentence description.",
+      "phase.B.h3": "Phase B title", "phase.B.p": "One-sentence description.",
+      "phase.C.h3": "Phase C title", "phase.C.p": "One-sentence description.",
+      "phase.D.h3": "Phase D title", "phase.D.p": "One-sentence description.",
+      "phase.E.h3": "Phase E title", "phase.E.p": "One-sentence description.",
+
+      "colo.eyebrow": "N+1 · Colophon",
+      "colo.h2": "What this plan is — and is not.",
+      "colo.p1": "…",
+
+      "footer.updated": "PROJECT — last updated YYYY-MM-DD."
+    },
+
+    fr: {
+      "meta.title": "PROJECT — Plan",
+      "meta.description": "Présentation éditoriale du plan PROJECT.",
+
+      "lang.label": "Langue",
+      "lang.aria": "Basculer la langue entre français et anglais",
+
+      "miniNav.article": "Article",
+      "miniNav.plan": "Plan",
+      "miniNav.roadmap": "Feuille de route",
+
+      "nav.eyebrow": "Sections",
+      "nav.thesis": "La thèse",
+      "nav.scope": "Périmètre",
+      "nav.choices": "Choix d'architecture",
+      "nav.dataModel": "Modèle de données",
+      "nav.phasing": "Phasage",
+      "nav.colophon": "Colophon",
+
+      "hero.pill.module": "Module&nbsp;·&nbsp;NOM",
+      "hero.title": "Un titre court et évocateur.",
+      "hero.sub": "Deux phrases de pitch sur ce que couvre ce plan et pourquoi le lecteur devrait s'y intéresser.",
+
+      "thesis.eyebrow": "01 · La thèse",
+      "thesis.h2": "Ce que fait ce plan, qui l'utilise, et pourquoi c'est important.",
+      "thesis.p1": "…",
+
+      "phase.eyebrow": "N · Phasage",
+      "phase.h2": "Cinq phases, chacune livrable.",
+      "phase.intro": "Chaque phase se termine sur quelque chose qu'un vrai utilisateur peut utiliser sans le reste.",
+      "phase.A.h3": "Titre Phase A", "phase.A.p": "Description en une phrase.",
+      "phase.B.h3": "Titre Phase B", "phase.B.p": "Description en une phrase.",
+      "phase.C.h3": "Titre Phase C", "phase.C.p": "Description en une phrase.",
+      "phase.D.h3": "Titre Phase D", "phase.D.p": "Description en une phrase.",
+      "phase.E.h3": "Titre Phase E", "phase.E.p": "Description en une phrase.",
+
+      "colo.eyebrow": "N+1 · Colophon",
+      "colo.h2": "Ce qu'est ce plan — et ce qu'il n'est pas.",
+      "colo.p1": "…",
+
+      "footer.updated": "PROJECT — dernière mise à jour YYYY-MM-DD."
+    }
+  };
+</script>
+
+<script src="app.js" defer></script>
+
+</body>
+</html>

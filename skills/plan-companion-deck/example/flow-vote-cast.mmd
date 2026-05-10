@@ -1,0 +1,27 @@
+sequenceDiagram
+    autonumber
+    participant Pub as Public voter page
+    participant CF as castVote
+    participant FS as Firestore (tx)
+
+    Pub->>CF: castVote(secret, resolutionId, lotId, choice)
+    CF->>CF: rate-limit check per IP, 5 per sec and 60 per min
+    CF->>FS: get access_tokens/{sha256(secret)}
+    alt token missing or expired or revoked
+        CF-->>Pub: 401 unauthorized
+    end
+    CF->>CF: assert assemblyId from token == request
+
+    CF->>FS: BEGIN TRANSACTION
+    FS->>FS: read assembly (must be session.state=live)
+    FS->>FS: read resolution (must be status=voting_open)
+    FS->>FS: read lot (must be lot.ownerId == token.ownerId AND lot.coproprieteId match)
+    FS->>FS: read distribution_key.entries[lotId] (must be > 0)
+    FS->>FS: read attendance/{lotId} (must exist, state is present_online or present_in_person)
+    alt any check fails
+        CF-->>Pub: 412 failed-precondition with reason
+    end
+    FS->>FS: write votes/{lotId} resolutionId, lotId, ownerId, choice, quotityUsed snapshot, source=token, accessTokenId, castAt now
+    CF->>FS: COMMIT
+    CF-->>Pub: ok
+    Note over Pub,FS: token usage (lastUsedAt, usageCount) is batched via heartbeat, not written here

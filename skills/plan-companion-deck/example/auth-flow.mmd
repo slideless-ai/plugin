@@ -1,0 +1,30 @@
+sequenceDiagram
+    autonumber
+    participant Syndic
+    participant CF as Cloud Function
+    participant FS as Firestore
+    participant Email
+    participant Owner
+
+    Syndic->>CF: sendConvocation(assemblyId)
+    CF->>FS: read active Lots + Owners
+    loop per Owner with active lots
+        CF->>CF: generate secret (256-bit URL-safe)
+        CF->>FS: write access_tokens/{sha256(secret)}
+        CF->>Email: send convocation w/ link /vote/{secret}
+        CF->>FS: write convocation_deliveries/{tokenId}
+    end
+    CF-->>Syndic: { tokenCount, deliveryStatus }
+
+    Note over Owner: Time passes...
+
+    Owner->>Owner: clicks magic link
+    Owner->>CF: validateToken(secret)
+    CF->>FS: get access_tokens/{sha256(secret)}
+    CF->>CF: check expiresAt, revokedAt, assembly.status
+    CF-->>Owner: sessionContext (ownerId, lotIds, assemblyState)
+
+    Owner->>CF: castVote(secret, resolutionId, lotId, choice)
+    CF->>FS: validate token + R.status='voting_open' + lot ownership + quotite>0 + Attendance present
+    CF->>FS: write vote in transaction
+    CF-->>Owner: ok

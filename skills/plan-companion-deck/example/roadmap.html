@@ -1,0 +1,643 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title data-i18n-key="meta.title">Syndicable V1.1 — Feuille de route</title>
+<meta name="description" data-i18n-key-attr="content" data-i18n-key="meta.description" content="Suivi d'implémentation de Syndicable V1.1 — phases livrées, branches, PRs et commits." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<style>
+  /* Summary table — page-local, doesn't leak into shared styles.css */
+  .roadmap-summary {
+    margin: 1.5rem 0 2rem;
+  }
+  .roadmap-summary-head {
+    font-size: 1.05rem;
+    font-weight: 600;
+    margin: 0 0 0.25rem;
+    color: var(--ink);
+  }
+  .roadmap-summary-sub {
+    margin: 0 0 0.9rem;
+    font-size: 0.875rem;
+    color: var(--ink-mute);
+  }
+  .roadmap-summary-wrap {
+    margin: 0;
+  }
+  .summary-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.92rem;
+  }
+  .summary-table th,
+  .summary-table td {
+    padding: 0.55rem 0.85rem;
+    text-align: left;
+    vertical-align: middle;
+    border-bottom: 1px solid var(--rule);
+  }
+  .summary-table thead th {
+    background: var(--sky-tint);
+    color: var(--sky-deep);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-size: 0.78rem;
+    border-bottom: 1px solid var(--rule-strong);
+  }
+  .summary-table .num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 0.86rem;
+  }
+  .summary-table .summary-phase {
+    display: inline-block;
+    min-width: 2.4rem;
+    padding: 0.1rem 0.45rem;
+    border-radius: 4px;
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--ink);
+  }
+  .summary-table tfoot .summary-total th {
+    background: var(--cream-deep, var(--paper));
+    border-top: 2px solid var(--rule-strong);
+    border-bottom: none;
+    font-weight: 700;
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: 0.95rem;
+  }
+  .summary-table .summary-shared {
+    color: var(--ink-mute);
+    font-style: italic;
+  }
+  .summary-table .summary-pr {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 0.86rem;
+    font-weight: 600;
+    color: var(--sky-deep);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 120ms ease;
+  }
+  .summary-table .summary-pr:hover,
+  .summary-table .summary-pr:focus {
+    border-bottom-color: var(--sky-deep);
+  }
+  .summary-table .summary-loading {
+    text-align: center;
+    color: var(--ink-mute);
+    font-style: italic;
+  }
+  @media (max-width: 720px) {
+    .summary-table th,
+    .summary-table td {
+      padding: 0.4rem 0.5rem;
+      font-size: 0.85rem;
+    }
+    .summary-table .num {
+      font-size: 0.78rem;
+    }
+  }
+</style>
+<script>
+  // Pre-paint language resolver — same key as article + plan.
+  (function () {
+    try {
+      var saved = window.localStorage.getItem('syndicable.article.lang');
+      if (saved !== 'en' && saved !== 'fr') saved = 'fr';
+      document.documentElement.setAttribute('lang', saved);
+      document.documentElement.setAttribute('data-lang', saved);
+    } catch (e) {
+      document.documentElement.setAttribute('lang', 'fr');
+      document.documentElement.setAttribute('data-lang', 'fr');
+    }
+  })();
+</script>
+</head>
+<body>
+
+<header class="miniNav" aria-label="Deck pages">
+  <div class="miniNav-inner">
+    <span class="miniNav-mark"><span class="nav-dot"></span><span>Syndicable&nbsp;V1.1</span></span>
+    <nav class="miniNav-tabs" aria-label="Sibling pages">
+      <a class="miniNav-tab" href="./article.html" data-i18n-key="miniNav.article">Article</a>
+      <a class="miniNav-tab" href="./plan.html" data-i18n-key="miniNav.plan">Plan</a>
+      <a class="miniNav-tab is-current" href="./roadmap.html" aria-current="page" data-i18n-key="miniNav.roadmap">Roadmap</a>
+      <a class="miniNav-tab" href="./owner-view.html" data-i18n-key="miniNav.ownerView">Vue copropriétaire</a>
+      <a class="miniNav-tab" href="./cli.html" data-i18n-key="miniNav.cli">CLI</a>
+      <a class="miniNav-tab" href="./testing.html" data-i18n-key="miniNav.testing">Tests</a>
+    </nav>
+    <div class="miniNav-lang">
+      <button
+        type="button"
+        class="lang-switch"
+        id="lang-switch"
+        role="switch"
+        aria-checked="false"
+        aria-label="Basculer la langue entre français et anglais"
+        data-i18n-key-attr="aria-label"
+        data-i18n-key="lang.aria"
+      >
+        <span data-lang-opt="en">EN</span>
+        <span data-lang-opt="fr">FR</span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<div class="roadmap-shell">
+
+  <header class="page-header">
+    <span class="page-eyebrow" data-i18n-key="page.eyebrow">Suivi d'implémentation</span>
+    <h1 class="page-title" data-i18n-key="page.title">Syndicable V1.1 — feuille de route.</h1>
+    <p class="page-sub" data-i18n-key="page.sub">
+      Cinq phases. Chaque phase qui ship met à jour cette page : branche, PR, commits, déviations par rapport au plan.
+    </p>
+  </header>
+
+  <section class="roadmap-progress" aria-labelledby="progress-h">
+    <div class="roadmap-progress-head">
+      <span id="progress-h" data-i18n-key="progress.label">Avancement</span>
+      <span class="roadmap-progress-count" id="progress-count">— / —</span>
+    </div>
+    <div class="roadmap-progress-bar"><span id="progress-bar"></span></div>
+  </section>
+
+  <section class="roadmap-summary" aria-labelledby="summary-h">
+    <h2 id="summary-h" class="roadmap-summary-head" data-i18n-key="summary.label">Résumé runtime &amp; tokens</h2>
+    <p class="roadmap-summary-sub" data-i18n-key="summary.sub">Une ligne par phase livrée. Les phases sans agent (planning, polish manuel) sont omises.</p>
+    <div class="tablewrap roadmap-summary-wrap">
+      <table class="summary-table" id="summary-table">
+        <thead>
+          <tr>
+            <th data-i18n-key="summary.col.phase">Phase</th>
+            <th data-i18n-key="summary.col.title">Titre</th>
+            <th data-i18n-key="summary.col.pr">PR</th>
+            <th class="num" data-i18n-key="summary.col.runtime">Runtime</th>
+            <th class="num" data-i18n-key="summary.col.tokens">Tokens</th>
+          </tr>
+        </thead>
+        <tbody id="summary-rows">
+          <tr><td colspan="5" class="summary-loading" data-i18n-key="summary.loading">Chargement…</td></tr>
+        </tbody>
+        <tfoot>
+          <tr class="summary-total">
+            <th colspan="3" data-i18n-key="summary.total">Total</th>
+            <th class="num" id="summary-total-runtime">—</th>
+            <th class="num" id="summary-total-tokens">—</th>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </section>
+
+  <div class="roadmap-cards" id="cards">
+    <p class="roadmap-loading" data-i18n-key="cards.loading">Chargement de la feuille de route…</p>
+  </div>
+
+  <p class="roadmap-footnote" id="last-updated"></p>
+
+</div>
+
+<footer>
+  <div data-i18n-key="footer.updated">Syndicable V1.1 — dernière mise à jour 2026-05-08.</div>
+</footer>
+
+<script>
+  window.I18N = {
+    en: {
+      "meta.title": "Syndicable V1.1 — Implementation Roadmap",
+      "meta.description": "Implementation tracker for Syndicable V1.1 — phases shipped, branches, PRs and commits.",
+
+      "lang.aria": "Switch language between English and French",
+
+      "miniNav.article": "Article",
+      "miniNav.plan": "Plan",
+      "miniNav.roadmap": "Roadmap",
+      "miniNav.ownerView": "Owner view",
+      "miniNav.cli": "CLI",
+      "miniNav.testing": "Testing",
+
+      "page.eyebrow": "Implementation tracker",
+      "page.title": "Syndicable V1.1 — implementation roadmap.",
+      "page.sub": "Five phases. Each phase that ships updates this page: branch, PR, commits, deviations from the plan.",
+
+      "progress.label": "Progress",
+      "progress.count": "{shipped} of {total} phases shipped",
+
+      "summary.label": "Runtime & token summary",
+      "summary.sub": "One row per shipped phase that ran an agent. Planning + manual-polish phases are omitted.",
+      "summary.col.phase": "Phase",
+      "summary.col.title": "Title",
+      "summary.col.pr": "PR",
+      "summary.col.runtime": "Runtime",
+      "summary.col.tokens": "Tokens",
+      "summary.total": "Total",
+      "summary.loading": "Loading…",
+      "summary.shared": "shared with {phase}",
+
+      "cards.loading": "Loading roadmap…",
+      "cards.unavailable": "Roadmap data unavailable",
+
+      "status.shipped": "Shipped",
+      "status.in_progress": "In progress",
+      "status.pending": "Pending",
+      "status.blocked": "Blocked",
+
+      "card.scope": "Scope",
+      "card.branch": "Branch",
+      "card.branchDeleted": "(deleted post-merge)",
+      "card.pr": "Pull request",
+      "card.commits": "Commits",
+      "card.runtime": "Agent runtime",
+      "card.tokens": "Total tokens",
+      "card.deviations": "Deviations from the plan",
+      "card.notesForLater": "Notes for later phases",
+      "card.shippedAt": "Shipped {date}",
+      "card.mergeCommit": "Merge commit",
+
+      "lastUpdated": "Last updated: {date}",
+
+      "footer.updated": "Syndicable V1.1 — last updated 2026-05-08."
+    },
+
+    fr: {
+      "meta.title": "Syndicable V1.1 — Feuille de route",
+      "meta.description": "Suivi d'implémentation de Syndicable V1.1 — phases livrées, branches, PRs et commits.",
+
+      "lang.aria": "Basculer la langue entre français et anglais",
+
+      "miniNav.article": "Article",
+      "miniNav.plan": "Plan",
+      "miniNav.roadmap": "Feuille de route",
+      "miniNav.ownerView": "Vue copropriétaire",
+      "miniNav.cli": "CLI",
+      "miniNav.testing": "Tests",
+
+      "page.eyebrow": "Suivi d'implémentation",
+      "page.title": "Syndicable V1.1 — feuille de route.",
+      "page.sub": "Cinq phases. Chaque phase qui ship met à jour cette page : branche, PR, commits, déviations par rapport au plan.",
+
+      "progress.label": "Avancement",
+      "progress.count": "{shipped} sur {total} phases livrées",
+
+      "summary.label": "Résumé runtime & tokens",
+      "summary.sub": "Une ligne par phase livrée ayant exécuté un agent. Les phases de planning + finitions manuelles sont omises.",
+      "summary.col.phase": "Phase",
+      "summary.col.title": "Titre",
+      "summary.col.pr": "PR",
+      "summary.col.runtime": "Durée",
+      "summary.col.tokens": "Tokens",
+      "summary.total": "Total",
+      "summary.loading": "Chargement…",
+      "summary.shared": "partagé avec {phase}",
+
+      "cards.loading": "Chargement de la feuille de route…",
+      "cards.unavailable": "Données de la feuille de route indisponibles",
+
+      "status.shipped": "Livrée",
+      "status.in_progress": "En cours",
+      "status.pending": "À venir",
+      "status.blocked": "Bloquée",
+
+      "card.scope": "Périmètre",
+      "card.branch": "Branche",
+      "card.branchDeleted": "(supprimée après merge)",
+      "card.pr": "Pull request",
+      "card.commits": "Commits",
+      "card.runtime": "Temps d'agent",
+      "card.tokens": "Tokens totaux",
+      "card.deviations": "Déviations par rapport au plan",
+      "card.notesForLater": "Notes pour les phases suivantes",
+      "card.shippedAt": "Livrée {date}",
+      "card.mergeCommit": "Commit de merge",
+
+      "lastUpdated": "Dernière mise à jour : {date}",
+
+      "footer.updated": "Syndicable V1.1 — dernière mise à jour 2026-05-08."
+    }
+  };
+</script>
+
+<script src="app.js" defer></script>
+
+<script>
+  // ───────── Roadmap renderer ─────────
+  // Fetches roadmap.json (sibling asset), renders five phase cards
+  // dynamically. Re-runs i18n via window.SyndDeck.applyLanguage so the
+  // newly inserted nodes pick up dictionary strings.
+  (function () {
+    var cardsEl = document.getElementById('cards');
+    var progressBar = document.getElementById('progress-bar');
+    var progressCount = document.getElementById('progress-count');
+    var lastUpdatedEl = document.getElementById('last-updated');
+    if (!cardsEl) return;
+
+    function escapeHtml(s) {
+      return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function formatRuntime(ms) {
+      if (typeof ms !== 'number' || !isFinite(ms)) return '—';
+      var totalSec = Math.round(ms / 1000);
+      var h = Math.floor(totalSec / 3600);
+      var m = Math.floor((totalSec % 3600) / 60);
+      var s = totalSec % 60;
+      var parts = [];
+      if (h) parts.push(h + 'h');
+      if (m) parts.push(m + 'm');
+      if (s || !parts.length) parts.push(s + 's');
+      return parts.join(' ');
+    }
+
+    function formatTokens(n) {
+      if (typeof n !== 'number' || !isFinite(n)) return '—';
+      return n.toLocaleString('en-US');
+    }
+
+    function formatDate(iso) {
+      if (!iso) return '—';
+      try {
+        var d = new Date(iso);
+        if (isNaN(d.getTime())) return iso;
+        var pad = function (x) { return x < 10 ? '0' + x : '' + x; };
+        return d.getUTCFullYear() + '-' + pad(d.getUTCMonth() + 1) + '-' + pad(d.getUTCDate())
+          + ' ' + pad(d.getUTCHours()) + ':' + pad(d.getUTCMinutes()) + ' UTC';
+      } catch (e) {
+        return iso;
+      }
+    }
+
+    function tBilingual(field, lang) {
+      if (!field) return '';
+      if (typeof field === 'string') return field;
+      return field[lang] || field.en || field.fr || '';
+    }
+
+    function renderCard(phase, lang) {
+      var status = phase.status || 'pending';
+      var titleStr = tBilingual(phase.title, lang);
+      var scopeStr = tBilingual(phase.scope, lang);
+
+      var html = '';
+      html += '<article class="roadmap-card is-' + escapeHtml(status) + '" data-phase="' + escapeHtml(phase.phase) + '">';
+      html += '<div class="rc-head">';
+      html += '<span class="rc-letter">' + escapeHtml(phase.phase) + '</span>';
+      html += '<h2 class="rc-title">' + escapeHtml(titleStr) + '</h2>';
+      html += '<span class="rc-status ' + escapeHtml(status) + '" data-i18n-key="status.' + escapeHtml(status) + '">'
+            + escapeHtml(status) + '</span>';
+      html += '</div>';
+
+      html += '<p class="rc-scope">' + escapeHtml(scopeStr) + '</p>';
+
+      if (status !== 'pending') {
+        html += '<div class="rc-meta">';
+
+        if (phase.branch) {
+          html += '<div class="rc-block">';
+          html += '<p class="rc-block-label" data-i18n-key="card.branch">Branch</p>';
+          html += '<span class="rc-branch">' + escapeHtml(phase.branch) + '</span>';
+          if (phase.branchDeleted) {
+            html += ' <span class="rc-block-label" data-i18n-key="card.branchDeleted">(deleted post-merge)</span>';
+          }
+          html += '</div>';
+        }
+
+        if (phase.prUrl) {
+          html += '<div class="rc-block">';
+          html += '<p class="rc-block-label" data-i18n-key="card.pr">Pull request</p>';
+          html += '<a class="rc-pr" href="' + escapeHtml(phase.prUrl) + '" target="_blank" rel="noopener">'
+                + '<span class="gh-num">#' + escapeHtml(phase.prNumber || '') + '</span> '
+                + '<span>' + escapeHtml(phase.prUrl.replace(/^https?:\/\/github\.com\//, '')) + '</span>'
+                + '</a>';
+          html += '</div>';
+        }
+
+        if (phase.commits && phase.commits.length) {
+          html += '<div class="rc-block" style="grid-column: 1 / -1;">';
+          html += '<p class="rc-block-label" data-i18n-key="card.commits">Commits</p>';
+          html += '<ul class="rc-commits">';
+          for (var i = 0; i < phase.commits.length; i++) {
+            var c = phase.commits[i];
+            var msg = c.message || '';
+            var truncated = msg.length > 88 ? msg.slice(0, 85) + '…' : msg;
+            html += '<li>'
+                  + '<a class="rc-sha" href="' + escapeHtml(c.githubUrl || '#') + '" target="_blank" rel="noopener">'
+                  + escapeHtml((c.sha || '').slice(0, 7))
+                  + '</a>'
+                  + '<span class="rc-msg">' + escapeHtml(truncated) + '</span>'
+                  + '</li>';
+          }
+          html += '</ul>';
+          html += '</div>';
+        }
+
+        if (phase.agent && (phase.agent.runtimeMs || phase.agent.totalTokens)) {
+          html += '<div class="rc-block">';
+          html += '<p class="rc-block-label" data-i18n-key="card.runtime">Agent runtime</p>';
+          html += '<div class="rc-stats">';
+          html += '<span><span class="rc-stat-label" data-i18n-key="card.runtime">Runtime</span> '
+                + escapeHtml(formatRuntime(phase.agent.runtimeMs)) + '</span>';
+          html += '<span><span class="rc-stat-label" data-i18n-key="card.tokens">Tokens</span> '
+                + escapeHtml(formatTokens(phase.agent.totalTokens)) + '</span>';
+          html += '</div>';
+          html += '</div>';
+        }
+
+        if (phase.deviations && phase.deviations.length) {
+          html += '<div class="rc-block" style="grid-column: 1 / -1;">';
+          html += '<p class="rc-block-label" data-i18n-key="card.deviations">Deviations</p>';
+          html += '<ul class="rc-deviations">';
+          for (var j = 0; j < phase.deviations.length; j++) {
+            html += '<li>' + escapeHtml(phase.deviations[j]) + '</li>';
+          }
+          html += '</ul>';
+          html += '</div>';
+        }
+
+        if (phase.notesForLater) {
+          html += '<div class="rc-block" style="grid-column: 1 / -1;">';
+          html += '<p class="rc-block-label" data-i18n-key="card.notesForLater">Notes for later</p>';
+          html += '<p class="rc-scope" style="margin:0;">' + escapeHtml(phase.notesForLater) + '</p>';
+          html += '</div>';
+        }
+
+        html += '</div>'; // /rc-meta
+
+        if (phase.shippedAt) {
+          html += '<p class="rc-shipped-at">' + escapeHtml(formatDate(phase.shippedAt)) + '</p>';
+        }
+      }
+
+      html += '</article>';
+      return html;
+    }
+
+    function renderSummary(phases, lang) {
+      var rowsEl = document.getElementById('summary-rows');
+      var totalRuntimeEl = document.getElementById('summary-total-runtime');
+      var totalTokensEl = document.getElementById('summary-total-tokens');
+      if (!rowsEl) return;
+
+      var rowsHtml = '';
+      var totalMs = 0;
+      var totalTokens = 0;
+
+      for (var i = 0; i < phases.length; i++) {
+        var p = phases[i];
+        if (p.status !== 'shipped') continue;
+        if (!p.agent) continue;
+
+        var titleStr = tBilingual(p.title, lang);
+        var phaseLabel = escapeHtml(p.phase);
+        var titleCell = escapeHtml(titleStr);
+        var runtimeCell, tokensCell;
+
+        if (p.agent.sharedWith) {
+          // Shared agent run — display a "shared with X" note, no metrics, no contribution to total.
+          var sharedTpl = (window.I18N[lang] && window.I18N[lang]['summary.shared']) || 'shared with {phase}';
+          var sharedNote = sharedTpl.replace('{phase}', escapeHtml(p.agent.sharedWith));
+          runtimeCell = '<span class="summary-shared">' + sharedNote + '</span>';
+          tokensCell = '<span class="summary-shared">—</span>';
+        } else if (p.agent.runtimeMs || p.agent.totalTokens) {
+          runtimeCell = escapeHtml(formatRuntime(p.agent.runtimeMs));
+          tokensCell = escapeHtml(formatTokens(p.agent.totalTokens));
+          if (typeof p.agent.runtimeMs === 'number') totalMs += p.agent.runtimeMs;
+          if (typeof p.agent.totalTokens === 'number') totalTokens += p.agent.totalTokens;
+        } else {
+          continue;
+        }
+
+        // PR cell — clickable #N that opens GitHub in a new tab when present.
+        var prCell;
+        if (p.prUrl && p.prNumber) {
+          prCell = '<a class="summary-pr" href="' + escapeHtml(p.prUrl)
+            + '" target="_blank" rel="noopener" aria-label="PR #' + escapeHtml(p.prNumber) + '">'
+            + '#' + escapeHtml(p.prNumber) + '</a>';
+        } else if (p.prUrl) {
+          prCell = '<a class="summary-pr" href="' + escapeHtml(p.prUrl) + '" target="_blank" rel="noopener">PR</a>';
+        } else {
+          prCell = '<span class="summary-shared">—</span>';
+        }
+
+        rowsHtml += '<tr>'
+          + '<th scope="row"><span class="summary-phase">' + phaseLabel + '</span></th>'
+          + '<td>' + titleCell + '</td>'
+          + '<td>' + prCell + '</td>'
+          + '<td class="num">' + runtimeCell + '</td>'
+          + '<td class="num">' + tokensCell + '</td>'
+          + '</tr>';
+      }
+
+      if (!rowsHtml) {
+        var emptyMsg = (window.I18N[lang] && window.I18N[lang]['summary.loading']) || '—';
+        rowsHtml = '<tr><td colspan="5" class="summary-loading">' + escapeHtml(emptyMsg) + '</td></tr>';
+      }
+
+      rowsEl.innerHTML = rowsHtml;
+      if (totalRuntimeEl) totalRuntimeEl.textContent = formatRuntime(totalMs);
+      if (totalTokensEl) totalTokensEl.textContent = formatTokens(totalTokens);
+    }
+
+    function renderProgress(phases, lang) {
+      var total = phases.length;
+      var shipped = 0;
+      for (var i = 0; i < phases.length; i++) {
+        if (phases[i].status === 'shipped') shipped += 1;
+      }
+      var pct = total ? (shipped / total) * 100 : 0;
+      if (progressBar) progressBar.style.width = pct + '%';
+      if (progressCount) {
+        var template = (window.I18N[lang] && window.I18N[lang]['progress.count']) || '{shipped} / {total}';
+        progressCount.textContent = template
+          .replace('{shipped}', String(shipped))
+          .replace('{total}', String(total));
+      }
+    }
+
+    function renderLastUpdated(iso, lang) {
+      if (!lastUpdatedEl) return;
+      var template = (window.I18N[lang] && window.I18N[lang]['lastUpdated']) || 'Last updated: {date}';
+      lastUpdatedEl.textContent = template.replace('{date}', formatDate(iso));
+    }
+
+    function currentLang() {
+      if (window.SyndDeck && window.SyndDeck.currentLang) return window.SyndDeck.currentLang();
+      var l = document.documentElement.getAttribute('data-lang');
+      return (l === 'en' || l === 'fr') ? l : 'fr';
+    }
+
+    function renderAll(data) {
+      var lang = currentLang();
+      var phases = (data && data.phases) || [];
+
+      var cardsHtml = '';
+      for (var i = 0; i < phases.length; i++) {
+        cardsHtml += renderCard(phases[i], lang);
+      }
+      cardsEl.innerHTML = cardsHtml || '<p class="roadmap-loading" data-i18n-key="cards.unavailable">Roadmap data unavailable</p>';
+
+      renderProgress(phases, lang);
+      renderSummary(phases, lang);
+      renderLastUpdated(data && data.lastUpdatedAt, lang);
+
+      // Re-run i18n now that new DOM nodes exist (so status pills + labels translate).
+      if (window.SyndDeck && window.SyndDeck.applyLanguage) {
+        window.SyndDeck.applyLanguage(lang);
+      }
+
+      // On language toggle, the SyndDeck applyLanguage re-runs but only on
+      // already-tagged elements. We re-render phase titles/scopes (which are
+      // bilingual data, not i18n keys) by listening for click on the toggle.
+      var sw = document.getElementById('lang-switch');
+      if (sw && !sw.dataset.roadmapWired) {
+        sw.dataset.roadmapWired = '1';
+        sw.addEventListener('click', function () {
+          // Defer so SyndDeck has flipped data-lang already.
+          setTimeout(function () {
+            renderAll(data);
+          }, 0);
+        });
+      }
+    }
+
+    function loadAndRender() {
+      fetch('roadmap.json', { credentials: 'same-origin' })
+        .then(function (res) {
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          return res.json();
+        })
+        .then(renderAll)
+        .catch(function (err) {
+          var lang = currentLang();
+          var label = (window.I18N[lang] && window.I18N[lang]['cards.unavailable']) || 'Roadmap unavailable';
+          cardsEl.innerHTML = '<p class="roadmap-loading">' + label + ' (' +
+            escapeHtml(err && err.message ? err.message : 'fetch failed') + ').</p>';
+        });
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', loadAndRender);
+    } else {
+      loadAndRender();
+    }
+  })();
+</script>
+
+</body>
+</html>

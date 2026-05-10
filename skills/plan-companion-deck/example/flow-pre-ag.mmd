@@ -1,0 +1,47 @@
+sequenceDiagram
+    autonumber
+    participant Syndic
+    participant UI as Syndic UI
+    participant CF as Cloud Functions
+    participant FS as Firestore
+    participant Email as Resend
+
+    Syndic->>UI: "Create AG" wizard (date, location, type, mode)
+    UI->>CF: createAssembly(coproId, ...)
+    CF->>FS: write assemblies/{aId} status=draft, empty agenda
+    CF-->>UI: assemblyId
+
+    loop for each resolution
+        Syndic->>UI: Add resolution form (title, threshold, distribution key, type)
+        UI->>CF: addResolution(aId, ...)
+        CF->>FS: write resolutions/{rId} order=N, status=pending
+    end
+
+    Syndic->>UI: Review + send convocation
+    UI->>CF: sendConvocation(assemblyId, languageOverrides?)
+    CF->>FS: read active Lots
+    CF->>FS: read Owners
+    CF->>CF: 15-day check, if AG date less than 15 days away return warning
+    Syndic->>UI: confirms warning override
+    UI->>CF: sendConvocation(aId, override=true)
+
+    loop per Owner with active lot
+        CF->>CF: generate secret (32 random bytes base64url)
+        CF->>FS: write access_tokens/{sha256(secret)}
+        CF->>CF: build per-language convocation HTML + PDF
+        CF->>Email: send to Owner.email with magic link /vote/{secret}
+        CF->>FS: write convocation_deliveries/{tokenId} status=sent
+    end
+
+    CF->>FS: assembly.status=convoked, convocationSentAt=now
+    CF-->>UI: tokensIssued, deliveriesSent, deliveriesFailed
+
+    Note over Syndic: For procurations any time pre-AG
+
+    Syndic->>UI: Add procuration (mandantOwnerId, holderName, holderEmail)
+    UI->>CF: issueProcurationToken(aId, mandantOwnerId, holderName, holderEmail)
+    CF->>CF: generate secret
+    CF->>FS: write access_tokens recipientType=procuration_holder
+    CF->>Email: send to holderEmail with magic link
+    CF->>FS: log activity procuration_token_issued
+    CF-->>UI: tokenId, sentTo

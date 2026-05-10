@@ -1,0 +1,1255 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title data-i18n-key="meta.title">Syndicable V1.1.5 — Vue copropriétaire</title>
+<meta name="description" data-i18n-key-attr="content" data-i18n-key="meta.description" content="Le plan d'implémentation de Syndicable V1.1.5 : la vue copropriétaire — popover cross-immeubles, mode lecture seule du détail AG, bouton Rejoindre la session." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<script>
+  // Pre-paint language resolver — shares the localStorage key with the
+  // three sibling deck pages (article, plan, roadmap) so the user's choice
+  // survives cross-page navigation. Same key for all four files.
+  (function () {
+    try {
+      var saved = window.localStorage.getItem('syndicable.article.lang');
+      if (saved !== 'en' && saved !== 'fr') saved = 'fr';
+      document.documentElement.setAttribute('lang', saved);
+      document.documentElement.setAttribute('data-lang', saved);
+    } catch (e) {
+      document.documentElement.setAttribute('lang', 'fr');
+      document.documentElement.setAttribute('data-lang', 'fr');
+    }
+  })();
+</script>
+<style>
+  /* Page-local: ASCII / mockup blocks. Lifts the .plan-rendered pre style
+     into the article template (which doesn't otherwise render <pre>). */
+  .mockup {
+    margin: 22px 0 28px;
+    padding: 18px 20px;
+    background: #0F2A3A;
+    color: #DCEAF1;
+    border-radius: 10px;
+    border: 1px solid rgba(29, 91, 122, 0.32);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    line-height: 1.55;
+    white-space: pre;
+    overflow-x: auto;
+  }
+  .mockup-cap {
+    margin: -10px 0 22px;
+    color: var(--ink-mute);
+    font-size: 13px;
+    font-style: italic;
+  }
+
+  /* Page-local: inline preview of the owner-shaped resolutions table. Sits
+     within .tablewrap but uses softer accent rows for the result column. */
+  .res-table td.res-num   { font-family: var(--font-mono); color: var(--ink-mute); width: 40px; }
+  .res-table td.res-pass  { color: #1F7A53; font-weight: 600; white-space: nowrap; }
+  .res-table td.res-fail  { color: #B23A48; font-weight: 600; white-space: nowrap; }
+  .res-table td.res-info  { color: var(--ink-mute); font-style: italic; white-space: nowrap; }
+  .res-table td.res-pre   { color: var(--ink-mute); font-style: italic; white-space: nowrap; }
+  .res-table td.res-live  {
+    color: var(--purple-deep);
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .res-table td.res-live::before {
+    content: "● ";
+    color: var(--purple);
+    animation: liveBeat 1.6s ease-in-out infinite;
+  }
+  @keyframes liveBeat {
+    0%, 100% { opacity: 0.45; }
+    50%      { opacity: 1; }
+  }
+
+  /* Page-local: tiny inline code listing for the MyAssembly interface. */
+  .code-block {
+    margin: 18px 0 26px;
+    padding: 16px 18px;
+    background: #0F2A3A;
+    color: #DCEAF1;
+    border-radius: 8px;
+    border: 1px solid rgba(29, 91, 122, 0.32);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    line-height: 1.6;
+    overflow-x: auto;
+    white-space: pre;
+  }
+  .code-block .c-key  { color: #88BFE0; }
+  .code-block .c-typ  { color: #C7B0E5; }
+  .code-block .c-str  { color: #9DD6B4; }
+  .code-block .c-com  { color: #6F8FA0; font-style: italic; }
+
+  /* Page-local: file-list with NEW / MOD tags for the annexe. */
+  .filelist { list-style: none; padding: 0; margin: 18px 0 0; }
+  .filelist li {
+    padding: 10px 0;
+    border-bottom: 1px dashed var(--rule);
+    display: flex;
+    gap: 12px;
+    align-items: baseline;
+    font-size: 14.5px;
+  }
+  .filelist li:last-child { border-bottom: 0; }
+  .filelist .tag {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    padding: 2px 7px;
+    border-radius: 4px;
+    flex-shrink: 0;
+    min-width: 42px;
+    text-align: center;
+  }
+  .filelist .tag.new { background: rgba(31, 122, 83, 0.12); color: #1F7A53; }
+  .filelist .tag.mod { background: rgba(63, 42, 77, 0.10); color: var(--purple-deep); }
+  .filelist .tag.cfg { background: rgba(29, 91, 122, 0.12); color: var(--sky-deep); }
+  .filelist code { font-size: 13px; }
+  .filelist .desc { color: var(--ink-mute); font-size: 13.5px; }
+</style>
+</head>
+<body>
+
+<header class="miniNav" aria-label="Deck pages">
+  <div class="miniNav-inner">
+    <span class="miniNav-mark"><span class="nav-dot"></span><span>Syndicable&nbsp;V1.1</span></span>
+    <nav class="miniNav-tabs" aria-label="Sibling pages">
+      <a class="miniNav-tab" href="./article.html" data-i18n-key="miniNav.article">Article</a>
+      <a class="miniNav-tab" href="./plan.html" data-i18n-key="miniNav.plan">Plan</a>
+      <a class="miniNav-tab" href="./roadmap.html" data-i18n-key="miniNav.roadmap">Roadmap</a>
+      <a class="miniNav-tab is-current" href="./owner-view.html" aria-current="page" data-i18n-key="miniNav.ownerView">Vue copropriétaire</a>
+      <a class="miniNav-tab" href="./cli.html" data-i18n-key="miniNav.cli">CLI</a>
+      <a class="miniNav-tab" href="./testing.html" data-i18n-key="miniNav.testing">Tests</a>
+    </nav>
+    <div class="miniNav-lang">
+      <button
+        type="button"
+        class="lang-switch"
+        id="lang-switch"
+        role="switch"
+        aria-checked="false"
+        aria-label="Basculer la langue entre français et anglais"
+        data-i18n-key-attr="aria-label"
+        data-i18n-key="lang.aria"
+      >
+        <span data-lang-opt="en">EN</span>
+        <span data-lang-opt="fr">FR</span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<div class="shell">
+
+  <aside class="nav" aria-label="Sections">
+    <div class="nav-mark">
+      <span class="nav-dot"></span>
+      <span>Syndicable&nbsp;V1.1.5</span>
+    </div>
+    <div class="nav-eyebrow" data-i18n-key="nav.eyebrow">Sections</div>
+    <ol>
+      <li><a href="#thesis" data-i18n-key="nav.thesis">La thèse</a></li>
+      <li><a href="#scope" data-i18n-key="nav.scope">Périmètre, figé</a></li>
+      <li><a href="#choices" data-i18n-key="nav.choices">Trois choix d'architecture</a></li>
+      <li><a href="#popover" data-i18n-key="nav.popover">Le popover, redessiné</a></li>
+      <li><a href="#store" data-i18n-key="nav.store">Le store cross-org</a></li>
+      <li><a href="#detail" data-i18n-key="nav.detail">La page détail, lecture seule</a></li>
+      <li><a href="#restable" data-i18n-key="nav.restable">La table des résolutions</a></li>
+      <li><a href="#join" data-i18n-key="nav.join">Rejoindre la session</a></li>
+      <li><a href="#phasing" data-i18n-key="nav.phasing">Phasage</a></li>
+      <li><a href="#open-questions" data-i18n-key="nav.openQuestions">Questions ouvertes</a></li>
+      <li><a href="#annex" data-i18n-key="nav.annex">Annexe — fichiers touchés</a></li>
+      <li><a href="#colophon" data-i18n-key="nav.colophon">Colophon</a></li>
+    </ol>
+
+</aside>
+
+  <main>
+
+    <!-- ─────────── HERO ─────────── -->
+    <section id="hero" aria-labelledby="hero-h">
+      <div class="hero-meta">
+        <span class="pill brand"><span class="dot"></span>Version&nbsp;V1.1.5</span>
+        <span class="pill purple" data-i18n-key="hero.pill.module">Module&nbsp;·&nbsp;Vue&nbsp;copropriétaire</span>
+        <span class="pill">2026-05-09</span>
+      </div>
+      <h1 id="hero-h" class="hero-title" data-i18n-key="hero.title">L'AG, vue depuis le canapé du copropriétaire.</h1>
+      <p class="hero-sub" data-i18n-key="hero.sub">
+        Les phases A à C ont livré le côté syndic ; V1.1.5 livre le côté copropriétaire.
+        Une seule vue cross-immeubles, le détail AG en lecture seule, et un bouton
+        « Rejoindre » qui ouvre la magic link déjà reçue par e-mail.
+      </p>
+      <div class="hero-rule"></div>
+    </section>
+
+    <!-- ─────────── 1. THESIS ─────────── -->
+    <section id="thesis">
+      <div class="prose">
+        <span class="eyebrow" data-i18n-key="thesis.eyebrow">01 · La thèse</span>
+        <h2 data-i18n-key="thesis.h2">Le copropriétaire devient un utilisateur de plein droit du dashboard.</h2>
+        <p data-i18n-key="thesis.p1">
+          Les phases A, B et C de V1.1 ont livré le syndic de bout en bout : rédaction d'AG,
+          envoi des convocations avec magic link, animation de la session en direct, brouillon
+          de PV. Le flux légal est en place — <em>côté syndic</em>. Aujourd'hui, un copropriétaire
+          qui se connecte à Syndicable voit le même <code>NavAdministration</code>, la même liste
+          d'AG côté syndic, le même détail AG bardé de boutons d'admin, sans cadrage
+          « qu'est-ce que cette AG veut dire pour moi en tant que votant ».
+        </p>
+        <p data-i18n-key="thesis.p2">
+          V1.1.5 fait basculer le copropriétaire de <strong>destinataire d'e-mail</strong> à
+          <strong>utilisateur de premier ordre du dashboard</strong>, sans construire un portail
+          parallèle. Une seule app, deux visages. Le syndic continue d'orchestrer ; le
+          copropriétaire reçoit, consulte, et rejoint depuis la même interface.
+        </p>
+        <p data-i18n-key="thesis.p3">
+          Le persona qui ancre ce travail, c'est l'<strong>IGS / Brugmann Ferme&nbsp;Rose</strong> :
+          166 copropriétaires, beaucoup avec des lots dans plusieurs immeubles à Bruxelles.
+          Aujourd'hui, ce copropriétaire-là doit basculer l'<code>OrganizationSwitcher</code>
+          trois fois pour savoir quelle AG arrive en premier. Demain, il ouvre le popover du
+          sidebar et voit ses trois AG dans une seule liste, triées par état.
+        </p>
+        <p data-i18n-key="thesis.p4">
+          V1.1.5 est <strong>purement additif</strong>. Pas de migration de données, pas de
+          changement de schéma Firestore, aucun risque sur le côté syndic. Un store, une
+          section de popover, une bascule <code>viewMode</code> dans une page existante,
+          et une callable. Cinq petites phases. Le code commence à la validation de cet article.
+        </p>
+      </div>
+    </section>
+
+    <!-- ─────────── 2. SCOPE ─────────── -->
+    <section id="scope">
+      <div class="prose-wide">
+        <span class="eyebrow" data-i18n-key="scope.eyebrow">02 · Périmètre, figé</span>
+        <h2 data-i18n-key="scope.h2">Ce qui sort en V1.1.5 — et ce qui ne sort pas.</h2>
+        <p class="prose" data-i18n-key="scope.intro">
+          La règle du jeu de V1.1 reste : tout ce qui n'est pas dans la colonne IN est mis en pause.
+          La colonne OUT n'est pas un rejet, c'est une file d'attente — V1.2 ou plus tard.
+        </p>
+        <div class="twocol">
+
+          <div class="col-card in">
+            <h4 data-i18n-key="scope.in.title">Inclus · livré en V1.1.5</h4>
+            <ul>
+              <li data-i18n-key="scope.in.li1">Nouvelle section « Mes assemblées » dans le popover de l'<code>OrganizationSwitcher</code> (cross-org)</li>
+              <li data-i18n-key="scope.in.li2">Mode lecture seule de <code>/organizations/[orgId]/assemblies/[aId]</code> pour <code>userRole === 'member'</code> ou <code>'viewer'</code></li>
+              <li data-i18n-key="scope.in.li3">Table des résolutions vue copropriétaire pour les AG clôturées (totaux en quotités, sans nominatifs)</li>
+              <li data-i18n-key="scope.in.li4">CTA « Rejoindre la session » qui ouvre la magic link depuis le dashboard</li>
+              <li data-i18n-key="scope.in.li5">Le copropriétaire voit le statut de vote de ses propres lots, par résolution</li>
+              <li data-i18n-key="scope.in.li6">FR + EN, parité dark/light, identique à V1.1</li>
+              <li data-i18n-key="scope.in.li7">Tri du popover : <code>live</code> en premier, puis <code>convoked</code> ascendant, puis <code>ended</code> descendant</li>
+              <li data-i18n-key="scope.in.li8">Limite à 5 AG visibles + lien « voir tout » pour les copropriétaires en multi-immeuble</li>
+            </ul>
+          </div>
+
+          <div class="col-card out">
+            <h4 data-i18n-key="scope.out.title">Hors · différé en V1.2 ou plus tard</h4>
+            <ul>
+              <li data-i18n-key="scope.out.li1">Route dédiée <code>/my-assemblies</code> — la liste vit dans le popover</li>
+              <li data-i18n-key="scope.out.li2">Notifications push « votre AG démarre dans 1h »</li>
+              <li data-i18n-key="scope.out.li3">Téléchargement du PV in-app (déjà couvert par le Document <code>historic_pv</code>)</li>
+              <li data-i18n-key="scope.out.li4">Vues archive d'historique d'AG (« mes 5 dernières AG »)</li>
+              <li data-i18n-key="scope.out.li5">Rédaction de résolution côté copropriétaire</li>
+              <li data-i18n-key="scope.out.li6">Soumission de points d'ordre du jour §3 par les copropriétaires (déjà OUT en V1.1)</li>
+              <li data-i18n-key="scope.out.li7">Surface dashboard pour le titulaire d'une procuration sans compte Syndicable</li>
+              <li data-i18n-key="scope.out.li8">Affichage des AG annulées dans le popover</li>
+            </ul>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────── 3. ARCHITECTURAL CHOICES ─────────── -->
+    <section id="choices">
+      <div class="prose-wide">
+        <span class="eyebrow" data-i18n-key="choices.eyebrow">03 · Trois choix d'architecture</span>
+        <h2 data-i18n-key="choices.h2">Les décisions dont le reste de V1.1.5 découle.</h2>
+        <p class="prose" data-i18n-key="choices.intro">
+          Trois bifurcations. Trois décisions désormais arrêtées. Le phasage et l'annexe partent
+          de l'hypothèse que ces trois choix sont actés.
+        </p>
+
+        <div class="choice">
+          <span class="choice-num" data-i18n-key="choices.c1.num">CHOIX&nbsp;01</span>
+          <h3 data-i18n-key="choices.c1.h3">Une page, deux visages.</h3>
+          <p data-i18n-key="choices.c1.p1">
+            On réutilise <code>/organizations/[orgId]/assemblies/[aId]</code> pour le copropriétaire.
+            Pas de route parallèle, pas de squelette dupliqué. Chaque bouton de mutation est gaté par
+            <code>hasMinimumRole(userRole, 'admin')</code>. La page dérive un <code>viewMode</code> du
+            rôle utilisateur : <code>'syndic' | 'owner'</code>.
+          </p>
+          <p data-i18n-key="choices.c1.p2">
+            La skin owner-side est principalement une <em>soustraction</em>, pas un ajout — on retire
+            les boutons d'admin et on remplace deux blocs (la table des résolutions, le panneau
+            « Mon vote »). Une route, deux audiences. La maintenance reste centralisée.
+          </p>
+        </div>
+
+        <div class="choice">
+          <span class="choice-num" data-i18n-key="choices.c2.num">CHOIX&nbsp;02</span>
+          <h3 data-i18n-key="choices.c2.h3">Store cross-org calqué sur <code>myRepresentedLotsStore</code>.</h3>
+          <p data-i18n-key="choices.c2.p1">
+            Un nouveau <code>myAssembliesStore</code> lit (a) les organisations de l'utilisateur via
+            <code>userOrganizationsStore</code>, (b) les Owner docs représentés via
+            <code>collectionGroup('owners')</code> avec <code>representedBy array-contains uid</code>,
+            et fan-out une petite query <code>assemblies</code> par copro :
+            <code>status in ['convoked', 'live', 'ended']</code>,
+            <code>orderBy('scheduledAt', 'desc')</code>, <code>limit(5)</code>.
+          </p>
+          <p data-i18n-key="choices.c2.p2">
+            Forme à deux étages avec un seul <code>unsub</code> retourné — la même que
+            <code>myRepresentedLotsStore</code>, déjà éprouvée en Phase 14. Pas de nouvelle invention
+            d'architecture, juste un instance de plus du pattern « cross-org derived ».
+          </p>
+        </div>
+
+        <div class="choice">
+          <span class="choice-num" data-i18n-key="choices.c3.num">CHOIX&nbsp;03</span>
+          <h3 data-i18n-key="choices.c3.h3">Le bouton « Rejoindre » fait tourner le token, pas une nouvelle route.</h3>
+          <p data-i18n-key="choices.c3.p1">
+            Le dashboard surface l'<code>AccessToken</code> déjà émis pour ce couple
+            owner+assembly. Pour faire ça sans stocker le secret en Firestore, une nouvelle callable
+            <code>getMyVoteLink({ assemblyId })</code> régénère un secret frais côté serveur,
+            <strong>fait tourner</strong> l'<code>AccessToken</code> de cet owner (révoque l'ancien),
+            et retourne l'URL. Le frontend fait un <code>window.open(url, '_blank')</code>.
+          </p>
+          <p data-i18n-key="choices.c3.p2">
+            Trade-off : le lien magique de l'e-mail continue de marcher jusqu'au premier clic
+            dashboard ; après, il est révoqué. Ça correspond au substrat légal — un seul token
+            actif par owner+AG — et ça donne au copropriétaire un chemin de réinitialisation propre
+            s'il a perdu l'e-mail. L'alternative envisagée puis parquée : une route
+            <code>/organizations/[orgId]/assemblies/[aId]/vote</code> authentifiée qui contourne
+            les tokens — ajoute un second chemin d'auth qui doit rester en phase avec celui de la
+            route publique. Pas la peine pour V1.1.5.
+          </p>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ─────────── 4. POPOVER MOCKUP ─────────── -->
+    <section id="popover">
+      <div class="prose">
+        <span class="eyebrow" data-i18n-key="popover.eyebrow">04 · Le popover, redessiné</span>
+        <h2 data-i18n-key="popover.h2">Trois sections, une logique de rôle.</h2>
+        <p data-i18n-key="popover.p1">
+          L'<code>OrganizationSwitcher</code> regroupe déjà aujourd'hui deux rôles : copropriétés
+          dont l'utilisateur est syndic (admin) et lots dont il est propriétaire (member). V1.1.5
+          ajoute une troisième section — <strong>Mes assemblées</strong> — qui fusionne les AG
+          des deux rôles dans une seule liste triée.
+        </p>
+      </div>
+
+      <div class="mockup" aria-hidden="true">┌──────────────────────────────┐
+│ 🏢  Copropriétés             │  ← existant
+│   • Brugmann Ferme Rose      │
+│   • Résidence Albert         │
+│                              │
+│ ─────────────────────────    │
+│ 🏠  Mes lots                 │  ← existant (Phase 14)
+│   • Lot A12 — Brugmann       │
+│                              │
+│ ─────────────────────────    │
+│ 📅  Mes assemblées           │  ← NOUVEAU
+│   ● Brugmann · 12 juin       │
+│       En cours · Copro.      │
+│   • Albert  · 24 juin        │
+│       À venir · Syndic       │
+│   • Brugmann · 28 mars 2024  │
+│       Terminée · Copro.      │
+│                              │
+│ ─────────────────────────    │
+│ ➕  Nouvelle copropriété     │  ← existant
+└──────────────────────────────┘</div>
+      <p class="mockup-cap" data-i18n-key="popover.cap">
+        Mockup de la troisième section. Le pictogramme <span class="smallcaps">●</span> en tête
+        d'AG signifie « en cours, rejoignable à l'instant » ; le <span class="smallcaps">•</span>
+        pour les états <code>convoked</code> et <code>ended</code>.
+      </p>
+
+      <div class="prose">
+        <p data-i18n-key="popover.p2">
+          Chaque ligne d'AG affiche quatre choses : la date abrégée, le nom de la copropriété,
+          un <strong>badge de statut</strong> (<code>à venir | en cours | terminée</code>), et un
+          <strong>pill de rôle</strong> (<code>Syndic | Copropriétaire</code>). Le tri suit l'urgence :
+          AG <code>live</code> en premier (si l'utilisateur peut rejoindre <em>maintenant</em>),
+          puis AG <code>convoked</code> par <code>scheduledAt</code> ascendant (la prochaine
+          d'abord), puis AG <code>ended</code> par <code>scheduledAt</code> descendant (la dernière
+          en haut).
+        </p>
+        <p data-i18n-key="popover.p3">
+          La section affiche au plus <strong>5 entrées</strong>, suivies d'un lien « voir tout »
+          uniquement si l'utilisateur a plus de 5 AG actives ou récentes. Pour la majorité des
+          copropriétaires (1 ou 2 immeubles, ~1 AG par an), la section reste compacte. Pour le
+          syndic-multi-copros, elle reste navigable.
+        </p>
+      </div>
+    </section>
+
+    <!-- ─────────── 5. STORE ─────────── -->
+    <section id="store">
+      <div class="prose">
+        <span class="eyebrow" data-i18n-key="store.eyebrow">05 · Le store cross-org</span>
+        <h2 data-i18n-key="store.h2"><code>myAssembliesStore.ts</code> — le pattern à deux étages.</h2>
+        <p data-i18n-key="store.p1">
+          Fichier neuf à <code>src/lib/services/assemblies/stores/myAssembliesStore.ts</code>.
+          Pattern <code>derived</code> au-dessus de <code>userDataStore</code> +
+          <code>userOrganizationsStore</code>, exactement comme
+          <code>myRepresentedLotsStore</code>. Deux étages, un seul <code>unsub</code> retourné.
+        </p>
+        <p data-i18n-key="store.p2">
+          Étage 1 : pour chaque organisation où l'utilisateur a un rôle (member, admin, syndic),
+          on déclenche une query <code>assemblies</code> filtrée sur
+          <code>status in ['convoked', 'live', 'ended']</code>. Étage 2 : pour les copros où
+          l'utilisateur n'est pas membre mais est représentant d'un Owner (cas IGS-Brugmann
+          typique), on lit la liste des Owner via <code>collectionGroup('owners')</code> +
+          <code>representedBy array-contains uid</code> et on fan-out la même query
+          d'assemblies. Les deux flux se fusionnent dans le store de sortie.
+        </p>
+      </div>
+
+      <div class="code-block" aria-label="MyAssembly interface"><span class="c-key">interface</span> <span class="c-typ">MyAssembly</span> {
+  id: <span class="c-typ">string</span>;
+  coproprieteId: <span class="c-typ">string</span>;
+  coproprieteName: <span class="c-typ">string</span>;
+  scheduledAt: <span class="c-typ">Timestamp</span>;
+  status: <span class="c-typ">AssemblyStatus</span>;        <span class="c-com">// 'convoked' | 'live' | 'ended'</span>
+  myRoleInCopro: <span class="c-str">'syndic'</span> | <span class="c-str">'owner'</span>;
+  <span class="c-com">// For 'live' AGs only — emitted lazily, not in the snapshot</span>
+  <span class="c-com">// (the magic-link rotation is a button-driven callable).</span>
+}</div>
+
+      <div class="prose">
+        <p data-i18n-key="store.p3">
+          <strong>Tri.</strong> Le store sort une liste plate, triée par
+          <code>(statusRank, scheduledAt)</code> où <code>statusRank</code> est
+          <code>{ live: 0, convoked: 1, ended: 2 }</code>. Pour <code>convoked</code> on trie par
+          date ascendante (la prochaine d'abord) ; pour <code>ended</code>, descendante (la dernière
+          d'abord). Ça donne au popover l'ordre exact qu'il rend.
+        </p>
+        <p data-i18n-key="store.p4">
+          <strong>Dedup.</strong> Cas-limite : un syndic qui a aussi un lot dans la même copro
+          remonterait deux fois (une via membership admin, une via Owner représenté). On dédup
+          par <code>(coproprieteId, assemblyId)</code> et on garde le rôle le plus privilégié —
+          <code>'syndic'</code> l'emporte sur <code>'owner'</code> dans la même copro. Une seule
+          ligne, badge <code>Syndic</code>. C'est aussi la recommandation de la question ouverte 03.
+        </p>
+      </div>
+    </section>
+
+    <!-- ─────────── 6. DETAIL PAGE READ-ONLY ─────────── -->
+    <section id="detail">
+      <div class="prose">
+        <span class="eyebrow" data-i18n-key="detail.eyebrow">06 · La page détail, mode lecture seule</span>
+        <h2 data-i18n-key="detail.h2">Ce qui change dans <code>[aId]/+page.svelte</code>.</h2>
+        <p data-i18n-key="detail.p1">
+          Pas de fork, pas de duplication. Le fichier
+          <code>src/routes/(dashboard)/organizations/[organizationId]/assemblies/[aId]/+page.svelte</code>
+          dérive un <code>viewMode</code> du <code>userRole</code> courant, et chaque action
+          d'admin est gatée par un seul <code>{#if viewMode === 'syndic'}</code>. La structure
+          de la page reste la même ; le squelette d'admin disparaît pour le copropriétaire.
+        </p>
+        <p data-i18n-key="detail.p2">
+          Concrètement, voici ce qui devient invisible quand <code>viewMode === 'owner'</code> :
+        </p>
+        <ul>
+          <li data-i18n-key="detail.li1">Boutons <code>Pencil</code> (éditer l'AG), <code>XCircle</code> (annuler), <code>Plus</code> (ajouter une résolution), <code>Mail</code> (envoyer la convocation), <code>UserPlus</code> (émettre une procuration).</li>
+          <li data-i18n-key="detail.li2">Boutons « Démarrer l'AG », « Terminer l'AG ».</li>
+          <li data-i18n-key="detail.li3">Contrôles ouvrir / clôturer / passer une résolution dans <code>LiveAgendaTimeline</code>.</li>
+          <li data-i18n-key="detail.li4">Table des livraisons de convocation (infrastructure syndic).</li>
+        </ul>
+        <p data-i18n-key="detail.p3">
+          Et ce qui change de comportement :
+        </p>
+        <ul>
+          <li data-i18n-key="detail.li5"><code>TableAgenda</code> reçoit <code>canEdit={false}</code> (déjà supporté) et un nouveau prop <code>showTallyForClosed={viewMode === 'owner' || isEnded}</code> — pour que les résolutions clôturées affichent leur résumé <code>tally.totalForQuotities / totalAgainstQuotities / totalAbstainQuotities</code> en ligne dans la table.</li>
+          <li data-i18n-key="detail.li6"><strong>Nouveau panneau « Mon vote »</strong> : carte qui liste les lots de cet utilisateur dans cette copro (lecture de <code>myRepresentedLotsStore</code> filtré sur <code>coproprieteId === currentCoproprieteId</code>) et, par lot, le statut de cast par résolution (Pour / Contre / Abstention / Pas encore voté). Pour une AG <code>live</code>, le panneau monte un CTA primaire <strong>« Rejoindre la session de vote »</strong> qui appelle <code>getMyVoteLink</code>.</li>
+        </ul>
+        <p data-i18n-key="detail.p4">
+          Le syndic ne voit aucun changement — pour <code>viewMode === 'syndic'</code>, tout est
+          comme avant V1.1.5. C'est précisément l'intérêt de la bascule par rôle : zéro régression
+          côté chef d'orchestre.
+        </p>
+      </div>
+    </section>
+
+    <!-- ─────────── 7. RESOLUTIONS TABLE ─────────── -->
+    <section id="restable">
+      <div class="prose-wide">
+        <span class="eyebrow" data-i18n-key="restable.eyebrow">07 · La table des résolutions, vue copropriétaire</span>
+        <h2 data-i18n-key="restable.h2">Ce que voit le copropriétaire d'une AG clôturée.</h2>
+        <p class="prose" data-i18n-key="restable.intro">
+          Aperçu inline du rendu — basé sur l'AG Brugmann 2024, avec trois résolutions
+          représentatives : un vote ordinaire adopté, un point d'information, un vote en majorité
+          renforcée rejeté.
+        </p>
+
+        <div class="tablewrap">
+          <table class="res-table">
+            <thead>
+              <tr>
+                <th data-i18n-key="restable.th.num">#</th>
+                <th data-i18n-key="restable.th.q">Question</th>
+                <th data-i18n-key="restable.th.type">Type</th>
+                <th data-i18n-key="restable.th.maj">Majorité</th>
+                <th data-i18n-key="restable.th.key">Clé</th>
+                <th data-i18n-key="restable.th.res">Résultat</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="res-num">R1</td>
+                <td data-i18n-key="restable.r1.q">Approbation des comptes 2023</td>
+                <td data-i18n-key="restable.r1.type">Vote</td>
+                <td data-i18n-key="restable.r1.maj">Absolue</td>
+                <td>GEN</td>
+                <td class="res-pass" data-i18n-key="restable.r1.res">✅ Adoptée · 5 720 / 4 050 / 230</td>
+              </tr>
+              <tr>
+                <td class="res-num">R2</td>
+                <td data-i18n-key="restable.r2.q">Rapport du Conseil de Copropriété</td>
+                <td data-i18n-key="restable.r2.type">Information</td>
+                <td>—</td>
+                <td>—</td>
+                <td class="res-info" data-i18n-key="restable.r2.res">ℹ︎ Pour information</td>
+              </tr>
+              <tr>
+                <td class="res-num">R3</td>
+                <td data-i18n-key="restable.r3.q">Réfection de la toiture (~80 000 €)</td>
+                <td data-i18n-key="restable.r3.type">Vote</td>
+                <td>4/5</td>
+                <td>GEN</td>
+                <td class="res-fail" data-i18n-key="restable.r3.res">❌ Rejetée · 6 200 / 3 600 / 200</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="prose">
+          <p data-i18n-key="restable.p1">
+            Le format du résultat, c'est <em>pour / contre / abstention</em> en quotités absolues —
+            jamais en pourcentage, jamais en têtes. Un copropriétaire de Brugmann sait lire
+            « 5 720 quotités pour » parce que c'est le format du PV qu'il reçoit chaque année.
+            Cohérence entre dashboard et PV.
+          </p>
+          <div class="callout">
+            <p data-i18n-key="restable.callout.rgpd">
+              <strong>RGPD.</strong> La table ne rend <em>pas</em> les tableaux nominatifs
+              <code>namedAgainst</code> / <code>namedAbstain</code>. Ces noms vivent dans le PV
+              légal et y restent ; le dashboard donne les totaux, le PV donne les noms. C'est la
+              lecture conservatrice du Code civil belge §3.87 §10 — le PV est l'artefact de
+              transparence ; le dashboard est l'artefact opérationnel.
+            </p>
+          </div>
+          <p data-i18n-key="restable.p2">
+            <strong>États avant / pendant le live.</strong> Pour les AG encore en
+            <code>convoked</code>, la colonne « Résultat » lit
+            <em>« Pas encore ouverte »</em> ou <em>« À venir »</em>. Pour une AG <code>live</code>
+            avec une résolution courante en <code>voting_open</code>, la ligne montre un pill
+            <strong>« En cours »</strong> avec un point pulsant — exactement le même feedback
+            visuel que la vue chef d'orchestre, sans les contrôles d'ouverture / clôture.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────── 8. JOIN LIVE SESSION ─────────── -->
+    <section id="join">
+      <div class="prose">
+        <span class="eyebrow" data-i18n-key="join.eyebrow">08 · Rejoindre la session en direct</span>
+        <h2 data-i18n-key="join.h2">Le flux complet de <code>getMyVoteLink</code>.</h2>
+        <p data-i18n-key="join.p1">
+          Le bouton « Rejoindre la session de vote » du panneau Mon vote déclenche un appel
+          callable, et seulement un. Voici le bout-en-bout, de la pression sur le bouton à
+          l'ouverture de la page de vote dans un nouvel onglet.
+        </p>
+        <ol>
+          <li data-i18n-key="join.li1"><strong>Frontend.</strong> Le bouton appelle <code>httpsCallable('getMyVoteLink')({ coproprieteId, assemblyId })</code>.</li>
+          <li data-i18n-key="join.li2">
+            <strong>Backend</strong> (<code>functions/src/features/assemblies/api/getMyVoteLink.ts</code>).
+            Vérification d'auth : <code>request.auth.uid</code> doit figurer dans
+            <code>representedBy[]</code> d'au moins un Owner doc de cette copro,
+            <em>ou</em> être membre de l'org avec rôle ≥ <code>'admin'</code>. Résolution de
+            l'<code>ownerId</code> que l'utilisateur peut représenter — en V1 le lien
+            lot-owner est 1:1, mais une représentation peut couvrir plusieurs Owner ; en V1.1.5
+            on émet un seul token frais par appel, scopé au premier Owner choisi.
+          </li>
+          <li data-i18n-key="join.li3">
+            <strong>Génération du token.</strong> 32 octets d'aléa ; SHA-256 du secret ;
+            <strong>révocation</strong> de tout <code>AccessToken</code> antérieur pour ce couple
+            owner+assembly (<code>revokedAt = serverTimestamp()</code>) ; écriture d'un nouveau
+            doc <code>AccessToken</code> indexé par le nouveau hash. Le tout dans une seule
+            transaction Firestore.
+          </li>
+          <li data-i18n-key="join.li4"><strong>Retour.</strong> <code>{ url: 'https://&lt;host&gt;/vote/&lt;secret&gt;', expiresAt }</code>.</li>
+          <li data-i18n-key="join.li5"><strong>Frontend, suite.</strong> <code>window.open(url, '_blank')</code>. Le copropriétaire atterrit sur la page <code>/vote/[token]</code> existante, déjà gérée par les phases B + C — rien de neuf côté page de vote.</li>
+        </ol>
+
+        <div class="callout purple">
+          <p data-i18n-key="join.callout.purple">
+            <strong>Trade-off à nommer.</strong> Le lien magique de l'e-mail continue de marcher
+            jusqu'au premier clic du bouton dashboard ; à ce moment-là il est révoqué. C'est
+            cohérent avec le substrat légal — un seul token actif par owner+AG — et ça donne au
+            copropriétaire un chemin de réinitialisation propre s'il a perdu son e-mail. Côté
+            dashboard, on ne stocke jamais le secret côté client : chaque clic régénère un secret
+            frais, écrit le hash, et oublie le secret au prochain refresh de page.
+          </p>
+        </div>
+
+        <p data-i18n-key="join.p2">
+          La page <code>/vote/[token]</code> elle-même n'est pas modifiée par V1.1.5. Toute la
+          logique de validation, de cast, de heartbeat est déjà en place depuis les phases B + C.
+          V1.1.5 ne fait qu'<em>amener</em> le copropriétaire jusqu'à cette page depuis le
+          dashboard, au lieu de l'obliger à rouvrir l'e-mail de convocation.
+        </p>
+      </div>
+    </section>
+
+    <!-- ─────────── 9. PHASING ─────────── -->
+    <section id="phasing">
+      <div class="prose-wide">
+        <span class="eyebrow" data-i18n-key="phase.eyebrow">09 · Phasage</span>
+        <h2 data-i18n-key="phase.h2">Cinq sous-phases, une à deux journées chacune.</h2>
+        <p class="prose" data-i18n-key="phase.intro">
+          V1.1.5 est un add-on sur V1.1, pas un module à part entière. Le phasage est calibré
+          en jours, pas en semaines. Chaque sous-phase ferme proprement et peut être validée
+          contre la recréation Brugmann avant de passer à la suivante.
+        </p>
+
+        <div class="phases">
+
+          <div class="phase">
+            <span class="phase-tag" data-i18n-key="phase.F1.tag">F1</span>
+            <h3 data-i18n-key="phase.F1.h3">Cross-org store</h3>
+            <p data-i18n-key="phase.F1.p"><code>myAssembliesStore.ts</code> + fixtures de test unitaire. Vérification : un utilisateur de test avec des lots dans 2 copros voit les deux AG dans la sortie du store, triées correctement.</p>
+          </div>
+
+          <div class="phase">
+            <span class="phase-tag" data-i18n-key="phase.F2.tag">F2</span>
+            <h3 data-i18n-key="phase.F2.h3">Popover</h3>
+            <p data-i18n-key="phase.F2.p">Troisième section dans <code>OrganizationSwitcher.svelte</code> : pills de rôle + statut, tri, limite à 5 + voir tout. Vérification : snapshot test du dropdown pour le persona multi-copro Brugmann + Albert.</p>
+          </div>
+
+          <div class="phase">
+            <span class="phase-tag" data-i18n-key="phase.F3.tag">F3</span>
+            <h3 data-i18n-key="phase.F3.h3">Détail en lecture seule</h3>
+            <p data-i18n-key="phase.F3.p">Bascule <code>viewMode</code> dans <code>[aId]/+page.svelte</code>, prop <code>showTallyForClosed</code> sur <code>TableAgenda</code>, masquage de la table des livraisons. Vérification : un copropriétaire qui ouvre l'AG Brugmann 2024 voit ses 18 résolutions avec totaux, sans aucun bouton d'admin.</p>
+          </div>
+
+          <div class="phase">
+            <span class="phase-tag" data-i18n-key="phase.F4.tag">F4</span>
+            <h3 data-i18n-key="phase.F4.h3">Mon vote + getMyVoteLink</h3>
+            <p data-i18n-key="phase.F4.p">Cloud Function <code>getMyVoteLink</code> côté backend + panneau Mon vote côté frontend + bouton Rejoindre. Vérification : depuis le dashboard, le copropriétaire clique sur Rejoindre → <code>/vote/[fresh-secret]</code> s'ouvre dans un nouvel onglet et valide.</p>
+          </div>
+
+          <div class="phase">
+            <span class="phase-tag" data-i18n-key="phase.F5.tag">F5</span>
+            <h3 data-i18n-key="phase.F5.h3">i18n + polish + replay Brugmann</h3>
+            <p data-i18n-key="phase.F5.p">Strings FR + EN complets, parité dark/light, end-to-end : login en tant que copropriétaire Brugmann avec 1 lot, AG visible dans le popover, ouverture du détail, clic Rejoindre, vote, mise à jour du résultat affiché.</p>
+          </div>
+
+        </div>
+
+        <p class="prose" data-i18n-key="phase.outro"><em>Une fois F5 livrée, V1.1.5 est terminée — environ une à deux semaines de travail concentré.</em></p>
+      </div>
+    </section>
+
+    <!-- ─────────── 10. OPEN QUESTIONS ─────────── -->
+    <section id="open-questions">
+      <div class="prose-wide">
+        <span class="eyebrow" data-i18n-key="oq.eyebrow">10 · Questions ouvertes</span>
+        <h2 data-i18n-key="oq.h2">Huit points à trancher au fil des sous-phases.</h2>
+        <p class="prose" data-i18n-key="oq.intro">
+          Aucun ne bloque F1. Chacun se résout au moment où la sous-phase qui le rencontre démarre.
+          La recommandation est ma meilleure lecture actuelle ; la décision finale revient à
+          l'utilisateur.
+        </p>
+
+        <div class="tablewrap">
+          <table>
+            <thead>
+              <tr>
+                <th data-i18n-key="oq.th.num">#</th>
+                <th data-i18n-key="oq.th.q">Question</th>
+                <th data-i18n-key="oq.th.r">Recommandation</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="q-num">01</td>
+                <td data-i18n-key="oq.q1">AG annulées dans le popover ?</td>
+                <td data-i18n-key="oq.r1"><strong>Non, masquées.</strong> Une AG annulée ne demande aucune action ; elle pollue la liste sans payer son ROI visuel.</td>
+              </tr>
+              <tr>
+                <td class="q-num">02</td>
+                <td data-i18n-key="oq.q2">Limite du popover : 5 / 10 / illimité ?</td>
+                <td data-i18n-key="oq.r2"><strong>5 + lien « voir tout ».</strong> Couvre 95% des copropriétaires en multi-immeuble ; les autres cliquent.</td>
+              </tr>
+              <tr>
+                <td class="q-num">03</td>
+                <td data-i18n-key="oq.q3">Owner avec rôle <code>admin</code> sur la même copro : afficher l'AG une fois ou deux ?</td>
+                <td data-i18n-key="oq.r3"><strong>Une fois</strong>, badge <code>Syndic</code> (rôle dominant). Le syndic-aussi-copropriétaire fait son travail de syndic.</td>
+              </tr>
+              <tr>
+                <td class="q-num">04</td>
+                <td data-i18n-key="oq.q4">Bouton Rejoindre fait tourner le token — accepter de casser le lien e-mail à la première utilisation ?</td>
+                <td data-i18n-key="oq.r4"><strong>Oui.</strong> Un seul token actif par owner+AG, c'est le substrat légal. Le copropriétaire récupère un chemin propre via le dashboard.</td>
+              </tr>
+              <tr>
+                <td class="q-num">05</td>
+                <td data-i18n-key="oq.q5">Titulaire de procuration sans compte Syndicable : surface dans le dashboard ?</td>
+                <td data-i18n-key="oq.r5"><strong>Non en V1.1.5.</strong> Les procurations passent uniquement par e-mail ; le dashboard est réservé aux comptes authentifiés.</td>
+              </tr>
+              <tr>
+                <td class="q-num">06</td>
+                <td data-i18n-key="oq.q6">AG en cours, mais l'utilisateur n'a pas de lot concerné par la résolution courante : que voir ?</td>
+                <td data-i18n-key="oq.r6">Réutiliser l'UX <strong>« Cette résolution ne vous concerne pas »</strong> déjà spec'd au §7 de l'article V1.1. Pas de message neuf à inventer.</td>
+              </tr>
+              <tr>
+                <td class="q-num">07</td>
+                <td data-i18n-key="oq.q7">PV téléchargeable depuis le détail copropriétaire ?</td>
+                <td data-i18n-key="oq.r7"><strong>Oui</strong>, lien vers le doc <code>historic_pv</code> quand il existe. Pas de surface neuve, juste un bouton « Télécharger le PV » dans le panneau Mon vote.</td>
+              </tr>
+              <tr>
+                <td class="q-num">08</td>
+                <td data-i18n-key="oq.q8">Bascule owner ↔ syndic dans le popover : préserver le sélecteur d'org entre les rôles ?</td>
+                <td data-i18n-key="oq.r8"><strong>Oui</strong>, la route reste <code>/organizations/[orgId]/...</code>. Le rôle change, l'org ne change pas — c'est le sens même du <code>viewMode</code>.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────── 11. ANNEXE FILES ─────────── -->
+    <section id="annex">
+      <div class="prose-wide">
+        <span class="eyebrow" data-i18n-key="annex.eyebrow">11 · Annexe — fichiers touchés</span>
+        <h2 data-i18n-key="annex.h2">La liste exacte, pour la phase d'implémentation.</h2>
+        <p class="prose" data-i18n-key="annex.intro">
+          Concrète, croisée avec l'arborescence existante au moment de la rédaction. À chaque
+          sous-phase, on coche la ligne de la liste. Deux fichiers neufs, six fichiers modifiés,
+          plus la mise à jour de cette série de pages de doc et la confirmation des règles
+          Firestore.
+        </p>
+
+        <ul class="filelist">
+          <li>
+            <span class="tag new" data-i18n-key="annex.tag.new">NEW</span>
+            <code>src/lib/services/assemblies/stores/myAssembliesStore.ts</code>
+            <span class="desc" data-i18n-key="annex.f1">Calqué sur <code>src/lib/services/lots/stores/myRepresentedLotsStore.ts</code> ; deux étages, un seul <code>unsub</code>.</span>
+          </li>
+          <li>
+            <span class="tag new" data-i18n-key="annex.tag.new2">NEW</span>
+            <code>functions/src/features/assemblies/api/getMyVoteLink.ts</code>
+            <span class="desc" data-i18n-key="annex.f2">Handler fin déléguant à un service helper, transaction Firestore, rotation du token.</span>
+          </li>
+          <li>
+            <span class="tag mod" data-i18n-key="annex.tag.mod">MOD</span>
+            <code>src/lib/components/sidebar/components/core/OrganizationSwitcher.svelte</code>
+            <span class="desc" data-i18n-key="annex.f3">Troisième section « Mes assemblées » avec tri, pills, limite 5 + voir tout.</span>
+          </li>
+          <li>
+            <span class="tag mod" data-i18n-key="annex.tag.mod2">MOD</span>
+            <code>src/routes/(dashboard)/organizations/[organizationId]/assemblies/[aId]/+page.svelte</code>
+            <span class="desc" data-i18n-key="annex.f4">Bascule <code>viewMode</code>, gating des boutons d'admin, nouveau panneau « Mon vote ».</span>
+          </li>
+          <li>
+            <span class="tag mod" data-i18n-key="annex.tag.mod3">MOD</span>
+            <code>src/lib/services/assemblies/components/TableAgenda.svelte</code>
+            <span class="desc" data-i18n-key="annex.f5">Nouveau prop <code>showTallyForClosed</code> ; rendu inline du résumé tally.</span>
+          </li>
+          <li>
+            <span class="tag mod" data-i18n-key="annex.tag.mod4">MOD</span>
+            <code>src/lib/i18n/translations/{fr,en}.ts</code>
+            <span class="desc" data-i18n-key="annex.f6">Nouvelles clés : <code>sidebar.switcher.myAssemblies</code>, <code>pages.assemblies.viewer.*</code>, <code>assemblies.live.joinAsOwner</code>.</span>
+          </li>
+          <li>
+            <span class="tag mod" data-i18n-key="annex.tag.mod5">MOD</span>
+            <code>docs/diagrams/v1-1/{article,plan,roadmap}.html</code>
+            <span class="desc" data-i18n-key="annex.f7">Quatrième onglet dans le <code>.miniNav-tabs</code> pointant vers <code>owner-view.html</code>.</span>
+          </li>
+          <li>
+            <span class="tag cfg" data-i18n-key="annex.tag.cfg">CFG</span>
+            <code>firestore.rules</code>
+            <span class="desc" data-i18n-key="annex.f8">Confirmer que les lectures collectionGroup sur <code>assemblies/*</code> sont gatées par <code>isOrganizationMember</code> (devrait déjà l'être).</span>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ─────────── 12. COLOPHON ─────────── -->
+    <section id="colophon">
+      <div class="prose">
+        <span class="eyebrow" data-i18n-key="colo.eyebrow">12 · Colophon</span>
+        <h2 data-i18n-key="colo.h2">Ce qu'est ce plan — et ce qu'il n'est pas.</h2>
+        <p data-i18n-key="colo.p1">
+          C'est la conception de V1.1.5. Ce n'est pas un patch — aucun fichier de code n'est
+          modifié par sa lecture. Ce n'est pas un engagement de livraison à N jours — le phasage
+          suppose un seul implémenteur concentré, et chaque sous-phase peut respirer si Brugmann
+          en révèle un cas non prévu.
+        </p>
+        <p data-i18n-key="colo.p2">
+          Ce que cet article fige : la <em>forme</em>. Trois choix d'architecture, une liste de
+          fichiers, une callable, cinq sous-phases. Le code commence à la validation. Si quelque
+          chose dans la forme cloche — un nom de prop, un endroit dans la hiérarchie, une question
+          ouverte mal résolue — c'est maintenant qu'il faut le dire, avant que les sous-phases
+          ne s'enchaînent.
+        </p>
+        <p data-i18n-key="colo.p3">
+          Ce qui n'est <em>pas</em> couvert : tout ce qui est dans la colonne OUT du §02. La route
+          dédiée <code>/my-assemblies</code>, les notifications push, le téléchargement de PV
+          in-app, la rédaction owner-side de résolution — autant de pistes pour V1.2 ou plus tard.
+          V1.1.5 livre le minimum suffisant pour qu'un copropriétaire ait le sentiment d'être un
+          utilisateur de premier ordre, sans que le périmètre déraille.
+        </p>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<footer>
+  <div data-i18n-key="footer.updated">Syndicable V1.1.5 — dernière mise à jour 2026-05-09.</div>
+</footer>
+
+<script>
+  // ───────── i18n dictionary ─────────
+  window.I18N = {
+    en: {
+      "meta.title": "Syndicable V1.1.5 — Owner-View Implementation Plan",
+      "meta.description": "The implementation plan for Syndicable V1.1.5 — the owner view: cross-building popover, read-only AG detail mode, and a Join button that opens the magic link.",
+
+      "lang.label": "Language",
+      "lang.aria": "Switch language between English and French",
+
+      "nav.eyebrow": "Sections",
+      "nav.thesis": "The thesis",
+      "nav.scope": "Scope, locked",
+      "nav.choices": "Three architectural choices",
+      "nav.popover": "The popover, redesigned",
+      "nav.store": "The cross-org store",
+      "nav.detail": "Detail page, read-only",
+      "nav.restable": "The resolutions table",
+      "nav.join": "Joining the live session",
+      "nav.phasing": "Phasing",
+      "nav.openQuestions": "Open questions",
+      "nav.annex": "Annex — files touched",
+      "nav.colophon": "Colophon",
+
+      "hero.pill.module": "Module&nbsp;·&nbsp;Owner&nbsp;view",
+      "hero.title": "The AG, seen from the owner's couch.",
+      "hero.sub": "Phases A through C shipped the syndic side; V1.1.5 ships the owner side. One cross-building view, the AG detail in read-only mode, and a Join button that opens the magic link the owner already received by email.",
+
+      "thesis.eyebrow": "01 · The thesis",
+      "thesis.h2": "The owner becomes a first-class dashboard user.",
+      "thesis.p1": "V1.1's Phases A, B and C shipped the syndic flow end-to-end: AG drafting, convocation send with magic link, live session conducting, PV draft. The legal flow is in place — <em>on the syndic side</em>. Today, an owner who logs into Syndicable sees the same <code>NavAdministration</code>, the same syndic-shaped AG list, the same admin-button-laden AG detail, with no \"what does this AG mean for me as a voter\" framing.",
+      "thesis.p2": "V1.1.5 promotes the owner from <strong>email recipient</strong> to <strong>first-class dashboard user</strong>, without building a parallel portal. One app, two faces. The syndic keeps conducting; the owner receives, consults, and joins from the same UI.",
+      "thesis.p3": "The persona that anchors this work is <strong>IGS / Brugmann Ferme&nbsp;Rose</strong>: 166 owners, many with lots in multiple buildings across Brussels. Today, that owner has to flip the <code>OrganizationSwitcher</code> three times to find out which AG comes first. Tomorrow, they open the sidebar popover and see all three AGs in a single sorted list.",
+      "thesis.p4": "V1.1.5 is <strong>purely additive</strong>. No data migration, no Firestore schema change, zero risk on the syndic side. One store, one popover section, one <code>viewMode</code> flip in an existing page, and one callable. Five small phases. Code starts on sign-off.",
+
+      "scope.eyebrow": "02 · Scope, locked",
+      "scope.h2": "What ships in V1.1.5 — and what doesn't.",
+      "scope.intro": "V1.1's rule of the game still applies: anything not in the IN column is parked. The OUT column isn't a rejection — it's a queue. V1.2 or later.",
+      "scope.in.title": "In · V1.1.5 ships",
+      "scope.in.li1": "New \"My assemblies\" section in the <code>OrganizationSwitcher</code> popover (cross-org)",
+      "scope.in.li2": "Read-only mode of <code>/organizations/[orgId]/assemblies/[aId]</code> for <code>userRole === 'member'</code> or <code>'viewer'</code>",
+      "scope.in.li3": "Owner-shaped resolutions table for closed AGs (quotities totals, no nominative names)",
+      "scope.in.li4": "\"Join the live session\" CTA that opens the magic link from the dashboard",
+      "scope.in.li5": "Owner sees their own per-lot vote status, by resolution",
+      "scope.in.li6": "FR + EN, dark/light parity, identical to V1.1",
+      "scope.in.li7": "Popover sort: <code>live</code> first, then <code>convoked</code> ascending, then <code>ended</code> descending",
+      "scope.in.li8": "Limit to 5 visible AGs + \"see all\" link for multi-building owners",
+      "scope.out.title": "Out · deferred to V1.2 or later",
+      "scope.out.li1": "Dedicated <code>/my-assemblies</code> route — the list lives in the popover",
+      "scope.out.li2": "Push notifications (\"your AG starts in 1h\")",
+      "scope.out.li3": "In-app PV download (already covered by the <code>historic_pv</code> Document)",
+      "scope.out.li4": "AG-history archive views (\"my last 5 AGs\")",
+      "scope.out.li5": "Owner-side resolution drafting",
+      "scope.out.li6": "Owner-submitted §3 agenda items (already OUT in V1.1)",
+      "scope.out.li7": "Dashboard surface for procuration holders without a Syndicable account",
+      "scope.out.li8": "Cancelled AGs in the popover",
+
+      "choices.eyebrow": "03 · Three architectural choices",
+      "choices.h2": "The decisions everything else in V1.1.5 hangs from.",
+      "choices.intro": "Three forks. Three closed decisions. Phasing and the annex assume these three choices are settled.",
+      "choices.c1.num": "CHOICE&nbsp;01",
+      "choices.c1.h3": "One page, two faces.",
+      "choices.c1.p1": "We reuse <code>/organizations/[orgId]/assemblies/[aId]</code> for the owner. No parallel route, no duplicated skeleton. Every mutation button gates on <code>hasMinimumRole(userRole, 'admin')</code>. The page derives a <code>viewMode</code> from the user role: <code>'syndic' | 'owner'</code>.",
+      "choices.c1.p2": "The owner-side skin is mostly a <em>subtraction</em>, not an addition — we strip admin buttons and replace two blocks (the resolutions table and the \"My vote\" panel). One route, two audiences. Maintenance stays centralized.",
+      "choices.c2.num": "CHOICE&nbsp;02",
+      "choices.c2.h3": "Cross-org store calqued on <code>myRepresentedLotsStore</code>.",
+      "choices.c2.p1": "A new <code>myAssembliesStore</code> reads (a) the user's organizations from <code>userOrganizationsStore</code>, (b) the represented Owner docs via <code>collectionGroup('owners')</code> with <code>representedBy array-contains uid</code>, and per-copro fans out a small <code>assemblies</code> query: <code>status in ['convoked', 'live', 'ended']</code>, <code>orderBy('scheduledAt', 'desc')</code>, <code>limit(5)</code>.",
+      "choices.c2.p2": "Two-stage shape with a single <code>unsub</code> returned — the same shape as <code>myRepresentedLotsStore</code>, already proven in Phase 14. No new architectural invention, just one more instance of the \"cross-org derived\" pattern.",
+      "choices.c3.num": "CHOICE&nbsp;03",
+      "choices.c3.h3": "The Join button rotates the token, not a new route.",
+      "choices.c3.p1": "The dashboard surfaces the <code>AccessToken</code> already issued for that owner+assembly pair. To do this without storing the secret in Firestore, a new callable <code>getMyVoteLink({ assemblyId })</code> regenerates a fresh secret server-side, <strong>rotates</strong> the <code>AccessToken</code> for that owner (revoking the previous one), and returns the URL. The frontend does <code>window.open(url, '_blank')</code>.",
+      "choices.c3.p2": "Trade-off: the email magic link continues to work right up until the first dashboard click; after that, it's revoked. This matches the legal substrate — one active token per owner+AG — and gives the owner a clean reset path if they lost the email. The alternative we considered and parked: a fully authenticated <code>/organizations/[orgId]/assemblies/[aId]/vote</code> route that bypasses tokens — adds a second auth path that has to stay in sync with the public route's checks. Not worth it for V1.1.5.",
+
+      "popover.eyebrow": "04 · The popover, redesigned",
+      "popover.h2": "Three sections, role-aware.",
+      "popover.p1": "The <code>OrganizationSwitcher</code> already groups two roles today: copropriétés where the user is syndic (admin) and lots where they are owner (member). V1.1.5 adds a third section — <strong>My assemblies</strong> — that merges the AGs from both roles into a single sorted list.",
+      "popover.cap": "Mockup of the third section. The leading <span class=\"smallcaps\">●</span> on an AG line means \"live, joinable right now\"; <span class=\"smallcaps\">•</span> for <code>convoked</code> and <code>ended</code> states.",
+      "popover.p2": "Each AG row shows four things: short date, copropriété name, a <strong>status badge</strong> (<code>upcoming | live | closed</code>), and a <strong>role pill</strong> (<code>Syndic | Owner</code>). Sort follows urgency: <code>live</code> AGs first (if the user can join <em>right now</em>), then <code>convoked</code> AGs by <code>scheduledAt</code> ascending (next one first), then <code>ended</code> AGs by <code>scheduledAt</code> descending (latest on top).",
+      "popover.p3": "The section caps at <strong>5 entries</strong>, followed by a \"see all\" link only if the user has more than 5 active or recent AGs. For most owners (1 or 2 buildings, ~1 AG/year), the section stays compact. For the syndic-multi-copros, it stays scannable.",
+
+      "store.eyebrow": "05 · The cross-org store",
+      "store.h2": "<code>myAssembliesStore.ts</code> — the two-stage pattern.",
+      "store.p1": "New file at <code>src/lib/services/assemblies/stores/myAssembliesStore.ts</code>. <code>derived</code> pattern on top of <code>userDataStore</code> + <code>userOrganizationsStore</code>, exactly like <code>myRepresentedLotsStore</code>. Two stages, a single <code>unsub</code> returned.",
+      "store.p2": "Stage 1: for every organization the user has a role in (member, admin, syndic), kick off an <code>assemblies</code> query filtered on <code>status in ['convoked', 'live', 'ended']</code>. Stage 2: for copros the user is not a member of but is a representative of an Owner (typical IGS-Brugmann case), read the Owner list via <code>collectionGroup('owners')</code> + <code>representedBy array-contains uid</code> and fan out the same assemblies query. Both flows merge into the output store.",
+      "store.p3": "<strong>Sort.</strong> The store emits a flat list, sorted by <code>(statusRank, scheduledAt)</code> where <code>statusRank</code> is <code>{ live: 0, convoked: 1, ended: 2 }</code>. For <code>convoked</code> we sort ascending by date (next one first); for <code>ended</code>, descending (latest first). That gives the popover the exact order it renders.",
+      "store.p4": "<strong>Dedup.</strong> Edge case: a syndic who also has a lot in the same copro would surface twice (once via admin membership, once via represented Owner). We dedup by <code>(coproprieteId, assemblyId)</code> and keep the higher-privileged role — <code>'syndic'</code> beats <code>'owner'</code> in the same copro. One row, <code>Syndic</code> badge. That's also the recommendation of open question 03.",
+
+      "detail.eyebrow": "06 · The detail page, read-only mode",
+      "detail.h2": "What changes in <code>[aId]/+page.svelte</code>.",
+      "detail.p1": "No fork, no duplication. The file <code>src/routes/(dashboard)/organizations/[organizationId]/assemblies/[aId]/+page.svelte</code> derives a <code>viewMode</code> from the current <code>userRole</code>, and every admin action gates on a single <code>{#if viewMode === 'syndic'}</code>. The page structure stays the same; the admin scaffolding disappears for the owner.",
+      "detail.p2": "Concretely, here's what becomes invisible when <code>viewMode === 'owner'</code>:",
+      "detail.li1": "<code>Pencil</code> button (edit AG), <code>XCircle</code> (cancel), <code>Plus</code> (add resolution), <code>Mail</code> (send convocation), <code>UserPlus</code> (issue procuration).",
+      "detail.li2": "\"Start AG\" / \"End AG\" buttons.",
+      "detail.li3": "Open / close / skip resolution controls inside <code>LiveAgendaTimeline</code>.",
+      "detail.li4": "Convocation deliveries table (syndic infrastructure).",
+      "detail.p3": "And what changes behavior:",
+      "detail.li5": "<code>TableAgenda</code> receives <code>canEdit={false}</code> (already supported) and a new prop <code>showTallyForClosed={viewMode === 'owner' || isEnded}</code> — so closed resolutions surface their <code>tally.totalForQuotities / totalAgainstQuotities / totalAbstainQuotities</code> summary inline in the table.",
+      "detail.li6": "<strong>New \"My vote\" panel</strong>: card listing the lots this user holds in this copro (read from <code>myRepresentedLotsStore</code> filtered by <code>coproprieteId === currentCoproprieteId</code>) and, per lot, the cast status by resolution (For / Against / Abstain / Not yet voted). For a <code>live</code> AG, the panel mounts a primary CTA <strong>\"Join the voting session\"</strong> that calls <code>getMyVoteLink</code>.",
+      "detail.p4": "The syndic sees no change — for <code>viewMode === 'syndic'</code>, everything is exactly as before V1.1.5. That's the whole point of role-based gating: zero regression on the conductor side.",
+
+      "restable.eyebrow": "07 · The resolutions table, owner view",
+      "restable.h2": "What the owner sees for a closed AG.",
+      "restable.intro": "Inline preview of the rendering — based on the Brugmann 2024 AG, with three representative resolutions: an ordinary vote that passed, an information item, and a super-majority vote that failed.",
+      "restable.th.num": "#",
+      "restable.th.q": "Question",
+      "restable.th.type": "Type",
+      "restable.th.maj": "Majority",
+      "restable.th.key": "Key",
+      "restable.th.res": "Result",
+      "restable.r1.q": "Approval of 2023 accounts",
+      "restable.r1.type": "Vote",
+      "restable.r1.maj": "Absolute",
+      "restable.r1.res": "✅ Passed · 5,720 / 4,050 / 230",
+      "restable.r2.q": "Conseil de Copropriété report",
+      "restable.r2.type": "Information",
+      "restable.r2.res": "ℹ︎ For information",
+      "restable.r3.q": "Roof refurbishment (~€80,000)",
+      "restable.r3.type": "Vote",
+      "restable.r3.res": "❌ Rejected · 6,200 / 3,600 / 200",
+      "restable.p1": "The result format is <em>for / against / abstain</em> in absolute quotities — never percentages, never head counts. A Brugmann owner reads \"5,720 quotities for\" because that's the format of the PV they get every year. Consistency between dashboard and PV.",
+      "restable.callout.rgpd": "<strong>GDPR.</strong> The table does <em>not</em> render the <code>namedAgainst</code> / <code>namedAbstain</code> nominative arrays. Those names live in the legal PV and stay there; the dashboard gives totals, the PV gives names. That's the conservative reading of Belgian Civil Code §3.87 §10 — the PV is the transparency artifact; the dashboard is the operational one.",
+      "restable.p2": "<strong>Pre-live and during-live states.</strong> For AGs still in <code>convoked</code>, the Result column reads <em>\"Not yet open\"</em> or <em>\"Upcoming\"</em>. For a <code>live</code> AG with a current resolution in <code>voting_open</code>, the row shows a <strong>\"Live\"</strong> pill with a soft pulsing dot — the same visual feedback as the conductor view, without the open / close controls.",
+
+      "join.eyebrow": "08 · Joining the live session",
+      "join.h2": "The full <code>getMyVoteLink</code> flow.",
+      "join.p1": "The \"Join the voting session\" button in the My vote panel triggers a single callable. Here's the end-to-end, from button press to the vote page opening in a new tab.",
+      "join.li1": "<strong>Frontend.</strong> The button calls <code>httpsCallable('getMyVoteLink')({ coproprieteId, assemblyId })</code>.",
+      "join.li2": "<strong>Backend</strong> (<code>functions/src/features/assemblies/api/getMyVoteLink.ts</code>). Auth check: <code>request.auth.uid</code> must be in <code>representedBy[]</code> of at least one Owner doc in this copro, <em>or</em> be a member of the org with role ≥ <code>'admin'</code>. Resolve the <code>ownerId</code> the user can act for — in V1 the lot-owner link is 1:1, but representation can span multiple Owners; for V1.1.5 we issue one fresh token per call, scoped to the chosen Owner.",
+      "join.li3": "<strong>Token generation.</strong> 32 bytes of randomness; SHA-256 of the secret; <strong>revoke</strong> any prior <code>AccessToken</code> for that owner+assembly (<code>revokedAt = serverTimestamp()</code>); write a new <code>AccessToken</code> doc keyed by the new hash. All in a single Firestore transaction.",
+      "join.li4": "<strong>Return.</strong> <code>{ url: 'https://&lt;host&gt;/vote/&lt;secret&gt;', expiresAt }</code>.",
+      "join.li5": "<strong>Frontend, continued.</strong> <code>window.open(url, '_blank')</code>. The owner lands on the existing <code>/vote/[token]</code> page, already handled by Phases B + C — nothing new on the vote-page side.",
+      "join.callout.purple": "<strong>Trade-off, named.</strong> The email magic link continues to work right up until the first dashboard click; at that point it's revoked. That's consistent with the legal substrate — one active token per owner+AG — and gives the owner a clean reset path if they lost the email. On the dashboard side, we never store the secret client-side: each click regenerates a fresh secret, writes the hash, and forgets the secret on the next page refresh.",
+      "join.p2": "The <code>/vote/[token]</code> page itself isn't modified by V1.1.5. All the validation, cast, heartbeat logic is already in place from Phases B + C. V1.1.5 only <em>brings</em> the owner to that page from the dashboard, instead of forcing them to reopen the convocation email.",
+
+      "phase.eyebrow": "09 · Phasing",
+      "phase.h2": "Five sub-phases, one to two days each.",
+      "phase.intro": "V1.1.5 is an add-on on top of V1.1, not a standalone module. Phasing is calibrated in days, not weeks. Each sub-phase closes cleanly and can be validated against the Brugmann replay before the next one starts.",
+      "phase.F1.tag": "F1",
+      "phase.F1.h3": "Cross-org store",
+      "phase.F1.p": "<code>myAssembliesStore.ts</code> + unit-test fixtures. Verify: a test user with lots in 2 copros sees both AGs in the store output, sorted correctly.",
+      "phase.F2.tag": "F2",
+      "phase.F2.h3": "Popover",
+      "phase.F2.p": "Third section in <code>OrganizationSwitcher.svelte</code>: role + status pills, sort, 5-cap with see-all. Verify: snapshot test of the dropdown for the multi-copro Brugmann + Albert persona.",
+      "phase.F3.tag": "F3",
+      "phase.F3.h3": "Read-only detail",
+      "phase.F3.p": "<code>viewMode</code> flip in <code>[aId]/+page.svelte</code>, <code>showTallyForClosed</code> prop on <code>TableAgenda</code>, hidden deliveries table. Verify: an owner opening the Brugmann 2024 AG sees all 18 resolutions with totals, no admin buttons.",
+      "phase.F4.tag": "F4",
+      "phase.F4.h3": "My vote + getMyVoteLink",
+      "phase.F4.p": "Backend Cloud Function <code>getMyVoteLink</code> + frontend My vote panel + Join button. Verify: from the dashboard, the owner clicks Join → <code>/vote/[fresh-secret]</code> opens in a new tab and validates.",
+      "phase.F5.tag": "F5",
+      "phase.F5.h3": "i18n + polish + Brugmann replay",
+      "phase.F5.p": "Full FR + EN strings, dark/light parity, end-to-end: log in as a Brugmann owner with 1 lot, see the AG in the popover, open the detail, click Join, vote, see the result update.",
+      "phase.outro": "<em>Once F5 ships, V1.1.5 is done — roughly one to two weeks of focused work.</em>",
+
+      "oq.eyebrow": "10 · Open questions",
+      "oq.h2": "Eight points to settle as we hit each sub-phase.",
+      "oq.intro": "None block F1. Each resolves at the moment the sub-phase that hits it starts. The recommendation is my current best read; the user has the final call.",
+      "oq.th.num": "#",
+      "oq.th.q": "Question",
+      "oq.th.r": "Recommendation",
+      "oq.q1": "Cancelled AGs in the popover?",
+      "oq.r1": "<strong>No, hidden.</strong> A cancelled AG asks for no action; it pollutes the list without earning its visual ROI.",
+      "oq.q2": "Popover cap: 5 / 10 / unlimited?",
+      "oq.r2": "<strong>5 + \"see all\" link.</strong> Covers 95% of multi-building owners; the rest click.",
+      "oq.q3": "Owner with <code>admin</code> role on the same copro: show the AG once or twice?",
+      "oq.r3": "<strong>Once</strong>, <code>Syndic</code> badge (dominant role). The syndic-also-owner does the syndic's job.",
+      "oq.q4": "Join button rotates the token — accept breaking the email link on first dashboard use?",
+      "oq.r4": "<strong>Yes.</strong> One active token per owner+AG is the legal substrate. The owner gets a clean reset path via the dashboard.",
+      "oq.q5": "Procuration holder without a Syndicable account: surface in the dashboard?",
+      "oq.r5": "<strong>No in V1.1.5.</strong> Procurations go through email only; the dashboard is for authenticated accounts.",
+      "oq.q6": "Live AG, but the user has no lot concerned by the current resolution: what to show?",
+      "oq.r6": "Reuse the <strong>\"Cette résolution ne vous concerne pas\"</strong> UX already spec'd in V1.1 article §7. No new copy to invent.",
+      "oq.q7": "PV downloadable from the owner detail view?",
+      "oq.r7": "<strong>Yes</strong>, link to the <code>historic_pv</code> doc when it exists. No new surface, just a \"Download PV\" button in the My vote panel.",
+      "oq.q8": "Owner ↔ syndic flip in the popover: preserve the org selector across roles?",
+      "oq.r8": "<strong>Yes</strong>, the route stays <code>/organizations/[orgId]/...</code>. The role changes, the org doesn't — that's the whole meaning of <code>viewMode</code>.",
+
+      "annex.eyebrow": "11 · Annex — files touched",
+      "annex.h2": "The exact list, for the implementation phase.",
+      "annex.intro": "Concrete, cross-checked against the existing tree at the time of writing. At each sub-phase, we tick a row off the list. Two new files, six modified, plus this doc series update and a Firestore rules confirmation.",
+      "annex.tag.new": "NEW",
+      "annex.tag.new2": "NEW",
+      "annex.tag.mod": "MOD",
+      "annex.tag.mod2": "MOD",
+      "annex.tag.mod3": "MOD",
+      "annex.tag.mod4": "MOD",
+      "annex.tag.mod5": "MOD",
+      "annex.tag.cfg": "CFG",
+      "annex.f1": "Modeled on <code>src/lib/services/lots/stores/myRepresentedLotsStore.ts</code>; two stages, single <code>unsub</code>.",
+      "annex.f2": "Thin handler delegating to a service helper, Firestore transaction, token rotation.",
+      "annex.f3": "Third \"My assemblies\" section with sort, pills, 5-cap with see-all.",
+      "annex.f4": "<code>viewMode</code> flip, admin-button gating, new \"My vote\" panel.",
+      "annex.f5": "New <code>showTallyForClosed</code> prop; inline tally summary rendering.",
+      "annex.f6": "New keys: <code>sidebar.switcher.myAssemblies</code>, <code>pages.assemblies.viewer.*</code>, <code>assemblies.live.joinAsOwner</code>.",
+      "annex.f7": "Fourth tab in <code>.miniNav-tabs</code> pointing to <code>owner-view.html</code>.",
+      "annex.f8": "Confirm collectionGroup reads on <code>assemblies/*</code> are gated by <code>isOrganizationMember</code> (should already be).",
+
+      "colo.eyebrow": "12 · Colophon",
+      "colo.h2": "What this plan is — and what it isn't.",
+      "colo.p1": "This is the V1.1.5 design. It is not a code patch — no source file is modified by reading it. It is not a delivery commitment in N days — phasing assumes one focused implementer, and each sub-phase can breathe if Brugmann reveals an unforeseen case.",
+      "colo.p2": "What this article freezes: the <em>shape</em>. Three architectural choices, one file list, one callable, five sub-phases. Code starts on sign-off. If something in the shape is off — a prop name, a place in the hierarchy, a misanswered open question — now is the time to flag it, before the sub-phases chain together.",
+      "colo.p3": "What is <em>not</em> covered: anything in §02's OUT column. The dedicated <code>/my-assemblies</code> route, push notifications, in-app PV download, owner-side resolution drafting — all of those are V1.2 or later. V1.1.5 ships the bare minimum for an owner to feel like a first-class user, without letting scope drift.",
+
+      "miniNav.article": "Article",
+      "miniNav.plan": "Plan",
+      "miniNav.roadmap": "Roadmap",
+      "miniNav.ownerView": "Owner view",
+      "miniNav.cli": "CLI",
+      "miniNav.testing": "Testing",
+
+      "footer.updated": "Syndicable V1.1.5 — last updated 2026-05-09."
+    },
+
+    fr: {
+      "meta.title": "Syndicable V1.1.5 — Vue copropriétaire",
+      "meta.description": "Le plan d'implémentation de Syndicable V1.1.5 : la vue copropriétaire — popover cross-immeubles, mode lecture seule du détail AG, bouton Rejoindre la session.",
+
+      "lang.label": "Langue",
+      "lang.aria": "Basculer la langue entre français et anglais",
+
+      "nav.eyebrow": "Sections",
+      "nav.thesis": "La thèse",
+      "nav.scope": "Périmètre, figé",
+      "nav.choices": "Trois choix d'architecture",
+      "nav.popover": "Le popover, redessiné",
+      "nav.store": "Le store cross-org",
+      "nav.detail": "La page détail, lecture seule",
+      "nav.restable": "La table des résolutions",
+      "nav.join": "Rejoindre la session",
+      "nav.phasing": "Phasage",
+      "nav.openQuestions": "Questions ouvertes",
+      "nav.annex": "Annexe — fichiers touchés",
+      "nav.colophon": "Colophon",
+
+      "hero.pill.module": "Module&nbsp;·&nbsp;Vue&nbsp;copropriétaire",
+      "hero.title": "L'AG, vue depuis le canapé du copropriétaire.",
+      "hero.sub": "Les phases A à C ont livré le côté syndic ; V1.1.5 livre le côté copropriétaire. Une seule vue cross-immeubles, le détail AG en lecture seule, et un bouton « Rejoindre » qui ouvre la magic link déjà reçue par e-mail.",
+
+      "thesis.eyebrow": "01 · La thèse",
+      "thesis.h2": "Le copropriétaire devient un utilisateur de plein droit du dashboard.",
+      "thesis.p1": "Les phases A, B et C de V1.1 ont livré le syndic de bout en bout : rédaction d'AG, envoi des convocations avec magic link, animation de la session en direct, brouillon de PV. Le flux légal est en place — <em>côté syndic</em>. Aujourd'hui, un copropriétaire qui se connecte à Syndicable voit le même <code>NavAdministration</code>, la même liste d'AG côté syndic, le même détail AG bardé de boutons d'admin, sans cadrage « qu'est-ce que cette AG veut dire pour moi en tant que votant ».",
+      "thesis.p2": "V1.1.5 fait basculer le copropriétaire de <strong>destinataire d'e-mail</strong> à <strong>utilisateur de premier ordre du dashboard</strong>, sans construire un portail parallèle. Une seule app, deux visages. Le syndic continue d'orchestrer ; le copropriétaire reçoit, consulte, et rejoint depuis la même interface.",
+      "thesis.p3": "Le persona qui ancre ce travail, c'est l'<strong>IGS / Brugmann Ferme&nbsp;Rose</strong> : 166 copropriétaires, beaucoup avec des lots dans plusieurs immeubles à Bruxelles. Aujourd'hui, ce copropriétaire-là doit basculer l'<code>OrganizationSwitcher</code> trois fois pour savoir quelle AG arrive en premier. Demain, il ouvre le popover du sidebar et voit ses trois AG dans une seule liste, triées par état.",
+      "thesis.p4": "V1.1.5 est <strong>purement additif</strong>. Pas de migration de données, pas de changement de schéma Firestore, aucun risque sur le côté syndic. Un store, une section de popover, une bascule <code>viewMode</code> dans une page existante, et une callable. Cinq petites phases. Le code commence à la validation de cet article.",
+
+      "scope.eyebrow": "02 · Périmètre, figé",
+      "scope.h2": "Ce qui sort en V1.1.5 — et ce qui ne sort pas.",
+      "scope.intro": "La règle du jeu de V1.1 reste : tout ce qui n'est pas dans la colonne IN est mis en pause. La colonne OUT n'est pas un rejet, c'est une file d'attente — V1.2 ou plus tard.",
+      "scope.in.title": "Inclus · livré en V1.1.5",
+      "scope.in.li1": "Nouvelle section « Mes assemblées » dans le popover de l'<code>OrganizationSwitcher</code> (cross-org)",
+      "scope.in.li2": "Mode lecture seule de <code>/organizations/[orgId]/assemblies/[aId]</code> pour <code>userRole === 'member'</code> ou <code>'viewer'</code>",
+      "scope.in.li3": "Table des résolutions vue copropriétaire pour les AG clôturées (totaux en quotités, sans nominatifs)",
+      "scope.in.li4": "CTA « Rejoindre la session » qui ouvre la magic link depuis le dashboard",
+      "scope.in.li5": "Le copropriétaire voit le statut de vote de ses propres lots, par résolution",
+      "scope.in.li6": "FR + EN, parité dark/light, identique à V1.1",
+      "scope.in.li7": "Tri du popover : <code>live</code> en premier, puis <code>convoked</code> ascendant, puis <code>ended</code> descendant",
+      "scope.in.li8": "Limite à 5 AG visibles + lien « voir tout » pour les copropriétaires en multi-immeuble",
+      "scope.out.title": "Hors · différé en V1.2 ou plus tard",
+      "scope.out.li1": "Route dédiée <code>/my-assemblies</code> — la liste vit dans le popover",
+      "scope.out.li2": "Notifications push « votre AG démarre dans 1h »",
+      "scope.out.li3": "Téléchargement du PV in-app (déjà couvert par le Document <code>historic_pv</code>)",
+      "scope.out.li4": "Vues archive d'historique d'AG (« mes 5 dernières AG »)",
+      "scope.out.li5": "Rédaction de résolution côté copropriétaire",
+      "scope.out.li6": "Soumission de points d'ordre du jour §3 par les copropriétaires (déjà OUT en V1.1)",
+      "scope.out.li7": "Surface dashboard pour le titulaire d'une procuration sans compte Syndicable",
+      "scope.out.li8": "Affichage des AG annulées dans le popover",
+
+      "choices.eyebrow": "03 · Trois choix d'architecture",
+      "choices.h2": "Les décisions dont le reste de V1.1.5 découle.",
+      "choices.intro": "Trois bifurcations. Trois décisions désormais arrêtées. Le phasage et l'annexe partent de l'hypothèse que ces trois choix sont actés.",
+      "choices.c1.num": "CHOIX&nbsp;01",
+      "choices.c1.h3": "Une page, deux visages.",
+      "choices.c1.p1": "On réutilise <code>/organizations/[orgId]/assemblies/[aId]</code> pour le copropriétaire. Pas de route parallèle, pas de squelette dupliqué. Chaque bouton de mutation est gaté par <code>hasMinimumRole(userRole, 'admin')</code>. La page dérive un <code>viewMode</code> du rôle utilisateur : <code>'syndic' | 'owner'</code>.",
+      "choices.c1.p2": "La skin owner-side est principalement une <em>soustraction</em>, pas un ajout — on retire les boutons d'admin et on remplace deux blocs (la table des résolutions, le panneau « Mon vote »). Une route, deux audiences. La maintenance reste centralisée.",
+      "choices.c2.num": "CHOIX&nbsp;02",
+      "choices.c2.h3": "Store cross-org calqué sur <code>myRepresentedLotsStore</code>.",
+      "choices.c2.p1": "Un nouveau <code>myAssembliesStore</code> lit (a) les organisations de l'utilisateur via <code>userOrganizationsStore</code>, (b) les Owner docs représentés via <code>collectionGroup('owners')</code> avec <code>representedBy array-contains uid</code>, et fan-out une petite query <code>assemblies</code> par copro : <code>status in ['convoked', 'live', 'ended']</code>, <code>orderBy('scheduledAt', 'desc')</code>, <code>limit(5)</code>.",
+      "choices.c2.p2": "Forme à deux étages avec un seul <code>unsub</code> retourné — la même que <code>myRepresentedLotsStore</code>, déjà éprouvée en Phase 14. Pas de nouvelle invention d'architecture, juste un instance de plus du pattern « cross-org derived ».",
+      "choices.c3.num": "CHOIX&nbsp;03",
+      "choices.c3.h3": "Le bouton « Rejoindre » fait tourner le token, pas une nouvelle route.",
+      "choices.c3.p1": "Le dashboard surface l'<code>AccessToken</code> déjà émis pour ce couple owner+assembly. Pour faire ça sans stocker le secret en Firestore, une nouvelle callable <code>getMyVoteLink({ assemblyId })</code> régénère un secret frais côté serveur, <strong>fait tourner</strong> l'<code>AccessToken</code> de cet owner (révoque l'ancien), et retourne l'URL. Le frontend fait un <code>window.open(url, '_blank')</code>.",
+      "choices.c3.p2": "Trade-off : le lien magique de l'e-mail continue de marcher jusqu'au premier clic dashboard ; après, il est révoqué. Ça correspond au substrat légal — un seul token actif par owner+AG — et ça donne au copropriétaire un chemin de réinitialisation propre s'il a perdu l'e-mail. L'alternative envisagée puis parquée : une route <code>/organizations/[orgId]/assemblies/[aId]/vote</code> authentifiée qui contourne les tokens — ajoute un second chemin d'auth qui doit rester en phase avec celui de la route publique. Pas la peine pour V1.1.5.",
+
+      "popover.eyebrow": "04 · Le popover, redessiné",
+      "popover.h2": "Trois sections, une logique de rôle.",
+      "popover.p1": "L'<code>OrganizationSwitcher</code> regroupe déjà aujourd'hui deux rôles : copropriétés dont l'utilisateur est syndic (admin) et lots dont il est propriétaire (member). V1.1.5 ajoute une troisième section — <strong>Mes assemblées</strong> — qui fusionne les AG des deux rôles dans une seule liste triée.",
+      "popover.cap": "Mockup de la troisième section. Le pictogramme <span class=\"smallcaps\">●</span> en tête d'AG signifie « en cours, rejoignable à l'instant » ; le <span class=\"smallcaps\">•</span> pour les états <code>convoked</code> et <code>ended</code>.",
+      "popover.p2": "Chaque ligne d'AG affiche quatre choses : la date abrégée, le nom de la copropriété, un <strong>badge de statut</strong> (<code>à venir | en cours | terminée</code>), et un <strong>pill de rôle</strong> (<code>Syndic | Copropriétaire</code>). Le tri suit l'urgence : AG <code>live</code> en premier (si l'utilisateur peut rejoindre <em>maintenant</em>), puis AG <code>convoked</code> par <code>scheduledAt</code> ascendant (la prochaine d'abord), puis AG <code>ended</code> par <code>scheduledAt</code> descendant (la dernière en haut).",
+      "popover.p3": "La section affiche au plus <strong>5 entrées</strong>, suivies d'un lien « voir tout » uniquement si l'utilisateur a plus de 5 AG actives ou récentes. Pour la majorité des copropriétaires (1 ou 2 immeubles, ~1 AG par an), la section reste compacte. Pour le syndic-multi-copros, elle reste navigable.",
+
+      "store.eyebrow": "05 · Le store cross-org",
+      "store.h2": "<code>myAssembliesStore.ts</code> — le pattern à deux étages.",
+      "store.p1": "Fichier neuf à <code>src/lib/services/assemblies/stores/myAssembliesStore.ts</code>. Pattern <code>derived</code> au-dessus de <code>userDataStore</code> + <code>userOrganizationsStore</code>, exactement comme <code>myRepresentedLotsStore</code>. Deux étages, un seul <code>unsub</code> retourné.",
+      "store.p2": "Étage 1 : pour chaque organisation où l'utilisateur a un rôle (member, admin, syndic), on déclenche une query <code>assemblies</code> filtrée sur <code>status in ['convoked', 'live', 'ended']</code>. Étage 2 : pour les copros où l'utilisateur n'est pas membre mais est représentant d'un Owner (cas IGS-Brugmann typique), on lit la liste des Owner via <code>collectionGroup('owners')</code> + <code>representedBy array-contains uid</code> et on fan-out la même query d'assemblies. Les deux flux se fusionnent dans le store de sortie.",
+      "store.p3": "<strong>Tri.</strong> Le store sort une liste plate, triée par <code>(statusRank, scheduledAt)</code> où <code>statusRank</code> est <code>{ live: 0, convoked: 1, ended: 2 }</code>. Pour <code>convoked</code> on trie par date ascendante (la prochaine d'abord) ; pour <code>ended</code>, descendante (la dernière d'abord). Ça donne au popover l'ordre exact qu'il rend.",
+      "store.p4": "<strong>Dedup.</strong> Cas-limite : un syndic qui a aussi un lot dans la même copro remonterait deux fois (une via membership admin, une via Owner représenté). On dédup par <code>(coproprieteId, assemblyId)</code> et on garde le rôle le plus privilégié — <code>'syndic'</code> l'emporte sur <code>'owner'</code> dans la même copro. Une seule ligne, badge <code>Syndic</code>. C'est aussi la recommandation de la question ouverte 03.",
+
+      "detail.eyebrow": "06 · La page détail, mode lecture seule",
+      "detail.h2": "Ce qui change dans <code>[aId]/+page.svelte</code>.",
+      "detail.p1": "Pas de fork, pas de duplication. Le fichier <code>src/routes/(dashboard)/organizations/[organizationId]/assemblies/[aId]/+page.svelte</code> dérive un <code>viewMode</code> du <code>userRole</code> courant, et chaque action d'admin est gatée par un seul <code>{#if viewMode === 'syndic'}</code>. La structure de la page reste la même ; le squelette d'admin disparaît pour le copropriétaire.",
+      "detail.p2": "Concrètement, voici ce qui devient invisible quand <code>viewMode === 'owner'</code> :",
+      "detail.li1": "Boutons <code>Pencil</code> (éditer l'AG), <code>XCircle</code> (annuler), <code>Plus</code> (ajouter une résolution), <code>Mail</code> (envoyer la convocation), <code>UserPlus</code> (émettre une procuration).",
+      "detail.li2": "Boutons « Démarrer l'AG », « Terminer l'AG ».",
+      "detail.li3": "Contrôles ouvrir / clôturer / passer une résolution dans <code>LiveAgendaTimeline</code>.",
+      "detail.li4": "Table des livraisons de convocation (infrastructure syndic).",
+      "detail.p3": "Et ce qui change de comportement :",
+      "detail.li5": "<code>TableAgenda</code> reçoit <code>canEdit={false}</code> (déjà supporté) et un nouveau prop <code>showTallyForClosed={viewMode === 'owner' || isEnded}</code> — pour que les résolutions clôturées affichent leur résumé <code>tally.totalForQuotities / totalAgainstQuotities / totalAbstainQuotities</code> en ligne dans la table.",
+      "detail.li6": "<strong>Nouveau panneau « Mon vote »</strong> : carte qui liste les lots de cet utilisateur dans cette copro (lecture de <code>myRepresentedLotsStore</code> filtré sur <code>coproprieteId === currentCoproprieteId</code>) et, par lot, le statut de cast par résolution (Pour / Contre / Abstention / Pas encore voté). Pour une AG <code>live</code>, le panneau monte un CTA primaire <strong>« Rejoindre la session de vote »</strong> qui appelle <code>getMyVoteLink</code>.",
+      "detail.p4": "Le syndic ne voit aucun changement — pour <code>viewMode === 'syndic'</code>, tout est comme avant V1.1.5. C'est précisément l'intérêt de la bascule par rôle : zéro régression côté chef d'orchestre.",
+
+      "restable.eyebrow": "07 · La table des résolutions, vue copropriétaire",
+      "restable.h2": "Ce que voit le copropriétaire d'une AG clôturée.",
+      "restable.intro": "Aperçu inline du rendu — basé sur l'AG Brugmann 2024, avec trois résolutions représentatives : un vote ordinaire adopté, un point d'information, un vote en majorité renforcée rejeté.",
+      "restable.th.num": "#",
+      "restable.th.q": "Question",
+      "restable.th.type": "Type",
+      "restable.th.maj": "Majorité",
+      "restable.th.key": "Clé",
+      "restable.th.res": "Résultat",
+      "restable.r1.q": "Approbation des comptes 2023",
+      "restable.r1.type": "Vote",
+      "restable.r1.maj": "Absolue",
+      "restable.r1.res": "✅ Adoptée · 5 720 / 4 050 / 230",
+      "restable.r2.q": "Rapport du Conseil de Copropriété",
+      "restable.r2.type": "Information",
+      "restable.r2.res": "ℹ︎ Pour information",
+      "restable.r3.q": "Réfection de la toiture (~80 000 €)",
+      "restable.r3.type": "Vote",
+      "restable.r3.res": "❌ Rejetée · 6 200 / 3 600 / 200",
+      "restable.p1": "Le format du résultat, c'est <em>pour / contre / abstention</em> en quotités absolues — jamais en pourcentage, jamais en têtes. Un copropriétaire de Brugmann sait lire « 5 720 quotités pour » parce que c'est le format du PV qu'il reçoit chaque année. Cohérence entre dashboard et PV.",
+      "restable.callout.rgpd": "<strong>RGPD.</strong> La table ne rend <em>pas</em> les tableaux nominatifs <code>namedAgainst</code> / <code>namedAbstain</code>. Ces noms vivent dans le PV légal et y restent ; le dashboard donne les totaux, le PV donne les noms. C'est la lecture conservatrice du Code civil belge §3.87 §10 — le PV est l'artefact de transparence ; le dashboard est l'artefact opérationnel.",
+      "restable.p2": "<strong>États avant / pendant le live.</strong> Pour les AG encore en <code>convoked</code>, la colonne « Résultat » lit <em>« Pas encore ouverte »</em> ou <em>« À venir »</em>. Pour une AG <code>live</code> avec une résolution courante en <code>voting_open</code>, la ligne montre un pill <strong>« En cours »</strong> avec un point pulsant — exactement le même feedback visuel que la vue chef d'orchestre, sans les contrôles d'ouverture / clôture.",
+
+      "join.eyebrow": "08 · Rejoindre la session en direct",
+      "join.h2": "Le flux complet de <code>getMyVoteLink</code>.",
+      "join.p1": "Le bouton « Rejoindre la session de vote » du panneau Mon vote déclenche un appel callable, et seulement un. Voici le bout-en-bout, de la pression sur le bouton à l'ouverture de la page de vote dans un nouvel onglet.",
+      "join.li1": "<strong>Frontend.</strong> Le bouton appelle <code>httpsCallable('getMyVoteLink')({ coproprieteId, assemblyId })</code>.",
+      "join.li2": "<strong>Backend</strong> (<code>functions/src/features/assemblies/api/getMyVoteLink.ts</code>). Vérification d'auth : <code>request.auth.uid</code> doit figurer dans <code>representedBy[]</code> d'au moins un Owner doc de cette copro, <em>ou</em> être membre de l'org avec rôle ≥ <code>'admin'</code>. Résolution de l'<code>ownerId</code> que l'utilisateur peut représenter — en V1 le lien lot-owner est 1:1, mais une représentation peut couvrir plusieurs Owner ; en V1.1.5 on émet un seul token frais par appel, scopé au premier Owner choisi.",
+      "join.li3": "<strong>Génération du token.</strong> 32 octets d'aléa ; SHA-256 du secret ; <strong>révocation</strong> de tout <code>AccessToken</code> antérieur pour ce couple owner+assembly (<code>revokedAt = serverTimestamp()</code>) ; écriture d'un nouveau doc <code>AccessToken</code> indexé par le nouveau hash. Le tout dans une seule transaction Firestore.",
+      "join.li4": "<strong>Retour.</strong> <code>{ url: 'https://&lt;host&gt;/vote/&lt;secret&gt;', expiresAt }</code>.",
+      "join.li5": "<strong>Frontend, suite.</strong> <code>window.open(url, '_blank')</code>. Le copropriétaire atterrit sur la page <code>/vote/[token]</code> existante, déjà gérée par les phases B + C — rien de neuf côté page de vote.",
+      "join.callout.purple": "<strong>Trade-off à nommer.</strong> Le lien magique de l'e-mail continue de marcher jusqu'au premier clic du bouton dashboard ; à ce moment-là il est révoqué. C'est cohérent avec le substrat légal — un seul token actif par owner+AG — et ça donne au copropriétaire un chemin de réinitialisation propre s'il a perdu son e-mail. Côté dashboard, on ne stocke jamais le secret côté client : chaque clic régénère un secret frais, écrit le hash, et oublie le secret au prochain refresh de page.",
+      "join.p2": "La page <code>/vote/[token]</code> elle-même n'est pas modifiée par V1.1.5. Toute la logique de validation, de cast, de heartbeat est déjà en place depuis les phases B + C. V1.1.5 ne fait qu'<em>amener</em> le copropriétaire jusqu'à cette page depuis le dashboard, au lieu de l'obliger à rouvrir l'e-mail de convocation.",
+
+      "phase.eyebrow": "09 · Phasage",
+      "phase.h2": "Cinq sous-phases, une à deux journées chacune.",
+      "phase.intro": "V1.1.5 est un add-on sur V1.1, pas un module à part entière. Le phasage est calibré en jours, pas en semaines. Chaque sous-phase ferme proprement et peut être validée contre la recréation Brugmann avant de passer à la suivante.",
+      "phase.F1.tag": "F1",
+      "phase.F1.h3": "Cross-org store",
+      "phase.F1.p": "<code>myAssembliesStore.ts</code> + fixtures de test unitaire. Vérification : un utilisateur de test avec des lots dans 2 copros voit les deux AG dans la sortie du store, triées correctement.",
+      "phase.F2.tag": "F2",
+      "phase.F2.h3": "Popover",
+      "phase.F2.p": "Troisième section dans <code>OrganizationSwitcher.svelte</code> : pills de rôle + statut, tri, limite à 5 + voir tout. Vérification : snapshot test du dropdown pour le persona multi-copro Brugmann + Albert.",
+      "phase.F3.tag": "F3",
+      "phase.F3.h3": "Détail en lecture seule",
+      "phase.F3.p": "Bascule <code>viewMode</code> dans <code>[aId]/+page.svelte</code>, prop <code>showTallyForClosed</code> sur <code>TableAgenda</code>, masquage de la table des livraisons. Vérification : un copropriétaire qui ouvre l'AG Brugmann 2024 voit ses 18 résolutions avec totaux, sans aucun bouton d'admin.",
+      "phase.F4.tag": "F4",
+      "phase.F4.h3": "Mon vote + getMyVoteLink",
+      "phase.F4.p": "Cloud Function <code>getMyVoteLink</code> côté backend + panneau Mon vote côté frontend + bouton Rejoindre. Vérification : depuis le dashboard, le copropriétaire clique sur Rejoindre → <code>/vote/[fresh-secret]</code> s'ouvre dans un nouvel onglet et valide.",
+      "phase.F5.tag": "F5",
+      "phase.F5.h3": "i18n + polish + replay Brugmann",
+      "phase.F5.p": "Strings FR + EN complets, parité dark/light, end-to-end : login en tant que copropriétaire Brugmann avec 1 lot, AG visible dans le popover, ouverture du détail, clic Rejoindre, vote, mise à jour du résultat affiché.",
+      "phase.outro": "<em>Une fois F5 livrée, V1.1.5 est terminée — environ une à deux semaines de travail concentré.</em>",
+
+      "oq.eyebrow": "10 · Questions ouvertes",
+      "oq.h2": "Huit points à trancher au fil des sous-phases.",
+      "oq.intro": "Aucun ne bloque F1. Chacun se résout au moment où la sous-phase qui le rencontre démarre. La recommandation est ma meilleure lecture actuelle ; la décision finale revient à l'utilisateur.",
+      "oq.th.num": "#",
+      "oq.th.q": "Question",
+      "oq.th.r": "Recommandation",
+      "oq.q1": "AG annulées dans le popover ?",
+      "oq.r1": "<strong>Non, masquées.</strong> Une AG annulée ne demande aucune action ; elle pollue la liste sans payer son ROI visuel.",
+      "oq.q2": "Limite du popover : 5 / 10 / illimité ?",
+      "oq.r2": "<strong>5 + lien « voir tout ».</strong> Couvre 95% des copropriétaires en multi-immeuble ; les autres cliquent.",
+      "oq.q3": "Owner avec rôle <code>admin</code> sur la même copro : afficher l'AG une fois ou deux ?",
+      "oq.r3": "<strong>Une fois</strong>, badge <code>Syndic</code> (rôle dominant). Le syndic-aussi-copropriétaire fait son travail de syndic.",
+      "oq.q4": "Bouton Rejoindre fait tourner le token — accepter de casser le lien e-mail à la première utilisation ?",
+      "oq.r4": "<strong>Oui.</strong> Un seul token actif par owner+AG, c'est le substrat légal. Le copropriétaire récupère un chemin propre via le dashboard.",
+      "oq.q5": "Titulaire de procuration sans compte Syndicable : surface dans le dashboard ?",
+      "oq.r5": "<strong>Non en V1.1.5.</strong> Les procurations passent uniquement par e-mail ; le dashboard est réservé aux comptes authentifiés.",
+      "oq.q6": "AG en cours, mais l'utilisateur n'a pas de lot concerné par la résolution courante : que voir ?",
+      "oq.r6": "Réutiliser l'UX <strong>« Cette résolution ne vous concerne pas »</strong> déjà spec'd au §7 de l'article V1.1. Pas de message neuf à inventer.",
+      "oq.q7": "PV téléchargeable depuis le détail copropriétaire ?",
+      "oq.r7": "<strong>Oui</strong>, lien vers le doc <code>historic_pv</code> quand il existe. Pas de surface neuve, juste un bouton « Télécharger le PV » dans le panneau Mon vote.",
+      "oq.q8": "Bascule owner ↔ syndic dans le popover : préserver le sélecteur d'org entre les rôles ?",
+      "oq.r8": "<strong>Oui</strong>, la route reste <code>/organizations/[orgId]/...</code>. Le rôle change, l'org ne change pas — c'est le sens même du <code>viewMode</code>.",
+
+      "annex.eyebrow": "11 · Annexe — fichiers touchés",
+      "annex.h2": "La liste exacte, pour la phase d'implémentation.",
+      "annex.intro": "Concrète, croisée avec l'arborescence existante au moment de la rédaction. À chaque sous-phase, on coche la ligne de la liste. Deux fichiers neufs, six fichiers modifiés, plus la mise à jour de cette série de pages de doc et la confirmation des règles Firestore.",
+      "annex.tag.new": "NEW",
+      "annex.tag.new2": "NEW",
+      "annex.tag.mod": "MOD",
+      "annex.tag.mod2": "MOD",
+      "annex.tag.mod3": "MOD",
+      "annex.tag.mod4": "MOD",
+      "annex.tag.mod5": "MOD",
+      "annex.tag.cfg": "CFG",
+      "annex.f1": "Calqué sur <code>src/lib/services/lots/stores/myRepresentedLotsStore.ts</code> ; deux étages, un seul <code>unsub</code>.",
+      "annex.f2": "Handler fin déléguant à un service helper, transaction Firestore, rotation du token.",
+      "annex.f3": "Troisième section « Mes assemblées » avec tri, pills, limite 5 + voir tout.",
+      "annex.f4": "Bascule <code>viewMode</code>, gating des boutons d'admin, nouveau panneau « Mon vote ».",
+      "annex.f5": "Nouveau prop <code>showTallyForClosed</code> ; rendu inline du résumé tally.",
+      "annex.f6": "Nouvelles clés : <code>sidebar.switcher.myAssemblies</code>, <code>pages.assemblies.viewer.*</code>, <code>assemblies.live.joinAsOwner</code>.",
+      "annex.f7": "Quatrième onglet dans le <code>.miniNav-tabs</code> pointant vers <code>owner-view.html</code>.",
+      "annex.f8": "Confirmer que les lectures collectionGroup sur <code>assemblies/*</code> sont gatées par <code>isOrganizationMember</code> (devrait déjà l'être).",
+
+      "colo.eyebrow": "12 · Colophon",
+      "colo.h2": "Ce qu'est ce plan — et ce qu'il n'est pas.",
+      "colo.p1": "C'est la conception de V1.1.5. Ce n'est pas un patch — aucun fichier de code n'est modifié par sa lecture. Ce n'est pas un engagement de livraison à N jours — le phasage suppose un seul implémenteur concentré, et chaque sous-phase peut respirer si Brugmann en révèle un cas non prévu.",
+      "colo.p2": "Ce que cet article fige : la <em>forme</em>. Trois choix d'architecture, une liste de fichiers, une callable, cinq sous-phases. Le code commence à la validation. Si quelque chose dans la forme cloche — un nom de prop, un endroit dans la hiérarchie, une question ouverte mal résolue — c'est maintenant qu'il faut le dire, avant que les sous-phases ne s'enchaînent.",
+      "colo.p3": "Ce qui n'est <em>pas</em> couvert : tout ce qui est dans la colonne OUT du §02. La route dédiée <code>/my-assemblies</code>, les notifications push, le téléchargement de PV in-app, la rédaction owner-side de résolution — autant de pistes pour V1.2 ou plus tard. V1.1.5 livre le minimum suffisant pour qu'un copropriétaire ait le sentiment d'être un utilisateur de premier ordre, sans que le périmètre déraille.",
+
+      "miniNav.article": "Article",
+      "miniNav.plan": "Plan",
+      "miniNav.roadmap": "Feuille de route",
+      "miniNav.ownerView": "Vue copropriétaire",
+      "miniNav.cli": "CLI",
+      "miniNav.testing": "Tests",
+
+      "footer.updated": "Syndicable V1.1.5 — dernière mise à jour 2026-05-09."
+    }
+  };
+</script>
+
+<script src="app.js" defer></script>
+
+</body>
+</html>

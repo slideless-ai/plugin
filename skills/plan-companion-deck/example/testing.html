@@ -1,0 +1,1319 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title data-i18n-key="meta.title">Syndicable V1.1+CLI — Stratégie de test post-déploiement</title>
+<meta name="description" data-i18n-key-attr="content" data-i18n-key="meta.description" content="Plan de test bout-en-bout pour V1.1 + V1.1.5 + CLI déployés sur syndicable-codika-staging : Cloud Functions, frontend voter, conducteur syndic, CLI." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<script>
+  // Pre-paint language resolver — shares the localStorage key
+  // (`syndicable.article.lang`) with the five sibling deck pages so the
+  // user's choice survives cross-page navigation.
+  (function () {
+    try {
+      var saved = window.localStorage.getItem('syndicable.article.lang');
+      if (saved !== 'en' && saved !== 'fr') saved = 'fr';
+      document.documentElement.setAttribute('lang', saved);
+      document.documentElement.setAttribute('data-lang', saved);
+    } catch (e) {
+      document.documentElement.setAttribute('lang', 'fr');
+      document.documentElement.setAttribute('data-lang', 'fr');
+    }
+  })();
+</script>
+<style>
+  /* Page-local: shell session blocks (commands + sample output). */
+  .shell-block {
+    margin: 22px 0 28px;
+    padding: 18px 20px;
+    background: #0F2A3A;
+    color: #DCEAF1;
+    border-radius: 10px;
+    border: 1px solid rgba(29, 91, 122, 0.32);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    line-height: 1.6;
+    overflow-x: auto;
+    white-space: pre;
+  }
+  .shell-block .sh-prompt { color: #88BFE0; }
+  .shell-block .sh-cmd    { color: #F1E9D8; }
+  .shell-block .sh-flag   { color: #C7B0E5; }
+  .shell-block .sh-arg    { color: #9DD6B4; }
+  .shell-block .sh-out    { color: #6F8FA0; }
+  .shell-block .sh-ok     { color: #9DD6B4; }
+  .shell-block .sh-warn   { color: #E0B879; }
+  .shell-block .sh-err    { color: #E58B7E; }
+  .shell-block .sh-com    { color: #6F8FA0; font-style: italic; }
+  .shell-block .sh-h      { color: #C7B0E5; font-weight: 700; }
+
+  /* Page-local: error code pill (HttpsError code mapping). */
+  .err-pill {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    line-height: 1.5;
+    white-space: nowrap;
+    background: rgba(229, 139, 126, 0.12);
+    color: #B45445;
+  }
+  .err-pill.unauth     { background: rgba(63, 42, 77, 0.10);   color: var(--purple-deep); }
+  .err-pill.perm       { background: rgba(180, 130, 50, 0.12); color: #B47A1F; }
+  .err-pill.precond    { background: rgba(29, 91, 122, 0.12);  color: var(--sky-deep); }
+  .err-pill.notfound   { background: rgba(150, 150, 150, 0.18); color: #555; }
+  .err-pill.invarg     { background: rgba(229, 139, 126, 0.14); color: #B45445; }
+  .err-pill.exist      { background: rgba(31, 122, 83, 0.12);  color: #1F7A53; }
+  .err-pill.exhausted  { background: rgba(180, 130, 50, 0.18); color: #8A5616; }
+
+  /* Page-local: phase tag inline (reuse cli.html palette). */
+  .phase-tag-inline {
+    display: inline-block;
+    background: var(--sky-deep);
+    color: #fff;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 4px;
+    letter-spacing: 0.06em;
+    margin-right: 6px;
+    vertical-align: 1px;
+  }
+  .phase-tag-inline.A { background: var(--purple); }
+  .phase-tag-inline.B { background: #4FA0C2; }
+  .phase-tag-inline.C { background: var(--sky-deep); }
+  .phase-tag-inline.D { background: #2C7090; }
+  .phase-tag-inline.E { background: var(--purple-deep); }
+  .phase-tag-inline.G { background: #1F7A53; }
+  .phase-tag-inline.F { background: #1F7A53; }
+
+  /* Page-local: the negative-test table. Tighter monospace columns. */
+  .neg-table { font-size: 13px; }
+  .neg-table th { white-space: nowrap; }
+  .neg-table td.cf      { font-family: var(--font-mono); font-size: 12px; white-space: nowrap; color: var(--ink-soft); }
+  .neg-table td.scen    { color: var(--ink); font-size: 12.5px; line-height: 1.55; }
+  .neg-table td.scen code { font-size: 11.5px; }
+  .neg-table td.code    { font-family: var(--font-mono); font-size: 11.5px; white-space: nowrap; }
+  .neg-table td.exit    { font-family: var(--font-mono); font-size: 11.5px; white-space: nowrap; color: var(--ink-mute); text-align: center; }
+  .neg-table td.crit    { color: var(--ink-soft); font-size: 12px; line-height: 1.5; }
+
+  /* Page-local: acceptance checklist. */
+  .checklist {
+    list-style: none;
+    padding: 0;
+    margin: 18px 0 0;
+  }
+  .checklist li {
+    padding: 12px 0 12px 30px;
+    border-bottom: 1px dashed var(--rule);
+    position: relative;
+    font-size: 14.5px;
+    line-height: 1.55;
+    color: var(--ink-soft);
+  }
+  .checklist li:last-child { border-bottom: 0; }
+  .checklist li::before {
+    content: "□";
+    position: absolute;
+    left: 0;
+    top: 11px;
+    color: var(--sky-deep);
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1;
+  }
+  .checklist li strong { color: var(--ink); }
+
+  /* Page-local: known-issue callout. */
+  .known {
+    margin: 22px 0 8px;
+    padding: 16px 18px;
+    background: rgba(229, 139, 126, 0.08);
+    border-left: 3px solid #C0563F;
+    border-radius: 4px;
+  }
+  .known h4 {
+    margin: 0 0 8px;
+    color: #B45445;
+    font-size: 14px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    font-weight: 700;
+  }
+  .known p { margin: 0 0 10px; color: var(--ink-soft); font-size: 14px; line-height: 1.55; }
+  .known p:last-child { margin-bottom: 0; }
+  .known code { font-size: 12.5px; }
+</style>
+</head>
+<body>
+
+<header class="miniNav" aria-label="Deck pages">
+  <div class="miniNav-inner">
+    <span class="miniNav-mark"><span class="nav-dot"></span><span>Syndicable&nbsp;V1.1</span></span>
+    <nav class="miniNav-tabs" aria-label="Sibling pages">
+      <a class="miniNav-tab" href="./article.html" data-i18n-key="miniNav.article">Article</a>
+      <a class="miniNav-tab" href="./plan.html" data-i18n-key="miniNav.plan">Plan</a>
+      <a class="miniNav-tab" href="./roadmap.html" data-i18n-key="miniNav.roadmap">Roadmap</a>
+      <a class="miniNav-tab" href="./owner-view.html" data-i18n-key="miniNav.ownerView">Vue copropriétaire</a>
+      <a class="miniNav-tab" href="./cli.html" data-i18n-key="miniNav.cli">CLI</a>
+      <a class="miniNav-tab is-current" href="./testing.html" aria-current="page" data-i18n-key="miniNav.testing">Tests</a>
+    </nav>
+    <div class="miniNav-lang">
+      <button
+        type="button"
+        class="lang-switch"
+        id="lang-switch"
+        role="switch"
+        aria-checked="false"
+        aria-label="Basculer la langue entre français et anglais"
+        data-i18n-key-attr="aria-label"
+        data-i18n-key="lang.aria"
+      >
+        <span data-lang-opt="en">EN</span>
+        <span data-lang-opt="fr">FR</span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<div class="shell">
+
+  <aside class="nav" aria-label="Sections">
+    <div class="nav-mark">
+      <span class="nav-dot"></span>
+      <span>Syndicable&nbsp;V1.1+CLI&nbsp;·&nbsp;QA</span>
+    </div>
+    <div class="nav-eyebrow" data-i18n-key="nav.eyebrow">Sections</div>
+    <ol>
+      <li><a href="#thesis" data-i18n-key="nav.thesis">La thèse</a></li>
+      <li><a href="#scope" data-i18n-key="nav.scope">Périmètre</a></li>
+      <li><a href="#axes" data-i18n-key="nav.axes">Trois axes</a></li>
+      <li><a href="#stack" data-i18n-key="nav.stack">Stack de test</a></li>
+      <li><a href="#sequence" data-i18n-key="nav.sequence">Séquence Brugmann</a></li>
+      <li><a href="#negatives" data-i18n-key="nav.negatives">Cas négatifs</a></li>
+      <li><a href="#loop" data-i18n-key="nav.loop">Fix-and-retry</a></li>
+      <li><a href="#known" data-i18n-key="nav.known">Connue à fixer</a></li>
+      <li><a href="#phasing" data-i18n-key="nav.phasing">Phasage</a></li>
+      <li><a href="#acceptance" data-i18n-key="nav.acceptance">Acceptation</a></li>
+      <li><a href="#cheatsheet" data-i18n-key="nav.cheatsheet">Cheat sheet</a></li>
+      <li><a href="#colophon" data-i18n-key="nav.colophon">Colophon</a></li>
+    </ol>
+
+</aside>
+
+  <main>
+
+    <!-- ─────────── HERO ─────────── -->
+    <section id="hero" aria-labelledby="hero-h">
+      <div class="hero-meta">
+        <span class="pill brand"><span class="dot"></span>V1.1+CLI&nbsp;·&nbsp;QA</span>
+        <span class="pill purple" data-i18n-key="hero.pill.module">Module&nbsp;·&nbsp;Stratégie de test</span>
+        <span class="pill">2026-05-09</span>
+      </div>
+      <h1 id="hero-h" class="hero-title" data-i18n-key="hero.title">Tester ce qu'on a livré, en cassant ce qu'on peut casser.</h1>
+      <p class="hero-sub" data-i18n-key="hero.sub">
+        V1.1, V1.1.5 et le CLI sont sur <code>main</code>, déployés sur
+        <code>syndicable-codika-staging</code>. 99 exports, dont une cinquantaine de callables et
+        une douzaine de triggers. Les tests qui ont tourné pendant les phases étaient bornés à
+        l'émulateur ; ce plan attaque la même surface, mais en vrai — Firestore réel, Resend réel,
+        Pub/Sub réel, puppeteer réel. Tout ce que l'émulateur ne sait pas reproduire.
+      </p>
+      <div class="hero-rule"></div>
+    </section>
+
+    <!-- ─────────── 1. THESIS ─────────── -->
+    <section id="thesis">
+      <div class="prose">
+        <span class="eyebrow" data-i18n-key="thesis.eyebrow">01 · La thèse</span>
+        <h2 data-i18n-key="thesis.h2">Tester sur staging, parce que l'émulateur ment par omission.</h2>
+        <p data-i18n-key="thesis.p1">
+          On a livré beaucoup en peu de temps : V1.1 (assemblées, convocations, session live, PV),
+          V1.1.5 (vue copropriétaire — magic link <em>self-serve</em>), et un CLI qui mappe chaque
+          Cloud Function. Les tests qui ont tourné pendant ces phases étaient des tests Jest contre
+          l'émulateur Firebase. Ils valident la logique, mais pas le déploiement. Le déploiement
+          ajoute une couche entière qui ne se voit qu'en staging.
+        </p>
+        <p data-i18n-key="thesis.p2">
+          Ce que l'émulateur ne reproduit pas : les <strong>cold starts</strong> de Cloud Functions
+          (et la latence variable des premiers appels après inactivité), le <strong>vrai</strong>
+          comportement de Pub/Sub côté triggers (timing, ordre, retry), le rendu PDF par
+          <strong>puppeteer</strong> avec son chromium en cold start, l'envoi <strong>réel</strong>
+          des e-mails Resend (DNS, SPF, DKIM, format multi-client), les
+          <strong>quotas de débit</strong> sur les callables publics, les <strong>règles
+          Firestore</strong> appliquées à chaud sur des UIDs réels.
+        </p>
+        <p data-i18n-key="thesis.p3">
+          Le test qu'on veut faire est simple à dire : un agent reproduit le scénario Brugmann sur
+          staging, depuis le CLI, sans ouvrir le navigateur — sauf pour la voter page (qui
+          <em>doit</em> être testée dans un vrai browser). À la fin, le PV existe en PDF, est
+          arrivé dans des inboxes de test, et les chiffres tiennent. Si oui, on est verts. Si non,
+          on diagnostique, on fixe, on redéploie la fonction touchée, on relance.
+        </p>
+      </div>
+    </section>
+
+    <!-- ─────────── 2. SCOPE ─────────── -->
+    <section id="scope">
+      <div class="prose-wide">
+        <span class="eyebrow" data-i18n-key="scope.eyebrow">02 · Périmètre, figé</span>
+        <h2 data-i18n-key="scope.h2">Ce qu'on teste — et ce qu'on ne teste pas dans cette passe.</h2>
+        <p class="prose" data-i18n-key="scope.intro">
+          Cette passe est de l'<em>integration testing</em> sur staging, pas du load test, pas du
+          pen test, pas de l'audit RGPD. Le périmètre couvre tout ce qui est appelable depuis le
+          CLI, plus la voter page (qui a son propre canal d'auth via magic link).
+        </p>
+        <div class="twocol">
+
+          <div class="col-card in">
+            <h4 data-i18n-key="scope.in.title">Inclus · cette passe de QA</h4>
+            <ul>
+              <li data-i18n-key="scope.in.li1">Chaque callable + trigger atteignable depuis le CLI exercé bout-en-bout sur <code>syndicable-codika-staging</code></li>
+              <li data-i18n-key="scope.in.li2">Le scénario Brugmann (cli.html §07) tourne proprement du début à la fin, en mode happy path</li>
+              <li data-i18n-key="scope.in.li3">La voter page publique se charge depuis une vraie URL magic-link, le vote est casté, la vue conducteur du syndic se met à jour en moins de 2 s</li>
+              <li data-i18n-key="scope.in.li4">Le PV est généré, exporté en PDF, distribué à un inbox de test owner — vérification de réception et de structure</li>
+              <li data-i18n-key="scope.in.li5">Firestore staging revient à un état propre connu après chaque passe (cleanup CLI ou reset manuel)</li>
+              <li data-i18n-key="scope.in.li6">Les 5 échecs Phase D pré-existants dans <code>assemblies.test.ts</code> sont fixés avant clôture</li>
+              <li data-i18n-key="scope.in.li7">Couverture ~20 cas négatifs documentés (§06) — pour chaque CF, un essai de violation des gardes</li>
+            </ul>
+          </div>
+
+          <div class="col-card out">
+            <h4 data-i18n-key="scope.out.title">Hors · pas dans cette passe</h4>
+            <ul>
+              <li data-i18n-key="scope.out.li1">Load testing (&gt;500 votants concurrents) — quotient de hardening V1.2</li>
+              <li data-i18n-key="scope.out.li2">Penetration testing du modèle de tokens — audit externe planifié séparément</li>
+              <li data-i18n-key="scope.out.li3">Audit RGPD complet (DPIA, registre des traitements) — chantier juridique distinct</li>
+              <li data-i18n-key="scope.out.li4">Multi-region failover, DR drill — pas avant que <code>syndicable-codika-prod</code> soit cut</li>
+              <li data-i18n-key="scope.out.li5">Tests de compatibilité multi-client e-mail (Outlook, Gmail mobile, Lotus Notes…) — visuel uniquement</li>
+              <li data-i18n-key="scope.out.li6">Régression UI au-delà de la voter page (le conducteur Svelte est testé au sniff seulement)</li>
+              <li data-i18n-key="scope.out.li7">Tests de migration de données IGS (legacy → V1.1) — quand le client lance l'import</li>
+            </ul>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────── 3. THREE AXES ─────────── -->
+    <section id="axes">
+      <div class="prose-wide">
+        <span class="eyebrow" data-i18n-key="axes.eyebrow">03 · Trois axes de test</span>
+        <h2 data-i18n-key="axes.h2">Trois angles d'attaque qui se complètent.</h2>
+        <p class="prose" data-i18n-key="axes.intro">
+          Une seule de ces approches ne suffirait pas. Le happy path révèle l'intégration ; le
+          negative testing révèle les gardes ; la boucle fix-and-retry est ce qui transforme
+          « j'ai trouvé un bug » en « j'ai expédié un fix ». Les trois tournent en parallèle.
+        </p>
+
+        <div class="choice">
+          <span class="choice-num" data-i18n-key="axes.c1.num">CHOIX&nbsp;01</span>
+          <h3 data-i18n-key="axes.c1.h3">End-to-end Brugmann replay.</h3>
+          <p data-i18n-key="axes.c1.p1">
+            On scripte une AG complète depuis le CLI : une copropriété, 5 lots avec quotités, 5
+            propriétaires, 3 résolutions, 2 votants par magic link, clôture, génération + export +
+            distribution du PV. On compare les chiffres finaux à ce qu'on attendait. C'est le smoke
+            test qui tourne à chaque itération — la sentinelle.
+          </p>
+          <p data-i18n-key="axes.c1.p2">
+            La référence pour ce scénario, c'est <code>cli.html §07</code>. On le rejoue à
+            l'identique, sauf qu'on prend une copro <em>scratch</em> sur staging — jamais de touch
+            sur les données IGS réelles. Si ce scénario passe, 80% du périmètre fonctionnel est
+            validé sans avoir cliqué une seule fois.
+          </p>
+        </div>
+
+        <div class="choice">
+          <span class="choice-num" data-i18n-key="axes.c2.num">CHOIX&nbsp;02</span>
+          <h3 data-i18n-key="axes.c2.h3">Negative testing par CF.</h3>
+          <p data-i18n-key="axes.c2.p1">
+            Chaque Cloud Function a ses gardes : auth (Firebase user ou magic-link token),
+            machine d'états (assembly status, resolution status, attendance state), validation
+            métier (quotités-concerned, quotités&gt;0, expirations). On essaie de violer chacune.
+            Le résultat attendu : un <code>HttpsError</code> typé propre, jamais un 500.
+          </p>
+          <p data-i18n-key="axes.c2.p2">
+            Le tableau §06 liste ~20 scénarios. La règle : si on tombe sur un code d'erreur
+            inattendu (ex. <code>internal</code> au lieu de <code>failed-precondition</code>), ou
+            une stack trace remontée brute, c'est un bug. On le note, on le fixe, on relance.
+          </p>
+        </div>
+
+        <div class="choice">
+          <span class="choice-num" data-i18n-key="axes.c3.num">CHOIX&nbsp;03</span>
+          <h3 data-i18n-key="axes.c3.h3">Boucle fix-and-retry.</h3>
+          <p data-i18n-key="axes.c3.p1">
+            Quand un test casse : on lit les logs <code>gcloud functions logs</code>, on inspecte
+            l'état Firestore via le CLI, on reproduit en local si besoin. On corrige dans
+            <code>syndicable-app</code> ou <code>syndicable-cli</code>, on rebuild
+            (<code>cd functions &amp;&amp; npm run build</code>), on redéploie ciblé
+            (<code>firebase deploy --only functions:&lt;name&gt;</code>), on relance le test.
+          </p>
+          <p data-i18n-key="axes.c3.p2">
+            Les fixes vont directement sur <code>main</code> en commits incrémentaux ; pas de PR
+            par micro-fix. Quand la passe est terminée, on bundle l'ensemble dans une seule PR
+            <code>fix(qa): post-deploy testing sweep</code> pour la trace. Si un fix demande &gt;1h
+            ou touche le contrat d'une CF, il sort de la boucle et passe par une PR dédiée.
+          </p>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ─────────── 4. STACK ─────────── -->
+    <section id="stack">
+      <div class="prose">
+        <span class="eyebrow" data-i18n-key="stack.eyebrow">04 · La stack de test</span>
+        <h2 data-i18n-key="stack.h2">Outils auxquels le sub-agent d'exécution a accès.</h2>
+        <p data-i18n-key="stack.intro">
+          Pas de framework de test maison, pas d'orchestration custom. On compose la stack à partir
+          d'outils existants : le CLI Syndicable comme harnais principal, <code>firebase</code> et
+          <code>gcloud</code> pour l'inspection, un browser pour la voter page, le dashboard Resend
+          pour vérifier la livraison des e-mails.
+        </p>
+        <ul class="filelist">
+          <li>
+            <span class="tag new">CLI</span>
+            <code>syndicable</code>
+            <span class="desc" data-i18n-key="stack.f1">Harnais primaire. V1.1+CLI couvre 100% des CFs callables. Profile dédié <code>--profile staging</code> pour pointer sur <code>syndicable-codika-staging</code>.</span>
+          </li>
+          <li>
+            <span class="tag mod">CLI</span>
+            <code>firebase</code>
+            <span class="desc" data-i18n-key="stack.f2">Déploiements ciblés (<code>firebase deploy --only functions:&lt;name&gt; --project syndicable-codika-staging</code>) et inspection Firestore (<code>firebase firestore:data ...</code>) pour des sanity checks rapides.</span>
+          </li>
+          <li>
+            <span class="tag mod">CLI</span>
+            <code>gcloud</code>
+            <span class="desc" data-i18n-key="stack.f3">Lecture des logs CF (<code>gcloud functions logs read &lt;name&gt; --project=syndicable-codika-staging --gen2 --region=europe-west1</code>) — la principale fenêtre sur ce qui s'est vraiment passé en backend quand un test casse.</span>
+          </li>
+          <li>
+            <span class="tag new">CLI</span>
+            <code>syndicable lot list</code>, <code>owner list</code>, <code>assembly show --watch</code>
+            <span class="desc" data-i18n-key="stack.f4">Inspection Firestore lecture-seule via le CLI — pas besoin d'Admin SDK. Le flag <code>--watch</code> remplace F5 dans le browser pour observer un état évolutif.</span>
+          </li>
+          <li>
+            <span class="tag cfg">Web</span>
+            <code>resend.com</code>
+            <span class="desc" data-i18n-key="stack.f5">Dashboard Resend pour vérifier les livraisons d'e-mails (convocation, PV). Inboxes de test : <code>syndicable-test+&lt;scenario&gt;@example.com</code> (plus-addressing) ou comptes Mailtrap si Resend ne le permet pas.</span>
+          </li>
+          <li>
+            <span class="tag cfg">Web</span>
+            <code>https://syndicable-codika-staging.web.app</code>
+            <span class="desc" data-i18n-key="stack.f6">Browser pour la voter page : on ouvre l'URL <code>/vote/&lt;secret&gt;</code> récupérée de l'inbox de test ou via <code>owner vote-link</code>, on clique « Pour », on vérifie que Firestore reflète le vote via CLI.</span>
+          </li>
+          <li>
+            <span class="tag new">DATA</span>
+            <code>copro-test-qa-2026-05-09</code>
+            <span class="desc" data-i18n-key="stack.f7">Copropriété <em>scratch</em> sur staging, créée en début de passe, archivée à la fin. Toutes les opérations CRUD vivent dedans. <strong>On ne touche jamais de données client réelles</strong> (IGS ou autre).</span>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ─────────── 5. SEQUENCE ─────────── -->
+    <section id="sequence">
+      <div class="prose">
+        <span class="eyebrow" data-i18n-key="sequence.eyebrow">05 · La séquence de test (Brugmann replay)</span>
+        <h2 data-i18n-key="sequence.h2">Le scénario canonique, étape par étape.</h2>
+        <p data-i18n-key="sequence.p1">
+          On reprend le scénario Brugmann de <code>cli.html §07</code> et on l'adapte pour le test :
+          version réduite (5 lots / 5 owners / 3 résolutions au lieu de 166 / 162 / 5), 2 votants
+          réels via magic link au lieu d'un script qui poke <code>syndicCastVote</code>. Tout le
+          reste est identique. Le syndic, c'est un compte Firebase de test qu'on a configuré
+          comme membre de la copro-scratch.
+        </p>
+      </div>
+
+      <div class="shell-block" aria-hidden="true"><span class="sh-h"># ━━━━━━━━ SETUP — login syndic + scratch copro + 5 lots + 5 owners ━━━━━━━━</span>
+<span class="sh-prompt">$</span> <span class="sh-cmd">syndicable login:request</span> <span class="sh-flag">--email</span> <span class="sh-arg">qa-syndic@codika.io</span> <span class="sh-flag">--profile</span> <span class="sh-arg">staging</span>
+<span class="sh-prompt">$</span> <span class="sh-cmd">syndicable login:verify</span> <span class="sh-flag">--email</span> <span class="sh-arg">qa-syndic@codika.io</span> <span class="sh-flag">--code</span> <span class="sh-arg">847291</span>
+<span class="sh-ok">✓ Profile "staging" persisted</span>
+
+<span class="sh-prompt">$</span> <span class="sh-cmd">CID</span>=<span class="sh-arg">$(syndicable copro create --legal-name "Copro QA Test" --bce 0700.000.001 \</span>
+       <span class="sh-arg">--address-line1 "rue de Test 42" --postal-code 1000 --city Bruxelles \</span>
+       <span class="sh-arg">--country BE --json | jq -r .coproId)</span>
+
+<span class="sh-prompt">$</span> <span class="sh-cmd">for</span> i <span class="sh-cmd">in</span> 1 2 3 4 5; <span class="sh-cmd">do</span>
+       <span class="sh-cmd">syndicable lot create</span> <span class="sh-flag">--copro-id</span> <span class="sh-arg">$CID</span> <span class="sh-flag">--reference</span> <span class="sh-arg">"L00$i"</span> \
+         <span class="sh-flag">--quotities</span> <span class="sh-arg">"GEN=200"</span> <span class="sh-flag">--lot-type</span> <span class="sh-arg">apartment</span>
+     <span class="sh-cmd">done</span>
+<span class="sh-com"># Total GEN = 1000 (égal au expectedTotal de la clé GEN par défaut).</span>
+
+<span class="sh-prompt">$</span> <span class="sh-cmd">for</span> i <span class="sh-cmd">in</span> 1 2 3 4 5; <span class="sh-cmd">do</span>
+       <span class="sh-cmd">syndicable owner create</span> <span class="sh-flag">--copro-id</span> <span class="sh-arg">$CID</span> \
+         <span class="sh-flag">--display-name</span> <span class="sh-arg">"Owner $i"</span> \
+         <span class="sh-flag">--email</span> <span class="sh-arg">"syndicable-test+owner$i@example.com"</span>
+     <span class="sh-cmd">done</span>
+<span class="sh-prompt">$</span> <span class="sh-cmd">syndicable ownership assign</span> <span class="sh-flag">--copro-id</span> <span class="sh-arg">$CID</span> ... <span class="sh-com"># 5 assigns L00i ↔ owner i</span>
+
+<span class="sh-h"># ━━━━━━━━ AG DRAFT — assembly create + 3 résolutions + show ━━━━━━━━</span>
+<span class="sh-prompt">$</span> <span class="sh-cmd">AID</span>=<span class="sh-arg">$(syndicable assembly create --copro-id $CID --title "AGO QA Test 2026" \</span>
+       <span class="sh-arg">--scheduled-at 2026-05-15T14:00 --mode hybrid --default-language fr --json | jq -r .assemblyId)</span>
+<span class="sh-prompt">$</span> <span class="sh-cmd">syndicable assembly resolution add</span> <span class="sh-flag">--copro-id</span> <span class="sh-arg">$CID</span> <span class="sh-flag">--assembly-id</span> <span class="sh-arg">$AID</span> \
+    <span class="sh-flag">--title</span> <span class="sh-arg">"R1 — Approbation comptes"</span> <span class="sh-flag">--threshold</span> <span class="sh-arg">absolute</span> <span class="sh-flag">--key-id</span> <span class="sh-arg">GEN</span>
+<span class="sh-prompt">$</span> <span class="sh-cmd">syndicable assembly resolution add</span> <span class="sh-flag">--copro-id</span> <span class="sh-arg">$CID</span> <span class="sh-flag">--assembly-id</span> <span class="sh-arg">$AID</span> \
+    <span class="sh-flag">--title</span> <span class="sh-arg">"R2 — Décharge syndic"</span> <span class="sh-flag">--threshold</span> <span class="sh-arg">absolute</span> <span class="sh-flag">--key-id</span> <span class="sh-arg">GEN</span>
+<span class="sh-prompt">$</span> <span class="sh-cmd">syndicable assembly resolution add</span> <span class="sh-flag">--copro-id</span> <span class="sh-arg">$CID</span> <span class="sh-flag">--assembly-id</span> <span class="sh-arg">$AID</span> \
+    <span class="sh-flag">--title</span> <span class="sh-arg">"R3 — Travaux toiture"</span> <span class="sh-flag">--threshold</span> <span class="sh-arg">four_fifths</span> <span class="sh-flag">--key-id</span> <span class="sh-arg">GEN</span>
+<span class="sh-prompt">$</span> <span class="sh-cmd">syndicable assembly show</span> <span class="sh-flag">--copro-id</span> <span class="sh-arg">$CID</span> <span class="sh-flag">--assembly-id</span> <span class="sh-arg">$AID</span>
+<span class="sh-out">status: draft · 3 resolutions · 5 owners (5 lots covered) · 0 tokens</span>
+
+<span class="sh-h"># ━━━━━━━━ CONVOCATION — send + verify deliveries ━━━━━━━━</span>
+<span class="sh-prompt">$</span> <span class="sh-cmd">syndicable convocation send</span> <span class="sh-flag">--copro-id</span> <span class="sh-arg">$CID</span> <span class="sh-flag">--assembly-id</span> <span class="sh-arg">$AID</span> <span class="sh-flag">--override-15-day-warning</span>
+<span class="sh-ok">✓ Convocation sent · 5 tokens issued · 5 emails queued</span>
+<span class="sh-prompt">$</span> <span class="sh-cmd">syndicable convocation list</span> <span class="sh-flag">--copro-id</span> <span class="sh-arg">$CID</span> <span class="sh-flag">--assembly-id</span> <span class="sh-arg">$AID</span>
+<span class="sh-out">5 tokens · 5 deliveries (queued: 0 · sent: 5 · bounced: 0)</span>
+<span class="sh-com"># Vérif manuelle : 5 e-mails dans le dashboard Resend, sujets corrects.</span>
+
+<span class="sh-h"># ━━━━━━━━ LIVE — start + R1/R2/R3 open/cast/close + end ━━━━━━━━</span>
+<span class="sh-prompt">$</span> <span class="sh-cmd">syndicable assembly start</span> <span class="sh-flag">--copro-id</span> <span class="sh-arg">$CID</span> <span class="sh-flag">--assembly-id</span> <span class="sh-arg">$AID</span>
+<span class="sh-ok">✓ Assembly is now LIVE</span>
+
+<span class="sh-com"># Owner 1 et Owner 2 ouvrent leur magic link dans un browser réel.</span>
+<span class="sh-com"># attendance.join déclenchée automatiquement par la voter page (state: present_online).</span>
+<span class="sh-prompt">$</span> <span class="sh-cmd">syndicable attendance show</span> <span class="sh-flag">--copro-id</span> <span class="sh-arg">$CID</span> <span class="sh-flag">--assembly-id</span> <span class="sh-arg">$AID</span> <span class="sh-flag">--watch</span>
+<span class="sh-out">[poll t+0s]   present_online: 0  in_person: 0  not_joined: 5</span>
+<span class="sh-out">[poll t+4s]   present_online: 2  in_person: 0  not_joined: 3</span>
+<span class="sh-out">^C</span>
+
+<span class="sh-prompt">$</span> <span class="sh-cmd">syndicable assembly resolution open</span> <span class="sh-flag">--copro-id</span> <span class="sh-arg">$CID</span> <span class="sh-flag">--assembly-id</span> <span class="sh-arg">$AID</span> <span class="sh-flag">--resolution-id</span> <span class="sh-arg">R001</span>
+<span class="sh-com"># Owners 1 et 2 cliquent « Pour » dans la voter page → castVote.</span>
+<span class="sh-com"># Owners 3, 4, 5 absents → resteront not_voted, abstention auto à la clôture.</span>
+<span class="sh-prompt">$</span> <span class="sh-cmd">syndicable vote show</span> <span class="sh-flag">--copro-id</span> <span class="sh-arg">$CID</span> <span class="sh-flag">--assembly-id</span> <span class="sh-arg">$AID</span> <span class="sh-flag">--resolution-id</span> <span class="sh-arg">R001</span> <span class="sh-flag">--watch</span>
+<span class="sh-out">[poll t+2s]   for: 400  against: 0  abstain: 0  not_voted: 600</span>
+<span class="sh-prompt">$</span> <span class="sh-cmd">syndicable assembly resolution close</span> <span class="sh-flag">--copro-id</span> <span class="sh-arg">$CID</span> <span class="sh-flag">--assembly-id</span> <span class="sh-arg">$AID</span> \
+    <span class="sh-flag">--resolution-id</span> <span class="sh-arg">R001</span> <span class="sh-flag">--confirm-auto-default</span>
+<span class="sh-ok">✓ R001 closed · for=400 against=0 abstain=600 → REJECTED (absolute, &lt;500)</span>
+
+<span class="sh-com"># Idem R002 et R003 (R003 = four_fifths, échec attendu avec 400/1000).</span>
+<span class="sh-prompt">$</span> <span class="sh-cmd">syndicable assembly end</span> <span class="sh-flag">--copro-id</span> <span class="sh-arg">$CID</span> <span class="sh-flag">--assembly-id</span> <span class="sh-arg">$AID</span>
+<span class="sh-ok">✓ Assembly ended</span>
+
+<span class="sh-h"># ━━━━━━━━ PV — generate + edit + export PDF + distribute ━━━━━━━━</span>
+<span class="sh-prompt">$</span> <span class="sh-cmd">syndicable pv generate</span> <span class="sh-flag">--copro-id</span> <span class="sh-arg">$CID</span> <span class="sh-flag">--assembly-id</span> <span class="sh-arg">$AID</span>
+<span class="sh-prompt">$</span> <span class="sh-cmd">syndicable pv update-text</span> <span class="sh-flag">--copro-id</span> <span class="sh-arg">$CID</span> <span class="sh-flag">--assembly-id</span> <span class="sh-arg">$AID</span> \
+    <span class="sh-flag">--section</span> <span class="sh-arg">presidentSecretaryNotes</span> <span class="sh-flag">--value</span> <span class="sh-arg">"Test QA — pas de remarque."</span>
+<span class="sh-prompt">$</span> <span class="sh-cmd">syndicable pv export</span> <span class="sh-flag">--copro-id</span> <span class="sh-arg">$CID</span> <span class="sh-flag">--assembly-id</span> <span class="sh-arg">$AID</span> <span class="sh-flag">--output</span> <span class="sh-arg">/tmp/pv-qa.pdf</span>
+<span class="sh-com"># Inspection manuelle : ouvrir /tmp/pv-qa.pdf, vérifier présence/exceptions/seuils.</span>
+<span class="sh-prompt">$</span> <span class="sh-cmd">syndicable pv distribute</span> <span class="sh-flag">--copro-id</span> <span class="sh-arg">$CID</span> <span class="sh-flag">--assembly-id</span> <span class="sh-arg">$AID</span>
+<span class="sh-ok">✓ PV distributed to 5 owners</span>
+<span class="sh-com"># Vérif : 5 e-mails de PV dans Resend, PDF en pièce jointe ou via lien signé.</span>
+
+<span class="sh-h"># ━━━━━━━━ CLEANUP ━━━━━━━━</span>
+<span class="sh-prompt">$</span> <span class="sh-cmd">syndicable copro archive</span> <span class="sh-flag">--copro-id</span> <span class="sh-arg">$CID</span>
+<span class="sh-ok">✓ Copro archived · scratch state cleaned</span></div>
+
+      <div class="prose">
+        <p data-i18n-key="sequence.p2">
+          La passe complète tient en ~3 minutes de wall-clock si tout va bien. Si quelque chose
+          casse, on saute en §07 (boucle fix-and-retry). La portion <em>browser</em> (les deux
+          owners qui votent via magic link) est manuelle ; l'agent QA ouvre deux fenêtres
+          incognito, copie/colle l'URL <code>/vote/&lt;secret&gt;</code> reçue dans Resend, clique.
+          Une fois ce comportement validé, on peut basculer sur <code>syndicCastVote</code> pour
+          accélérer les itérations suivantes.
+        </p>
+      </div>
+    </section>
+
+    <!-- ─────────── 6. NEGATIVE TESTING TABLE ─────────── -->
+    <section id="negatives">
+      <div class="prose-wide">
+        <span class="eyebrow" data-i18n-key="negatives.eyebrow">06 · La table des cas négatifs</span>
+        <h2 data-i18n-key="negatives.h2">Vingt scénarios « try-to-break-it ».</h2>
+        <p class="prose" data-i18n-key="negatives.intro">
+          Pour chaque famille de CF, on essaie de violer une garde — auth, état, validation
+          métier. Le résultat attendu est un <code>HttpsError</code> typé propre (jamais un
+          <code>internal</code>, jamais une stack trace brute). Le code de sortie CLI est mappé
+          depuis le code d'erreur (<code>unauthenticated</code> → 1, <code>permission-denied</code> → 2,
+          <code>failed-precondition</code> → 3, <code>not-found</code> → 4, <code>invalid-argument</code> → 5).
+        </p>
+
+        <div class="tablewrap">
+          <table class="neg-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th data-i18n-key="negatives.th.cf">Cloud Function</th>
+                <th data-i18n-key="negatives.th.scen">Scénario négatif</th>
+                <th data-i18n-key="negatives.th.code">Code attendu</th>
+                <th data-i18n-key="negatives.th.exit">Exit</th>
+                <th data-i18n-key="negatives.th.crit">Critère pass/fail</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>01</td>
+                <td class="cf">castVote</td>
+                <td class="scen" data-i18n-key="negatives.r1.s">Token révoqué via <code>revokeAccessToken</code> juste avant le cast.</td>
+                <td class="code"><span class="err-pill perm">permission-denied</span></td>
+                <td class="exit">2</td>
+                <td class="crit" data-i18n-key="negatives.r1.c">Pass si l'erreur est typée et le vote n'apparaît pas dans Firestore.</td></tr>
+              <tr><td>02</td>
+                <td class="cf">castVote</td>
+                <td class="scen" data-i18n-key="negatives.r2.s">Token expiré (Assembly status = <code>ended</code>).</td>
+                <td class="code"><span class="err-pill precond">failed-precondition</span></td>
+                <td class="exit">3</td>
+                <td class="crit" data-i18n-key="negatives.r2.c">Pass si message d'erreur explique « assembly is no longer live ».</td></tr>
+              <tr><td>03</td>
+                <td class="cf">castVote</td>
+                <td class="scen" data-i18n-key="negatives.r3.s">Vote sur résolution avec <code>quotitiesConcerned=0</code> pour le lot.</td>
+                <td class="code"><span class="err-pill precond">failed-precondition</span></td>
+                <td class="exit">3</td>
+                <td class="crit" data-i18n-key="negatives.r3.c">Pass si erreur claire « no concerned quotity for this lot ».</td></tr>
+              <tr><td>04</td>
+                <td class="cf">castVote</td>
+                <td class="scen" data-i18n-key="negatives.r4.s">Choix invalide (ex. <code>--choice maybe</code> au lieu de for/against/abstain).</td>
+                <td class="code"><span class="err-pill invarg">invalid-argument</span></td>
+                <td class="exit">5</td>
+                <td class="crit" data-i18n-key="negatives.r4.c">Pass si refus avant tout side-effect Firestore.</td></tr>
+              <tr><td>05</td>
+                <td class="cf">closeResolution</td>
+                <td class="scen" data-i18n-key="negatives.r5.s">Clôturer une résolution dont le statut est <code>pending</code> (jamais ouverte).</td>
+                <td class="code"><span class="err-pill precond">failed-precondition</span></td>
+                <td class="exit">3</td>
+                <td class="crit" data-i18n-key="negatives.r5.c">Pass si refus + état Firestore inchangé.</td></tr>
+              <tr><td>06</td>
+                <td class="cf">closeResolution</td>
+                <td class="scen" data-i18n-key="negatives.r6.s">Clôturer sans <code>--confirm-auto-default</code> alors que <code>not_voted &gt; 0</code>.</td>
+                <td class="code"><span class="err-pill precond">failed-precondition</span></td>
+                <td class="exit">3</td>
+                <td class="crit" data-i18n-key="negatives.r6.c">Pass si erreur indique le besoin de confirmer l'abstention auto.</td></tr>
+              <tr><td>07</td>
+                <td class="cf">openResolution</td>
+                <td class="scen" data-i18n-key="negatives.r7.s">Ouvrir une résolution sur une assembly <code>draft</code> (jamais démarrée).</td>
+                <td class="code"><span class="err-pill precond">failed-precondition</span></td>
+                <td class="exit">3</td>
+                <td class="crit" data-i18n-key="negatives.r7.c">Pass si message « assembly not live ».</td></tr>
+              <tr><td>08</td>
+                <td class="cf">sendConvocation</td>
+                <td class="scen" data-i18n-key="negatives.r8.s">Envoyer une convocation &lt; 15 jours avant la date sans <code>--override-15-day-warning</code>.</td>
+                <td class="code"><span class="err-pill precond">failed-precondition</span></td>
+                <td class="exit">3</td>
+                <td class="crit" data-i18n-key="negatives.r8.c">Pass si refus + indication explicite du flag à passer.</td></tr>
+              <tr><td>09</td>
+                <td class="cf">sendConvocation</td>
+                <td class="scen" data-i18n-key="negatives.r9.s">Envoyer la convocation 2 fois pour la même AG.</td>
+                <td class="code"><span class="err-pill precond">failed-precondition</span></td>
+                <td class="exit">3</td>
+                <td class="crit" data-i18n-key="negatives.r9.c">Pass si refus + indication « already convoked ».</td></tr>
+              <tr><td>10</td>
+                <td class="cf">getMyVoteLink</td>
+                <td class="scen" data-i18n-key="negatives.r10.s">Appel pour un Owner archivé (<code>archived: true</code>).</td>
+                <td class="code"><span class="err-pill notfound">not-found</span></td>
+                <td class="exit">4</td>
+                <td class="crit" data-i18n-key="negatives.r10.c">Pass si refus + Firestore non muté (pas de nouveau token créé).</td></tr>
+              <tr><td>11</td>
+                <td class="cf">getMyVoteLink</td>
+                <td class="scen" data-i18n-key="negatives.r11.s">Appel par un user qui n'est pas membre de la copro.</td>
+                <td class="code"><span class="err-pill perm">permission-denied</span></td>
+                <td class="exit">2</td>
+                <td class="crit" data-i18n-key="negatives.r11.c">Pass si refus + log de tentative d'accès.</td></tr>
+              <tr><td>12</td>
+                <td class="cf">validateToken</td>
+                <td class="scen" data-i18n-key="negatives.r12.s">Token avec un seul caractère altéré (typo).</td>
+                <td class="code"><span class="err-pill notfound">not-found</span></td>
+                <td class="exit">4</td>
+                <td class="crit" data-i18n-key="negatives.r12.c">Pass si refus en temps constant (pas de timing attack possible).</td></tr>
+              <tr><td>13</td>
+                <td class="cf">joinAssembly</td>
+                <td class="scen" data-i18n-key="negatives.r13.s">Rejoindre une assembly <code>convoked</code> (pas encore <code>live</code>).</td>
+                <td class="code"><span class="err-pill precond">failed-precondition</span></td>
+                <td class="exit">3</td>
+                <td class="crit" data-i18n-key="negatives.r13.c">Pass si refus avec message « assembly not started yet ».</td></tr>
+              <tr><td>14</td>
+                <td class="cf">heartbeat</td>
+                <td class="scen" data-i18n-key="negatives.r14.s">Heartbeat sans <code>joinAssembly</code> préalable (pas d'Attendance doc).</td>
+                <td class="code"><span class="err-pill notfound">not-found</span></td>
+                <td class="exit">4</td>
+                <td class="crit" data-i18n-key="negatives.r14.c">Pass si refus + pas de side-effect Firestore.</td></tr>
+              <tr><td>15</td>
+                <td class="cf">syndicCastVote</td>
+                <td class="scen" data-i18n-key="negatives.r15.s">Appel par un user en rôle <code>member</code> (non-syndic).</td>
+                <td class="code"><span class="err-pill perm">permission-denied</span></td>
+                <td class="exit">2</td>
+                <td class="crit" data-i18n-key="negatives.r15.c">Pass si refus + activity log enregistre la tentative.</td></tr>
+              <tr><td>16</td>
+                <td class="cf">addResolution</td>
+                <td class="scen" data-i18n-key="negatives.r16.s">Ajouter une résolution sur une AG <code>convoked</code> (gel d'agenda).</td>
+                <td class="code"><span class="err-pill precond">failed-precondition</span></td>
+                <td class="exit">3</td>
+                <td class="crit" data-i18n-key="negatives.r16.c">Pass si refus + message « agenda frozen after convocation ».</td></tr>
+              <tr><td>17</td>
+                <td class="cf">generatePvDraft</td>
+                <td class="scen" data-i18n-key="negatives.r17.s">Générer le PV avant <code>endAssembly</code> (status &lt; ended).</td>
+                <td class="code"><span class="err-pill precond">failed-precondition</span></td>
+                <td class="exit">3</td>
+                <td class="crit" data-i18n-key="negatives.r17.c">Pass si refus avec « assembly must be ended ».</td></tr>
+              <tr><td>18</td>
+                <td class="cf">distributePv</td>
+                <td class="scen" data-i18n-key="negatives.r18.s">Distribuer un PV jamais exporté (<code>pdfPath</code> vide).</td>
+                <td class="code"><span class="err-pill precond">failed-precondition</span></td>
+                <td class="exit">3</td>
+                <td class="crit" data-i18n-key="negatives.r18.c">Pass si refus + message « export the PV first ».</td></tr>
+              <tr><td>19</td>
+                <td class="cf">archiveOwner</td>
+                <td class="scen" data-i18n-key="negatives.r19.s">Archiver un Owner qui détient encore un Lot non transféré.</td>
+                <td class="code"><span class="err-pill precond">failed-precondition</span></td>
+                <td class="exit">3</td>
+                <td class="crit" data-i18n-key="negatives.r19.c">Pass si refus + indication des lots toujours rattachés.</td></tr>
+              <tr><td>20</td>
+                <td class="cf">createAssembly</td>
+                <td class="scen" data-i18n-key="negatives.r20.s">Appel non authentifié (token Firebase manquant ou révoqué).</td>
+                <td class="code"><span class="err-pill unauth">unauthenticated</span></td>
+                <td class="exit">1</td>
+                <td class="crit" data-i18n-key="negatives.r20.c">Pass si refus immédiat avant toute écriture / lecture.</td></tr>
+              <tr><td>21</td>
+                <td class="cf">issueProcurationToken</td>
+                <td class="scen" data-i18n-key="negatives.r21.s">Émettre une procuration pour un Owner déjà <code>present_in_person</code>.</td>
+                <td class="code"><span class="err-pill precond">failed-precondition</span></td>
+                <td class="exit">3</td>
+                <td class="crit" data-i18n-key="negatives.r21.c">Pass si refus + message « owner already attending in person ».</td></tr>
+              <tr><td>22</td>
+                <td class="cf">cancelAssembly</td>
+                <td class="scen" data-i18n-key="negatives.r22.s">Annuler une AG <code>ended</code> (terminale).</td>
+                <td class="code"><span class="err-pill precond">failed-precondition</span></td>
+                <td class="exit">3</td>
+                <td class="crit" data-i18n-key="negatives.r22.c">Pass si refus + message « cannot cancel an ended assembly ».</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p class="prose" data-i18n-key="negatives.outro">
+          22 lignes — un peu plus que les 20 cibles, et c'est bien : la marge couvre les
+          combinaisons rares (procuration + in-person, par exemple). Si un cas surface une erreur
+          <code>internal</code> ou un 500, c'est un bug : on note la stack, on file en §07.
+        </p>
+      </div>
+    </section>
+
+    <!-- ─────────── 7. FIX-AND-RETRY LOOP ─────────── -->
+    <section id="loop">
+      <div class="prose">
+        <span class="eyebrow" data-i18n-key="loop.eyebrow">07 · Le fix-and-retry loop</span>
+        <h2 data-i18n-key="loop.h2">Six étapes, jusqu'au vert.</h2>
+        <p data-i18n-key="loop.intro">
+          La discipline du loop, c'est de garder chaque tour court (~5-15 min). Si un fix demande
+          plus, on sort du loop, on ouvre une issue, et on continue le reste de la passe sans cette
+          CF. Le but est de <em>terminer la passe</em>, pas de tout débugger en chaîne.
+        </p>
+      </div>
+
+      <div class="shell-block" aria-hidden="true"><span class="sh-h"># 1. Test fails — capter le contexte avant de toucher quoi que ce soit.</span>
+<span class="sh-prompt">$</span> <span class="sh-cmd">syndicable assembly resolution close</span> <span class="sh-flag">--copro-id</span> <span class="sh-arg">$CID</span> <span class="sh-flag">--assembly-id</span> <span class="sh-arg">$AID</span> \
+    <span class="sh-flag">--resolution-id</span> <span class="sh-arg">R001</span> <span class="sh-flag">--confirm-auto-default</span>
+<span class="sh-err">✗ FAIL · HttpsError code=internal · Cannot read property 'tally' of undefined</span>
+
+<span class="sh-h"># 2. Diagnose — logs CF + état Firestore.</span>
+<span class="sh-prompt">$</span> <span class="sh-cmd">gcloud functions logs read</span> closeResolution \
+    <span class="sh-flag">--project</span>=<span class="sh-arg">syndicable-codika-staging</span> <span class="sh-flag">--gen2</span> <span class="sh-flag">--region</span>=<span class="sh-arg">europe-west1</span> <span class="sh-flag">--limit</span> <span class="sh-arg">20</span>
+<span class="sh-prompt">$</span> <span class="sh-cmd">syndicable assembly resolution show</span> <span class="sh-flag">--copro-id</span> <span class="sh-arg">$CID</span> <span class="sh-flag">--assembly-id</span> <span class="sh-arg">$AID</span> <span class="sh-flag">--resolution-id</span> <span class="sh-arg">R001</span> <span class="sh-flag">--json</span>
+<span class="sh-com"># Diagnostic : tally absent du doc (pas de votes castés → aggregator skippé).</span>
+
+<span class="sh-h"># 3. Fix — patch dans syndicable-app, build, redéploy ciblé.</span>
+<span class="sh-prompt">$</span> <span class="sh-cmd">cd</span> ~/.codika/agency/projects/syndicable/syndicable-app/functions
+<span class="sh-prompt">$</span> <span class="sh-com"># éditer src/features/assemblies/services/resolutionService.ts → init tally à 0,0,0</span>
+<span class="sh-prompt">$</span> <span class="sh-cmd">npm run build</span>
+<span class="sh-prompt">$</span> <span class="sh-cmd">firebase deploy</span> <span class="sh-flag">--only</span> <span class="sh-arg">functions:closeResolution</span> <span class="sh-flag">--project</span> <span class="sh-arg">syndicable-codika-staging</span>
+<span class="sh-ok">✓ Function closeResolution deployed (4.3 s, region europe-west1)</span>
+
+<span class="sh-h"># 4. Re-run — relancer juste le scénario qui a cassé.</span>
+<span class="sh-prompt">$</span> <span class="sh-cmd">syndicable assembly resolution close</span> <span class="sh-flag">--copro-id</span> <span class="sh-arg">$CID</span> <span class="sh-flag">--assembly-id</span> <span class="sh-arg">$AID</span> \
+    <span class="sh-flag">--resolution-id</span> <span class="sh-arg">R001</span> <span class="sh-flag">--confirm-auto-default</span>
+<span class="sh-ok">✓ R001 closed · for=400 against=0 abstain=600 → REJECTED</span>
+
+<span class="sh-h"># 5. Itérer — passer au scénario suivant. Bundling des fixes en fin de passe.</span>
+<span class="sh-prompt">$</span> <span class="sh-cmd">git add</span> -A <span class="sh-cmd">&amp;&amp; git commit</span> <span class="sh-flag">-m</span> <span class="sh-arg">"fix(qa): init tally on closeResolution when no votes cast"</span>
+
+<span class="sh-h"># 6. Final — bundle des fixes en une PR à la fin.</span>
+<span class="sh-prompt">$</span> <span class="sh-cmd">gh pr create</span> <span class="sh-flag">--title</span> <span class="sh-arg">"fix(qa): post-deploy testing sweep"</span> <span class="sh-flag">--body</span> <span class="sh-arg">"..."</span></div>
+
+      <div class="prose">
+        <p data-i18n-key="loop.outro">
+          La règle de bundling : une seule PR <code>fix(qa): post-deploy testing sweep</code> à la
+          fin si l'ensemble des fixes est cohérent (≤10 fichiers, ≤300 LOC). Au-delà, on
+          fragmente : un PR par feature touchée. Le journaling se fait dans
+          <code>docs/decisions-log.md</code> si un fix change un contrat de CF.
+        </p>
+      </div>
+    </section>
+
+    <!-- ─────────── 8. KNOWN PRE-EXISTING ISSUES ─────────── -->
+    <section id="known">
+      <div class="prose">
+        <span class="eyebrow" data-i18n-key="known.eyebrow">08 · Connue à fixer en priorité</span>
+        <h2 data-i18n-key="known.h2">Cinq échecs Phase D dans <code>assemblies.test.ts</code> — à fixer avant tout le reste.</h2>
+        <p data-i18n-key="known.p1">
+          Sur <code>main</code>, <code>npm test -- assemblies.test.ts</code> échoue sur 5 cas
+          Phase D liés au scénario Brugmann. La cause racine est une <strong>collision arithmétique
+          sur la clé GEN par défaut</strong> : le code de Phase D a hérité d'un
+          <code>expectedTotal=1000</code> pour la clé GEN, mais les fixtures Brugmann répartissent
+          des quotités &gt;200 par lot sur 5 lots → total &gt; 1000 → la validation refuse.
+        </p>
+      </div>
+
+      <div class="known">
+        <h4 data-i18n-key="known.callout.h4">Symptôme</h4>
+        <p data-i18n-key="known.callout.p1">
+          Tous les tests Phase D Brugmann (5 sur 5) échouent avec une assertion du genre
+          <code>Expected total quotity ≤ 1000, got 1xxx</code>. Le test runner remonte
+          <code>FAIL src/features/assemblies/__tests__/assemblies.test.ts</code> avec les 5
+          assertions consécutives.
+        </p>
+        <h4 data-i18n-key="known.callout.h4b">Fix attendu</h4>
+        <p data-i18n-key="known.callout.p2">
+          Deux options, à trancher par le sub-agent quand il aura lu le code :
+          <strong>(a)</strong> les fixtures du test utilisent <code>expectedTotal: 10000</code>
+          pour la clé GEN au lieu de 1000, ce qui aligne sur des quotités plausibles (200/lot × 5
+          lots = 1000, mais Brugmann réel est calé sur 10000) ;
+          <strong>(b)</strong> les résolutions du fixture utilisent des quotités plus basses pour
+          rentrer sous 1000. Recommandation : option (a) — c'est plus représentatif du métier
+          (les vraies copros tournent à 10000).
+        </p>
+        <h4 data-i18n-key="known.callout.h4c">Vérification</h4>
+        <p data-i18n-key="known.callout.p3">
+          <code>cd functions &amp;&amp; npm test -- assemblies.test.ts</code> doit passer 100% (zero
+          failure, zero skip non-explicite). Une fois le fix posé, c'est la première chose à
+          commiter — toute la suite de la passe dépend de cette baseline propre.
+        </p>
+      </div>
+    </section>
+
+    <!-- ─────────── 9. PHASING ─────────── -->
+    <section id="phasing">
+      <div class="prose-wide">
+        <span class="eyebrow" data-i18n-key="phasing.eyebrow">09 · Phasage du test</span>
+        <h2 data-i18n-key="phasing.h2">Deux phases — la sentinelle, puis le négatif.</h2>
+        <p class="prose" data-i18n-key="phasing.intro">
+          On sépare proprement le happy path du negative testing pour deux raisons :
+          (a) la sentinelle est rapide et tient lieu de baseline avant tout négatif ;
+          (b) le negative dépend que la sentinelle passe (sinon on confond bug et environnement).
+          Pas de raison de fragmenter plus.
+        </p>
+
+        <div class="phases">
+
+          <div class="phase">
+            <span class="phase-tag" data-i18n-key="phasing.F.tag">TEST·F</span>
+            <h3 data-i18n-key="phasing.F.h3">Setup + happy path Brugmann</h3>
+            <p data-i18n-key="phasing.F.p">Setup (scratch copro sur staging, 5 lots, 5 owners, AG, 3 résolutions) + le scénario complet de §05 bout-en-bout. Objectif : le flux entier tourne sans erreur. <strong>Première chose</strong> : fixer les 5 échecs Phase D pré-existants de <code>assemblies.test.ts</code> — cf. §08. Sortie attendue : Brugmann replay vert, PV PDF dans <code>/tmp</code>, 5 e-mails dans Resend.</p>
+          </div>
+
+          <div class="phase">
+            <span class="phase-tag" data-i18n-key="phasing.G.tag">TEST·G</span>
+            <h3 data-i18n-key="phasing.G.h3">Negative testing sweep</h3>
+            <p data-i18n-key="phasing.G.p">22 scénarios du tableau §06 exécutés un par un, chacun sur la même copro scratch. Pour chaque ligne : on déclenche la condition, on vérifie le code d'erreur, on note le résultat. Objectif final : 100% des scénarios produisent le code d'erreur attendu. Tout écart est un bug — diagnostic + fix dans la boucle §07.</p>
+          </div>
+
+        </div>
+
+        <p class="prose" data-i18n-key="phasing.outro"><em>TEST·F = ~30 min wall-clock + temps de fix des 5 tests Phase D. TEST·G = ~1-2 h selon le nombre de fixes nécessaires.</em></p>
+      </div>
+    </section>
+
+    <!-- ─────────── 10. ACCEPTANCE ─────────── -->
+    <section id="acceptance">
+      <div class="prose-wide">
+        <span class="eyebrow" data-i18n-key="acceptance.eyebrow">10 · Critères d'acceptation</span>
+        <h2 data-i18n-key="acceptance.h2">Sept conditions à cocher pour clôturer la passe.</h2>
+        <p class="prose" data-i18n-key="acceptance.intro">
+          On est verts quand <em>chacun</em> de ces critères est satisfait. Pas de demi-passe.
+          Si un critère résiste après deux itérations de fix, on remonte au reviewer plutôt que
+          de boucler indéfiniment.
+        </p>
+
+        <ul class="checklist">
+          <li data-i18n-key="acceptance.l1"><strong>Brugmann replay end-to-end</strong> tourne sans erreur inattendue (CLI + browser pour les votes mode token).</li>
+          <li data-i18n-key="acceptance.l2"><strong>Les 5 échecs Phase D pré-existants</strong> sont fixés ; <code>npm test -- assemblies.test.ts</code> passe 100%.</li>
+          <li data-i18n-key="acceptance.l3"><strong>Les 22 scénarios négatifs §06</strong> produisent chacun le code d'erreur attendu, ni plus ni moins.</li>
+          <li data-i18n-key="acceptance.l4"><strong>Le PV PDF généré pour la copro scratch</strong> matche structurellement le sample IGS (numéros de présence, exceptions nommées, métadonnées de seuil — cf. <code>article.html §06</code>).</li>
+          <li data-i18n-key="acceptance.l5"><strong>La rotation de magic link</strong> via <code>getMyVoteLink</code> invalide le token précédent en ≤ 2 s (vérifié en castant un vote avec l'ancien token : <code>permission-denied</code>).</li>
+          <li data-i18n-key="acceptance.l6"><strong>Le cleanup d'attendance stale</strong> (<code>cleanupStaleAttendance</code>) flippe une attendance « onglet ouvert mais inactif » à <code>left</code> en ≤ 3 min après le dernier heartbeat.</li>
+          <li data-i18n-key="acceptance.l7"><strong>Le journal d'activité</strong> contient au moins une entrée pour chaque scénario testé (création AG, send convocation, open R, cast vote, close R, end AG, generate PV, distribute PV) — format consistent.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ─────────── 11. CHEATSHEET ─────────── -->
+    <section id="cheatsheet">
+      <div class="prose">
+        <span class="eyebrow" data-i18n-key="cheatsheet.eyebrow">11 · Commandes de référence</span>
+        <h2 data-i18n-key="cheatsheet.h2">Cheat sheet — CLI · firebase · gcloud · jest.</h2>
+        <p data-i18n-key="cheatsheet.intro">
+          Les commandes les plus utilisées pendant la passe, dans l'ordre où on en a besoin.
+          Le sub-agent peut s'y référer sans relire le reste de l'article.
+        </p>
+      </div>
+
+      <div class="shell-block" aria-hidden="true"><span class="sh-h"># ───── AUTH + PROFILE ─────</span>
+<span class="sh-cmd">syndicable login:request</span> <span class="sh-flag">--email</span> <span class="sh-arg">qa-syndic@codika.io</span> <span class="sh-flag">--profile</span> <span class="sh-arg">staging</span>
+<span class="sh-cmd">syndicable login:verify</span>  <span class="sh-flag">--email</span> <span class="sh-arg">qa-syndic@codika.io</span> <span class="sh-flag">--code</span> <span class="sh-arg">XXXXXX</span>
+<span class="sh-cmd">syndicable whoami</span> <span class="sh-flag">--profile</span> <span class="sh-arg">staging</span>
+<span class="sh-cmd">syndicable use-copro</span> <span class="sh-arg">$CID</span>            <span class="sh-com"># si CLI·F a livré la commande</span>
+
+<span class="sh-h"># ───── INSPECTION FIRESTORE (read-only) ─────</span>
+<span class="sh-cmd">syndicable assembly show</span>  <span class="sh-flag">--copro-id</span> <span class="sh-arg">$CID</span> <span class="sh-flag">--assembly-id</span> <span class="sh-arg">$AID</span> <span class="sh-flag">--watch</span>
+<span class="sh-cmd">syndicable attendance show</span> <span class="sh-flag">--copro-id</span> <span class="sh-arg">$CID</span> <span class="sh-flag">--assembly-id</span> <span class="sh-arg">$AID</span> <span class="sh-flag">--watch</span>
+<span class="sh-cmd">syndicable vote show</span>      <span class="sh-flag">--copro-id</span> <span class="sh-arg">$CID</span> <span class="sh-flag">--assembly-id</span> <span class="sh-arg">$AID</span> <span class="sh-flag">--resolution-id</span> <span class="sh-arg">R001</span> <span class="sh-flag">--watch</span>
+<span class="sh-cmd">syndicable lot list</span>       <span class="sh-flag">--copro-id</span> <span class="sh-arg">$CID</span>
+<span class="sh-cmd">syndicable owner list</span>     <span class="sh-flag">--copro-id</span> <span class="sh-arg">$CID</span>
+<span class="sh-cmd">syndicable convocation list</span> <span class="sh-flag">--copro-id</span> <span class="sh-arg">$CID</span> <span class="sh-flag">--assembly-id</span> <span class="sh-arg">$AID</span>
+<span class="sh-cmd">syndicable activity tail</span>  <span class="sh-flag">--copro-id</span> <span class="sh-arg">$CID</span> <span class="sh-flag">--limit</span> <span class="sh-arg">50</span>
+
+<span class="sh-h"># ───── DEPLOY CIBLÉ ─────</span>
+<span class="sh-cmd">cd</span> ~/.codika/agency/projects/syndicable/syndicable-app/functions <span class="sh-cmd">&amp;&amp; npm run build</span>
+<span class="sh-cmd">firebase deploy</span> <span class="sh-flag">--only</span> <span class="sh-arg">functions:&lt;name&gt;</span> <span class="sh-flag">--project</span> <span class="sh-arg">syndicable-codika-staging</span>
+<span class="sh-cmd">firebase deploy</span> <span class="sh-flag">--only</span> <span class="sh-arg">firestore:rules</span>     <span class="sh-flag">--project</span> <span class="sh-arg">syndicable-codika-staging</span>
+
+<span class="sh-h"># ───── LOGS CF ─────</span>
+<span class="sh-cmd">gcloud functions logs read</span> &lt;name&gt; <span class="sh-flag">--project</span>=<span class="sh-arg">syndicable-codika-staging</span> \
+    <span class="sh-flag">--gen2</span> <span class="sh-flag">--region</span>=<span class="sh-arg">europe-west1</span> <span class="sh-flag">--limit</span> <span class="sh-arg">50</span>
+<span class="sh-cmd">gcloud logging read</span> <span class="sh-arg">'resource.labels.function_name="castVote"'</span> \
+    <span class="sh-flag">--project</span>=<span class="sh-arg">syndicable-codika-staging</span> <span class="sh-flag">--limit</span> <span class="sh-arg">20</span>
+
+<span class="sh-h"># ───── JEST LOCAL (avant fix) ─────</span>
+<span class="sh-cmd">cd</span> functions <span class="sh-cmd">&amp;&amp; npm test</span> <span class="sh-flag">--</span> assemblies.test.ts
+<span class="sh-cmd">npm test</span> <span class="sh-flag">--</span> <span class="sh-flag">--testNamePattern</span>=<span class="sh-arg">"closeResolution"</span>
+
+<span class="sh-h"># ───── CLEANUP ─────</span>
+<span class="sh-cmd">syndicable copro archive</span> <span class="sh-flag">--copro-id</span> <span class="sh-arg">$CID</span></div>
+    </section>
+
+    <!-- ─────────── 12. COLOPHON ─────────── -->
+    <section id="colophon">
+      <div class="prose">
+        <span class="eyebrow" data-i18n-key="colo.eyebrow">12 · Colophon</span>
+        <h2 data-i18n-key="colo.h2">Ce qu'est ce plan — et ce qu'il n'est pas.</h2>
+        <p data-i18n-key="colo.p1">
+          C'est un plan d'exécution de QA pour V1.1 + V1.1.5 + CLI. Le plan est statique ;
+          l'exécution est confiée à un sub-agent qui prend cet article comme spec, déroule §05
+          puis §06, et applique §07 chaque fois qu'un test casse. La sortie attendue de l'exécution :
+          tous les critères §10 cochés, plus une PR <code>fix(qa): post-deploy testing sweep</code>
+          si des fixes ont été produits.
+        </p>
+        <p data-i18n-key="colo.p2">
+          Ce que ce plan ne traite pas : tout ce qui est dans la colonne OUT du §02 (load,
+          pen-test, RGPD, multi-region, migration de données IGS legacy). Autant de chantiers
+          séparés, à programmer après V1.1 stable. Et ce plan ne <em>fait</em> rien : il ne
+          touche aucune ligne de code et ne déclenche aucun test. Tout cela vient de l'agent
+          d'exécution, dans une session séparée.
+        </p>
+        <p data-i18n-key="colo.p3">
+          Suivis attendus, après cette passe : (a) load test à 500 votants concurrents, sur un
+          environnement dédié ; (b) intégration des cas négatifs §06 dans la suite Jest comme
+          tests d'intégration permanents (pas juste un one-shot QA) ; (c) automation de la
+          séquence §05 dans <code>test:assembly-happy-path</code> côté CLI, pour que la
+          sentinelle tourne en CI et pas seulement en QA manuelle.
+        </p>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<footer>
+  <div data-i18n-key="footer.updated">Syndicable V1.1+CLI · QA — dernière mise à jour 2026-05-09.</div>
+</footer>
+
+<script>
+  // ───────── i18n dictionary ─────────
+  window.I18N = {
+    en: {
+      "meta.title": "Syndicable V1.1+CLI — Post-deploy test strategy",
+      "meta.description": "End-to-end test plan for V1.1 + V1.1.5 + CLI deployed on syndicable-codika-staging: Cloud Functions, voter frontend, syndic conductor, CLI.",
+
+      "lang.label": "Language",
+      "lang.aria": "Switch language between English and French",
+
+      "nav.eyebrow": "Sections",
+      "nav.thesis": "The thesis",
+      "nav.scope": "Scope",
+      "nav.axes": "Three axes",
+      "nav.stack": "Test stack",
+      "nav.sequence": "Brugmann sequence",
+      "nav.negatives": "Negative cases",
+      "nav.loop": "Fix-and-retry",
+      "nav.known": "Known to fix",
+      "nav.phasing": "Phasing",
+      "nav.acceptance": "Acceptance",
+      "nav.cheatsheet": "Cheat sheet",
+      "nav.colophon": "Colophon",
+
+      "hero.pill.module": "Module&nbsp;·&nbsp;Testing strategy",
+      "hero.title": "Testing what we shipped — by trying to break it.",
+      "hero.sub": "V1.1, V1.1.5 and the CLI are all on <code>main</code>, deployed to <code>syndicable-codika-staging</code>. 99 exports, half a hundred callables and a dozen triggers. The tests that ran during the phases were emulator-bounded; this plan attacks the same surface, but for real — real Firestore, real Resend, real Pub/Sub, real puppeteer. Everything emulators can't reproduce.",
+
+      "thesis.eyebrow": "01 · The thesis",
+      "thesis.h2": "Test on staging, because the emulator lies by omission.",
+      "thesis.p1": "We shipped a lot, fast: V1.1 (assemblies, convocations, live session, PV), V1.1.5 (owner view — self-serve magic link), and a CLI that mirrors every Cloud Function. The tests that ran during those phases were Jest tests against the Firebase emulator. They validate the logic, not the deployment. The deployment adds a whole layer that's only visible in staging.",
+      "thesis.p2": "What the emulator does not reproduce: <strong>cold starts</strong> on Cloud Functions (and the variable latency of first calls after inactivity), the <strong>real</strong> behavior of Pub/Sub on the trigger side (timing, ordering, retry), PDF rendering by <strong>puppeteer</strong> with its chromium cold start, the <strong>actual</strong> Resend email delivery (DNS, SPF, DKIM, multi-client format), <strong>throughput quotas</strong> on public callables, <strong>Firestore rules</strong> applied hot on real UIDs.",
+      "thesis.p3": "The test we want is simple to state: an agent reproduces the Brugmann scenario on staging, from the CLI, without opening the browser — except for the voter page (which <em>must</em> be tested in a real browser). At the end, the PV exists as PDF, has landed in test inboxes, and the numbers add up. If yes, we're green. If not, we diagnose, fix, redeploy the affected function, re-run.",
+
+      "scope.eyebrow": "02 · Scope, frozen",
+      "scope.h2": "What we test — and what we don't, this round.",
+      "scope.intro": "This round is <em>integration testing</em> on staging — not load testing, not pen testing, not GDPR audit. The scope covers everything callable from the CLI, plus the voter page (which has its own auth channel via magic link).",
+      "scope.in.title": "In · this QA round",
+      "scope.in.li1": "Every callable + trigger reachable from the CLI exercised end-to-end on <code>syndicable-codika-staging</code>",
+      "scope.in.li2": "The Brugmann scenario (cli.html §07) runs cleanly start to finish, happy-path mode",
+      "scope.in.li3": "The public voter page loads from a real magic-link URL, vote is cast, syndic conductor view updates within 2 s",
+      "scope.in.li4": "PV is generated, exported to PDF, distributed to a test owner inbox — receipt and structure verified",
+      "scope.in.li5": "Staging Firestore returns to a known-clean state after each pass (CLI cleanup or manual reset)",
+      "scope.in.li6": "The 5 pre-existing Phase D failures in <code>assemblies.test.ts</code> are fixed before close-out",
+      "scope.in.li7": "~20 negative scenarios documented (§06) — for each CF, an attempt to violate the guards",
+      "scope.out.title": "Out · not in this round",
+      "scope.out.li1": "Load testing (&gt;500 concurrent voters) — V1.2 hardening lane",
+      "scope.out.li2": "Penetration testing of the token model — separately scheduled external audit",
+      "scope.out.li3": "Full GDPR audit (DPIA, data-processing register) — distinct legal workstream",
+      "scope.out.li4": "Multi-region failover, DR drill — not before <code>syndicable-codika-prod</code> is cut",
+      "scope.out.li5": "Multi-client email compatibility tests (Outlook, Gmail mobile, Lotus Notes…) — visual only",
+      "scope.out.li6": "UI regression beyond the voter page (the Svelte conductor is sniffed only)",
+      "scope.out.li7": "IGS data migration tests (legacy → V1.1) — when the client launches the import",
+
+      "axes.eyebrow": "03 · Three axes of testing",
+      "axes.h2": "Three angles of attack that complement each other.",
+      "axes.intro": "None of these alone would suffice. The happy path reveals integration; negative testing reveals the guards; the fix-and-retry loop is what turns \"I found a bug\" into \"I shipped a fix\". The three run in parallel.",
+      "axes.c1.num": "CHOICE&nbsp;01",
+      "axes.c1.h3": "End-to-end Brugmann replay.",
+      "axes.c1.p1": "We script a full AG from the CLI: one copropriété, 5 lots with quotities, 5 owners, 3 resolutions, 2 magic-link voters, close, generate + export + distribute the PV. We compare the final numbers to what we expected. This is the smoke test that runs every iteration — the sentinel.",
+      "axes.c1.p2": "The reference for this scenario is <code>cli.html §07</code>. We replay it identically, except we use a <em>scratch</em> copro on staging — never touch real IGS data. If this scenario passes, 80% of the functional surface is validated without a single click.",
+      "axes.c2.num": "CHOICE&nbsp;02",
+      "axes.c2.h3": "Negative testing per CF.",
+      "axes.c2.p1": "Every Cloud Function has guards: auth (Firebase user or magic-link token), state machine (assembly status, resolution status, attendance state), business validation (quotities-concerned, quotities&gt;0, expirations). We try to violate each one. The expected result: a clean typed <code>HttpsError</code>, never a 500.",
+      "axes.c2.p2": "The §06 table lists ~20 scenarios. The rule: if we hit an unexpected error code (e.g. <code>internal</code> instead of <code>failed-precondition</code>), or a raw stack trace surfaces, that's a bug. We log it, fix it, re-run.",
+      "axes.c3.num": "CHOICE&nbsp;03",
+      "axes.c3.h3": "Fix-and-retry loop.",
+      "axes.c3.p1": "When a test fails: read <code>gcloud functions logs</code>, inspect Firestore state via the CLI, reproduce locally if needed. Fix in <code>syndicable-app</code> or <code>syndicable-cli</code>, rebuild (<code>cd functions &amp;&amp; npm run build</code>), targeted redeploy (<code>firebase deploy --only functions:&lt;name&gt;</code>), re-run.",
+      "axes.c3.p2": "Fixes go straight to <code>main</code> as incremental commits; no PR per micro-fix. When the round is done, we bundle everything into a single <code>fix(qa): post-deploy testing sweep</code> PR for the trace. If a fix takes &gt;1h or alters a CF contract, it leaves the loop and gets a dedicated PR.",
+
+      "stack.eyebrow": "04 · The test stack",
+      "stack.h2": "Tools the execution sub-agent has access to.",
+      "stack.intro": "No homemade test framework, no custom orchestration. We compose the stack from existing tools: the Syndicable CLI as the primary harness, <code>firebase</code> and <code>gcloud</code> for inspection, a browser for the voter page, the Resend dashboard to verify email delivery.",
+      "stack.f1": "Primary harness. V1.1+CLI covers 100% of callable CFs. Dedicated <code>--profile staging</code> to point at <code>syndicable-codika-staging</code>.",
+      "stack.f2": "Targeted deploys (<code>firebase deploy --only functions:&lt;name&gt; --project syndicable-codika-staging</code>) and Firestore inspection (<code>firebase firestore:data ...</code>) for quick sanity checks.",
+      "stack.f3": "CF logs (<code>gcloud functions logs read &lt;name&gt; --project=syndicable-codika-staging --gen2 --region=europe-west1</code>) — the main window into what really happened in the backend when a test breaks.",
+      "stack.f4": "Read-only Firestore inspection via the CLI — no Admin SDK needed. The <code>--watch</code> flag replaces F5 in the browser to observe evolving state.",
+      "stack.f5": "Resend dashboard to verify email deliveries (convocation, PV). Test inboxes: <code>syndicable-test+&lt;scenario&gt;@example.com</code> (plus-addressing) or Mailtrap accounts if Resend doesn't allow it.",
+      "stack.f6": "Browser for the voter page: open the <code>/vote/&lt;secret&gt;</code> URL fetched from a test inbox or via <code>owner vote-link</code>, click \"For\", verify Firestore reflects the vote via the CLI.",
+      "stack.f7": "<em>Scratch</em> copropriété on staging, created at the start of the round, archived at the end. All CRUD operations live there. <strong>We never touch real client data</strong> (IGS or otherwise).",
+
+      "sequence.eyebrow": "05 · The test sequence (Brugmann replay)",
+      "sequence.h2": "The canonical scenario, step by step.",
+      "sequence.p1": "We take the Brugmann scenario from <code>cli.html §07</code> and adapt it for testing: reduced size (5 lots / 5 owners / 3 resolutions instead of 166 / 162 / 5), 2 real voters via magic link instead of a script that pokes <code>syndicCastVote</code>. Everything else is identical. The syndic is a Firebase test account configured as a member of the scratch copro.",
+      "sequence.p2": "A full pass takes ~3 minutes wall-clock if all goes well. If something breaks, jump to §07 (fix-and-retry loop). The <em>browser</em> portion (the two owners voting via magic link) is manual; the QA agent opens two incognito windows, copy-pastes the <code>/vote/&lt;secret&gt;</code> URL received in Resend, clicks. Once that behavior is validated, we can switch to <code>syndicCastVote</code> to speed up subsequent iterations.",
+
+      "negatives.eyebrow": "06 · The negative-cases table",
+      "negatives.h2": "Twenty \"try-to-break-it\" scenarios.",
+      "negatives.intro": "For each CF family, we try to violate one guard — auth, state, business validation. The expected result is a clean typed <code>HttpsError</code> (never an <code>internal</code>, never a raw stack trace). The CLI exit code is mapped from the error code (<code>unauthenticated</code> → 1, <code>permission-denied</code> → 2, <code>failed-precondition</code> → 3, <code>not-found</code> → 4, <code>invalid-argument</code> → 5).",
+      "negatives.th.cf": "Cloud Function",
+      "negatives.th.scen": "Negative scenario",
+      "negatives.th.code": "Expected code",
+      "negatives.th.exit": "Exit",
+      "negatives.th.crit": "Pass/fail criterion",
+      "negatives.r1.s": "Token revoked via <code>revokeAccessToken</code> right before the cast.",
+      "negatives.r1.c": "Pass if error is typed and the vote does not appear in Firestore.",
+      "negatives.r2.s": "Expired token (Assembly status = <code>ended</code>).",
+      "negatives.r2.c": "Pass if the error message says \"assembly is no longer live\".",
+      "negatives.r3.s": "Vote on a resolution with <code>quotitiesConcerned=0</code> for the lot.",
+      "negatives.r3.c": "Pass if a clear \"no concerned quotity for this lot\" error is returned.",
+      "negatives.r4.s": "Invalid choice (e.g. <code>--choice maybe</code> instead of for/against/abstain).",
+      "negatives.r4.c": "Pass if rejected before any Firestore side-effect.",
+      "negatives.r5.s": "Close a resolution still in <code>pending</code> (never opened).",
+      "negatives.r5.c": "Pass if rejected + Firestore state unchanged.",
+      "negatives.r6.s": "Close without <code>--confirm-auto-default</code> while <code>not_voted &gt; 0</code>.",
+      "negatives.r6.c": "Pass if the error indicates the auto-default-to-abstain confirmation requirement.",
+      "negatives.r7.s": "Open a resolution on a <code>draft</code> assembly (never started).",
+      "negatives.r7.c": "Pass if message \"assembly not live\" is returned.",
+      "negatives.r8.s": "Send a convocation &lt; 15 days before the date without <code>--override-15-day-warning</code>.",
+      "negatives.r8.c": "Pass if rejected + explicit indication of the flag to pass.",
+      "negatives.r9.s": "Send the convocation twice for the same AG.",
+      "negatives.r9.c": "Pass if rejected + indication \"already convoked\".",
+      "negatives.r10.s": "Call for an archived Owner (<code>archived: true</code>).",
+      "negatives.r10.c": "Pass if rejected + Firestore not mutated (no new token issued).",
+      "negatives.r11.s": "Called by a user who is not a member of the copro.",
+      "negatives.r11.c": "Pass if rejected + access attempt logged.",
+      "negatives.r12.s": "Token with a single character altered (typo).",
+      "negatives.r12.c": "Pass if rejected in constant time (no timing-attack vector).",
+      "negatives.r13.s": "Join a <code>convoked</code> assembly (not yet <code>live</code>).",
+      "negatives.r13.c": "Pass if rejected with \"assembly not started yet\".",
+      "negatives.r14.s": "Heartbeat without prior <code>joinAssembly</code> (no Attendance doc).",
+      "negatives.r14.c": "Pass if rejected + no Firestore side-effect.",
+      "negatives.r15.s": "Called by a user with <code>member</code> role (non-syndic).",
+      "negatives.r15.c": "Pass if rejected + activity log records the attempt.",
+      "negatives.r16.s": "Add a resolution on a <code>convoked</code> AG (agenda freeze).",
+      "negatives.r16.c": "Pass if rejected + message \"agenda frozen after convocation\".",
+      "negatives.r17.s": "Generate the PV before <code>endAssembly</code> (status &lt; ended).",
+      "negatives.r17.c": "Pass if rejected with \"assembly must be ended\".",
+      "negatives.r18.s": "Distribute a PV that was never exported (<code>pdfPath</code> empty).",
+      "negatives.r18.c": "Pass if rejected + message \"export the PV first\".",
+      "negatives.r19.s": "Archive an Owner who still owns a non-transferred Lot.",
+      "negatives.r19.c": "Pass if rejected + indication of the lots still attached.",
+      "negatives.r20.s": "Unauthenticated call (Firebase token missing or revoked).",
+      "negatives.r20.c": "Pass if immediate refusal before any read/write.",
+      "negatives.r21.s": "Issue a procuration for an Owner already <code>present_in_person</code>.",
+      "negatives.r21.c": "Pass if rejected + message \"owner already attending in person\".",
+      "negatives.r22.s": "Cancel an <code>ended</code> AG (terminal).",
+      "negatives.r22.c": "Pass if rejected + message \"cannot cancel an ended assembly\".",
+      "negatives.outro": "22 lines — slightly more than the 20 target, and that's fine: the margin covers rare combinations (procuration + in-person, for example). If a case surfaces an <code>internal</code> error or a 500, that's a bug: log the stack, jump to §07.",
+
+      "loop.eyebrow": "07 · The fix-and-retry loop",
+      "loop.h2": "Six steps, until green.",
+      "loop.intro": "The loop's discipline: keep each turn short (~5-15 min). If a fix takes more, leave the loop, open an issue, continue the rest of the round without that CF. The point is to <em>finish the round</em>, not to debug everything in cascade.",
+      "loop.outro": "Bundling rule: a single <code>fix(qa): post-deploy testing sweep</code> PR at the end if the set of fixes is coherent (≤10 files, ≤300 LOC). Beyond that, fragment: one PR per affected feature. Journal in <code>docs/decisions-log.md</code> if a fix changes a CF contract.",
+
+      "known.eyebrow": "08 · Known to fix first",
+      "known.h2": "Five Phase D failures in <code>assemblies.test.ts</code> — fix before anything else.",
+      "known.p1": "On <code>main</code>, <code>npm test -- assemblies.test.ts</code> fails on 5 Phase D cases tied to the Brugmann scenario. Root cause is <strong>arithmetic collision on the default GEN key</strong>: Phase D code inherited <code>expectedTotal=1000</code> for the GEN key, but Brugmann fixtures distribute &gt;200 quotities per lot across 5 lots → total &gt; 1000 → validation refuses.",
+      "known.callout.h4": "Symptom",
+      "known.callout.p1": "All Phase D Brugmann tests (5 of 5) fail with an assertion like <code>Expected total quotity ≤ 1000, got 1xxx</code>. The runner reports <code>FAIL src/features/assemblies/__tests__/assemblies.test.ts</code> with the 5 consecutive assertions.",
+      "known.callout.h4b": "Expected fix",
+      "known.callout.p2": "Two options, for the sub-agent to settle once they read the code: <strong>(a)</strong> the test fixtures use <code>expectedTotal: 10000</code> for the GEN key instead of 1000, which aligns with realistic quotities (200/lot × 5 lots = 1000, but real Brugmann is calibrated on 10000); <strong>(b)</strong> resolutions in the fixture use lower quotities to fit under 1000. Recommendation: option (a) — more representative of the business (real copros are calibrated on 10000).",
+      "known.callout.h4c": "Verification",
+      "known.callout.p3": "<code>cd functions &amp;&amp; npm test -- assemblies.test.ts</code> must pass 100% (zero failure, zero non-explicit skip). Once the fix lands, it's the first thing to commit — the entire rest of the round depends on this clean baseline.",
+
+      "phasing.eyebrow": "09 · Test phasing",
+      "phasing.h2": "Two phases — sentinel first, then negative.",
+      "phasing.intro": "We split happy path from negative testing for two reasons: (a) the sentinel is fast and provides a baseline before any negative; (b) the negative depends on the sentinel passing (otherwise we conflate bugs with environment). No reason to fragment further.",
+      "phasing.F.tag": "TEST·F",
+      "phasing.F.h3": "Setup + Brugmann happy path",
+      "phasing.F.p": "Setup (scratch copro on staging, 5 lots, 5 owners, AG, 3 resolutions) + the full §05 scenario end-to-end. Goal: the entire flow runs without errors. <strong>First thing</strong>: fix the 5 pre-existing Phase D failures in <code>assemblies.test.ts</code> — see §08. Expected output: green Brugmann replay, PV PDF in <code>/tmp</code>, 5 emails in Resend.",
+      "phasing.G.tag": "TEST·G",
+      "phasing.G.h3": "Negative testing sweep",
+      "phasing.G.p": "22 §06 scenarios run one by one, each on the same scratch copro. For each row: trigger the condition, verify the error code, log the result. End goal: 100% of scenarios produce the expected error code. Any deviation is a bug — diagnose + fix in the §07 loop.",
+      "phasing.outro": "<em>TEST·F = ~30 min wall-clock + Phase D test-fix time. TEST·G = ~1-2 h depending on the number of fixes needed.</em>",
+
+      "acceptance.eyebrow": "10 · Acceptance criteria",
+      "acceptance.h2": "Seven boxes to tick before closing the round.",
+      "acceptance.intro": "We're green when <em>every</em> criterion is satisfied. No half-passes. If a criterion resists after two fix iterations, we escalate to the reviewer rather than loop forever.",
+      "acceptance.l1": "<strong>End-to-end Brugmann replay</strong> runs without unexpected errors (CLI + browser for the token-mode votes).",
+      "acceptance.l2": "<strong>The 5 pre-existing Phase D failures</strong> are fixed; <code>npm test -- assemblies.test.ts</code> passes 100%.",
+      "acceptance.l3": "<strong>The 22 §06 negative scenarios</strong> each produce the expected error code, no more, no less.",
+      "acceptance.l4": "<strong>The PV PDF generated for the scratch copro</strong> matches the IGS sample structurally (presence numbers, named exceptions, threshold metadata — see <code>article.html §06</code>).",
+      "acceptance.l5": "<strong>Magic-link rotation</strong> via <code>getMyVoteLink</code> invalidates the prior token within ≤ 2 s (verified by casting a vote with the old token: <code>permission-denied</code>).",
+      "acceptance.l6": "<strong>Stale-attendance cleanup</strong> (<code>cleanupStaleAttendance</code>) flips a \"left-the-tab-open\" attendance to <code>left</code> within ≤ 3 min of the last heartbeat.",
+      "acceptance.l7": "<strong>The activity log</strong> contains at least one entry for every tested scenario (AG creation, send convocation, open R, cast vote, close R, end AG, generate PV, distribute PV) — consistent format.",
+
+      "cheatsheet.eyebrow": "11 · Reference commands",
+      "cheatsheet.h2": "Cheat sheet — CLI · firebase · gcloud · jest.",
+      "cheatsheet.intro": "The most-used commands during the round, in the order they're needed. The sub-agent can refer to this without re-reading the rest of the article.",
+
+      "colo.eyebrow": "12 · Colophon",
+      "colo.h2": "What this plan is — and what it isn't.",
+      "colo.p1": "It's a QA execution plan for V1.1 + V1.1.5 + CLI. The plan is static; execution is delegated to a sub-agent that takes this article as spec, runs §05 then §06, and applies §07 each time a test breaks. Expected output of the execution: every §10 criterion ticked, plus a <code>fix(qa): post-deploy testing sweep</code> PR if any fixes were produced.",
+      "colo.p2": "What this plan does not address: everything in the OUT column of §02 (load, pen-test, GDPR, multi-region, IGS legacy migration). Separate workstreams, scheduled after V1.1 is stable. And this plan <em>does</em> nothing: it does not touch a single line of code and does not run a single test. All of that comes from the execution agent, in a separate session.",
+      "colo.p3": "Expected follow-ups, after this round: (a) load test at 500 concurrent voters, on a dedicated environment; (b) integration of the §06 negative cases into the Jest suite as permanent integration tests (not just a one-shot QA); (c) automation of the §05 sequence in <code>test:assembly-happy-path</code> on the CLI side, so the sentinel runs in CI rather than only in manual QA.",
+
+      "miniNav.article": "Article",
+      "miniNav.plan": "Plan",
+      "miniNav.roadmap": "Roadmap",
+      "miniNav.ownerView": "Owner view",
+      "miniNav.cli": "CLI",
+      "miniNav.testing": "Testing",
+
+      "footer.updated": "Syndicable V1.1+CLI · QA — last updated 2026-05-09."
+    },
+    fr: {
+      "meta.title": "Syndicable V1.1+CLI — Stratégie de test post-déploiement",
+      "meta.description": "Plan de test bout-en-bout pour V1.1 + V1.1.5 + CLI déployés sur syndicable-codika-staging : Cloud Functions, frontend voter, conducteur syndic, CLI.",
+
+      "lang.label": "Langue",
+      "lang.aria": "Basculer la langue entre français et anglais",
+
+      "nav.eyebrow": "Sections",
+      "nav.thesis": "La thèse",
+      "nav.scope": "Périmètre",
+      "nav.axes": "Trois axes",
+      "nav.stack": "Stack de test",
+      "nav.sequence": "Séquence Brugmann",
+      "nav.negatives": "Cas négatifs",
+      "nav.loop": "Fix-and-retry",
+      "nav.known": "Connue à fixer",
+      "nav.phasing": "Phasage",
+      "nav.acceptance": "Acceptation",
+      "nav.cheatsheet": "Cheat sheet",
+      "nav.colophon": "Colophon",
+
+      "hero.pill.module": "Module&nbsp;·&nbsp;Stratégie de test",
+      "hero.title": "Tester ce qu'on a livré, en cassant ce qu'on peut casser.",
+      "hero.sub": "V1.1, V1.1.5 et le CLI sont sur <code>main</code>, déployés sur <code>syndicable-codika-staging</code>. 99 exports, dont une cinquantaine de callables et une douzaine de triggers. Les tests qui ont tourné pendant les phases étaient bornés à l'émulateur ; ce plan attaque la même surface, mais en vrai — Firestore réel, Resend réel, Pub/Sub réel, puppeteer réel. Tout ce que l'émulateur ne sait pas reproduire.",
+
+      "thesis.eyebrow": "01 · La thèse",
+      "thesis.h2": "Tester sur staging, parce que l'émulateur ment par omission.",
+      "thesis.p1": "On a livré beaucoup en peu de temps : V1.1 (assemblées, convocations, session live, PV), V1.1.5 (vue copropriétaire — magic link <em>self-serve</em>), et un CLI qui mappe chaque Cloud Function. Les tests qui ont tourné pendant ces phases étaient des tests Jest contre l'émulateur Firebase. Ils valident la logique, mais pas le déploiement. Le déploiement ajoute une couche entière qui ne se voit qu'en staging.",
+      "thesis.p2": "Ce que l'émulateur ne reproduit pas : les <strong>cold starts</strong> de Cloud Functions (et la latence variable des premiers appels après inactivité), le <strong>vrai</strong> comportement de Pub/Sub côté triggers (timing, ordre, retry), le rendu PDF par <strong>puppeteer</strong> avec son chromium en cold start, l'envoi <strong>réel</strong> des e-mails Resend (DNS, SPF, DKIM, format multi-client), les <strong>quotas de débit</strong> sur les callables publics, les <strong>règles Firestore</strong> appliquées à chaud sur des UIDs réels.",
+      "thesis.p3": "Le test qu'on veut faire est simple à dire : un agent reproduit le scénario Brugmann sur staging, depuis le CLI, sans ouvrir le navigateur — sauf pour la voter page (qui <em>doit</em> être testée dans un vrai browser). À la fin, le PV existe en PDF, est arrivé dans des inboxes de test, et les chiffres tiennent. Si oui, on est verts. Si non, on diagnostique, on fixe, on redéploie la fonction touchée, on relance.",
+
+      "scope.eyebrow": "02 · Périmètre, figé",
+      "scope.h2": "Ce qu'on teste — et ce qu'on ne teste pas dans cette passe.",
+      "scope.intro": "Cette passe est de l'<em>integration testing</em> sur staging, pas du load test, pas du pen test, pas de l'audit RGPD. Le périmètre couvre tout ce qui est appelable depuis le CLI, plus la voter page (qui a son propre canal d'auth via magic link).",
+      "scope.in.title": "Inclus · cette passe de QA",
+      "scope.in.li1": "Chaque callable + trigger atteignable depuis le CLI exercé bout-en-bout sur <code>syndicable-codika-staging</code>",
+      "scope.in.li2": "Le scénario Brugmann (cli.html §07) tourne proprement du début à la fin, en mode happy path",
+      "scope.in.li3": "La voter page publique se charge depuis une vraie URL magic-link, le vote est casté, la vue conducteur du syndic se met à jour en moins de 2 s",
+      "scope.in.li4": "Le PV est généré, exporté en PDF, distribué à un inbox de test owner — vérification de réception et de structure",
+      "scope.in.li5": "Firestore staging revient à un état propre connu après chaque passe (cleanup CLI ou reset manuel)",
+      "scope.in.li6": "Les 5 échecs Phase D pré-existants dans <code>assemblies.test.ts</code> sont fixés avant clôture",
+      "scope.in.li7": "Couverture ~20 cas négatifs documentés (§06) — pour chaque CF, un essai de violation des gardes",
+      "scope.out.title": "Hors · pas dans cette passe",
+      "scope.out.li1": "Load testing (&gt;500 votants concurrents) — quotient de hardening V1.2",
+      "scope.out.li2": "Penetration testing du modèle de tokens — audit externe planifié séparément",
+      "scope.out.li3": "Audit RGPD complet (DPIA, registre des traitements) — chantier juridique distinct",
+      "scope.out.li4": "Multi-region failover, DR drill — pas avant que <code>syndicable-codika-prod</code> soit cut",
+      "scope.out.li5": "Tests de compatibilité multi-client e-mail (Outlook, Gmail mobile, Lotus Notes…) — visuel uniquement",
+      "scope.out.li6": "Régression UI au-delà de la voter page (le conducteur Svelte est testé au sniff seulement)",
+      "scope.out.li7": "Tests de migration de données IGS (legacy → V1.1) — quand le client lance l'import",
+
+      "axes.eyebrow": "03 · Trois axes de test",
+      "axes.h2": "Trois angles d'attaque qui se complètent.",
+      "axes.intro": "Une seule de ces approches ne suffirait pas. Le happy path révèle l'intégration ; le negative testing révèle les gardes ; la boucle fix-and-retry est ce qui transforme « j'ai trouvé un bug » en « j'ai expédié un fix ». Les trois tournent en parallèle.",
+      "axes.c1.num": "CHOIX&nbsp;01",
+      "axes.c1.h3": "End-to-end Brugmann replay.",
+      "axes.c1.p1": "On scripte une AG complète depuis le CLI : une copropriété, 5 lots avec quotités, 5 propriétaires, 3 résolutions, 2 votants par magic link, clôture, génération + export + distribution du PV. On compare les chiffres finaux à ce qu'on attendait. C'est le smoke test qui tourne à chaque itération — la sentinelle.",
+      "axes.c1.p2": "La référence pour ce scénario, c'est <code>cli.html §07</code>. On le rejoue à l'identique, sauf qu'on prend une copro <em>scratch</em> sur staging — jamais de touch sur les données IGS réelles. Si ce scénario passe, 80% du périmètre fonctionnel est validé sans avoir cliqué une seule fois.",
+      "axes.c2.num": "CHOIX&nbsp;02",
+      "axes.c2.h3": "Negative testing par CF.",
+      "axes.c2.p1": "Chaque Cloud Function a ses gardes : auth (Firebase user ou magic-link token), machine d'états (assembly status, resolution status, attendance state), validation métier (quotités-concerned, quotités&gt;0, expirations). On essaie de violer chacune. Le résultat attendu : un <code>HttpsError</code> typé propre, jamais un 500.",
+      "axes.c2.p2": "Le tableau §06 liste ~20 scénarios. La règle : si on tombe sur un code d'erreur inattendu (ex. <code>internal</code> au lieu de <code>failed-precondition</code>), ou une stack trace remontée brute, c'est un bug. On le note, on le fixe, on relance.",
+      "axes.c3.num": "CHOIX&nbsp;03",
+      "axes.c3.h3": "Boucle fix-and-retry.",
+      "axes.c3.p1": "Quand un test casse : on lit les logs <code>gcloud functions logs</code>, on inspecte l'état Firestore via le CLI, on reproduit en local si besoin. On corrige dans <code>syndicable-app</code> ou <code>syndicable-cli</code>, on rebuild (<code>cd functions &amp;&amp; npm run build</code>), on redéploie ciblé (<code>firebase deploy --only functions:&lt;name&gt;</code>), on relance le test.",
+      "axes.c3.p2": "Les fixes vont directement sur <code>main</code> en commits incrémentaux ; pas de PR par micro-fix. Quand la passe est terminée, on bundle l'ensemble dans une seule PR <code>fix(qa): post-deploy testing sweep</code> pour la trace. Si un fix demande &gt;1h ou touche le contrat d'une CF, il sort de la boucle et passe par une PR dédiée.",
+
+      "stack.eyebrow": "04 · La stack de test",
+      "stack.h2": "Outils auxquels le sub-agent d'exécution a accès.",
+      "stack.intro": "Pas de framework de test maison, pas d'orchestration custom. On compose la stack à partir d'outils existants : le CLI Syndicable comme harnais principal, <code>firebase</code> et <code>gcloud</code> pour l'inspection, un browser pour la voter page, le dashboard Resend pour vérifier la livraison des e-mails.",
+      "stack.f1": "Harnais primaire. V1.1+CLI couvre 100% des CFs callables. Profile dédié <code>--profile staging</code> pour pointer sur <code>syndicable-codika-staging</code>.",
+      "stack.f2": "Déploiements ciblés (<code>firebase deploy --only functions:&lt;name&gt; --project syndicable-codika-staging</code>) et inspection Firestore (<code>firebase firestore:data ...</code>) pour des sanity checks rapides.",
+      "stack.f3": "Lecture des logs CF (<code>gcloud functions logs read &lt;name&gt; --project=syndicable-codika-staging --gen2 --region=europe-west1</code>) — la principale fenêtre sur ce qui s'est vraiment passé en backend quand un test casse.",
+      "stack.f4": "Inspection Firestore lecture-seule via le CLI — pas besoin d'Admin SDK. Le flag <code>--watch</code> remplace F5 dans le browser pour observer un état évolutif.",
+      "stack.f5": "Dashboard Resend pour vérifier les livraisons d'e-mails (convocation, PV). Inboxes de test : <code>syndicable-test+&lt;scenario&gt;@example.com</code> (plus-addressing) ou comptes Mailtrap si Resend ne le permet pas.",
+      "stack.f6": "Browser pour la voter page : on ouvre l'URL <code>/vote/&lt;secret&gt;</code> récupérée de l'inbox de test ou via <code>owner vote-link</code>, on clique « Pour », on vérifie que Firestore reflète le vote via CLI.",
+      "stack.f7": "Copropriété <em>scratch</em> sur staging, créée en début de passe, archivée à la fin. Toutes les opérations CRUD vivent dedans. <strong>On ne touche jamais de données client réelles</strong> (IGS ou autre).",
+
+      "sequence.eyebrow": "05 · La séquence de test (Brugmann replay)",
+      "sequence.h2": "Le scénario canonique, étape par étape.",
+      "sequence.p1": "On reprend le scénario Brugmann de <code>cli.html §07</code> et on l'adapte pour le test : version réduite (5 lots / 5 owners / 3 résolutions au lieu de 166 / 162 / 5), 2 votants réels via magic link au lieu d'un script qui poke <code>syndicCastVote</code>. Tout le reste est identique. Le syndic, c'est un compte Firebase de test qu'on a configuré comme membre de la copro-scratch.",
+      "sequence.p2": "La passe complète tient en ~3 minutes de wall-clock si tout va bien. Si quelque chose casse, on saute en §07 (boucle fix-and-retry). La portion <em>browser</em> (les deux owners qui votent via magic link) est manuelle ; l'agent QA ouvre deux fenêtres incognito, copie/colle l'URL <code>/vote/&lt;secret&gt;</code> reçue dans Resend, clique. Une fois ce comportement validé, on peut basculer sur <code>syndicCastVote</code> pour accélérer les itérations suivantes.",
+
+      "negatives.eyebrow": "06 · La table des cas négatifs",
+      "negatives.h2": "Vingt scénarios « try-to-break-it ».",
+      "negatives.intro": "Pour chaque famille de CF, on essaie de violer une garde — auth, état, validation métier. Le résultat attendu est un <code>HttpsError</code> typé propre (jamais un <code>internal</code>, jamais une stack trace brute). Le code de sortie CLI est mappé depuis le code d'erreur (<code>unauthenticated</code> → 1, <code>permission-denied</code> → 2, <code>failed-precondition</code> → 3, <code>not-found</code> → 4, <code>invalid-argument</code> → 5).",
+      "negatives.th.cf": "Cloud Function",
+      "negatives.th.scen": "Scénario négatif",
+      "negatives.th.code": "Code attendu",
+      "negatives.th.exit": "Exit",
+      "negatives.th.crit": "Critère pass/fail",
+      "negatives.r1.s": "Token révoqué via <code>revokeAccessToken</code> juste avant le cast.",
+      "negatives.r1.c": "Pass si l'erreur est typée et le vote n'apparaît pas dans Firestore.",
+      "negatives.r2.s": "Token expiré (Assembly status = <code>ended</code>).",
+      "negatives.r2.c": "Pass si message d'erreur explique « assembly is no longer live ».",
+      "negatives.r3.s": "Vote sur résolution avec <code>quotitiesConcerned=0</code> pour le lot.",
+      "negatives.r3.c": "Pass si erreur claire « no concerned quotity for this lot ».",
+      "negatives.r4.s": "Choix invalide (ex. <code>--choice maybe</code> au lieu de for/against/abstain).",
+      "negatives.r4.c": "Pass si refus avant tout side-effect Firestore.",
+      "negatives.r5.s": "Clôturer une résolution dont le statut est <code>pending</code> (jamais ouverte).",
+      "negatives.r5.c": "Pass si refus + état Firestore inchangé.",
+      "negatives.r6.s": "Clôturer sans <code>--confirm-auto-default</code> alors que <code>not_voted &gt; 0</code>.",
+      "negatives.r6.c": "Pass si erreur indique le besoin de confirmer l'abstention auto.",
+      "negatives.r7.s": "Ouvrir une résolution sur une assembly <code>draft</code> (jamais démarrée).",
+      "negatives.r7.c": "Pass si message « assembly not live ».",
+      "negatives.r8.s": "Envoyer une convocation &lt; 15 jours avant la date sans <code>--override-15-day-warning</code>.",
+      "negatives.r8.c": "Pass si refus + indication explicite du flag à passer.",
+      "negatives.r9.s": "Envoyer la convocation 2 fois pour la même AG.",
+      "negatives.r9.c": "Pass si refus + indication « already convoked ».",
+      "negatives.r10.s": "Appel pour un Owner archivé (<code>archived: true</code>).",
+      "negatives.r10.c": "Pass si refus + Firestore non muté (pas de nouveau token créé).",
+      "negatives.r11.s": "Appel par un user qui n'est pas membre de la copro.",
+      "negatives.r11.c": "Pass si refus + log de tentative d'accès.",
+      "negatives.r12.s": "Token avec un seul caractère altéré (typo).",
+      "negatives.r12.c": "Pass si refus en temps constant (pas de timing attack possible).",
+      "negatives.r13.s": "Rejoindre une assembly <code>convoked</code> (pas encore <code>live</code>).",
+      "negatives.r13.c": "Pass si refus avec message « assembly not started yet ».",
+      "negatives.r14.s": "Heartbeat sans <code>joinAssembly</code> préalable (pas d'Attendance doc).",
+      "negatives.r14.c": "Pass si refus + pas de side-effect Firestore.",
+      "negatives.r15.s": "Appel par un user en rôle <code>member</code> (non-syndic).",
+      "negatives.r15.c": "Pass si refus + activity log enregistre la tentative.",
+      "negatives.r16.s": "Ajouter une résolution sur une AG <code>convoked</code> (gel d'agenda).",
+      "negatives.r16.c": "Pass si refus + message « agenda frozen after convocation ».",
+      "negatives.r17.s": "Générer le PV avant <code>endAssembly</code> (status &lt; ended).",
+      "negatives.r17.c": "Pass si refus avec « assembly must be ended ».",
+      "negatives.r18.s": "Distribuer un PV jamais exporté (<code>pdfPath</code> vide).",
+      "negatives.r18.c": "Pass si refus + message « export the PV first ».",
+      "negatives.r19.s": "Archiver un Owner qui détient encore un Lot non transféré.",
+      "negatives.r19.c": "Pass si refus + indication des lots toujours rattachés.",
+      "negatives.r20.s": "Appel non authentifié (token Firebase manquant ou révoqué).",
+      "negatives.r20.c": "Pass si refus immédiat avant toute écriture / lecture.",
+      "negatives.r21.s": "Émettre une procuration pour un Owner déjà <code>present_in_person</code>.",
+      "negatives.r21.c": "Pass si refus + message « owner already attending in person ».",
+      "negatives.r22.s": "Annuler une AG <code>ended</code> (terminale).",
+      "negatives.r22.c": "Pass si refus + message « cannot cancel an ended assembly ».",
+      "negatives.outro": "22 lignes — un peu plus que les 20 cibles, et c'est bien : la marge couvre les combinaisons rares (procuration + in-person, par exemple). Si un cas surface une erreur <code>internal</code> ou un 500, c'est un bug : on note la stack, on file en §07.",
+
+      "loop.eyebrow": "07 · Le fix-and-retry loop",
+      "loop.h2": "Six étapes, jusqu'au vert.",
+      "loop.intro": "La discipline du loop, c'est de garder chaque tour court (~5-15 min). Si un fix demande plus, on sort du loop, on ouvre une issue, et on continue le reste de la passe sans cette CF. Le but est de <em>terminer la passe</em>, pas de tout débugger en chaîne.",
+      "loop.outro": "La règle de bundling : une seule PR <code>fix(qa): post-deploy testing sweep</code> à la fin si l'ensemble des fixes est cohérent (≤10 fichiers, ≤300 LOC). Au-delà, on fragmente : un PR par feature touchée. Le journaling se fait dans <code>docs/decisions-log.md</code> si un fix change un contrat de CF.",
+
+      "known.eyebrow": "08 · Connue à fixer en priorité",
+      "known.h2": "Cinq échecs Phase D dans <code>assemblies.test.ts</code> — à fixer avant tout le reste.",
+      "known.p1": "Sur <code>main</code>, <code>npm test -- assemblies.test.ts</code> échoue sur 5 cas Phase D liés au scénario Brugmann. La cause racine est une <strong>collision arithmétique sur la clé GEN par défaut</strong> : le code de Phase D a hérité d'un <code>expectedTotal=1000</code> pour la clé GEN, mais les fixtures Brugmann répartissent des quotités &gt;200 par lot sur 5 lots → total &gt; 1000 → la validation refuse.",
+      "known.callout.h4": "Symptôme",
+      "known.callout.p1": "Tous les tests Phase D Brugmann (5 sur 5) échouent avec une assertion du genre <code>Expected total quotity ≤ 1000, got 1xxx</code>. Le test runner remonte <code>FAIL src/features/assemblies/__tests__/assemblies.test.ts</code> avec les 5 assertions consécutives.",
+      "known.callout.h4b": "Fix attendu",
+      "known.callout.p2": "Deux options, à trancher par le sub-agent quand il aura lu le code : <strong>(a)</strong> les fixtures du test utilisent <code>expectedTotal: 10000</code> pour la clé GEN au lieu de 1000, ce qui aligne sur des quotités plausibles (200/lot × 5 lots = 1000, mais Brugmann réel est calé sur 10000) ; <strong>(b)</strong> les résolutions du fixture utilisent des quotités plus basses pour rentrer sous 1000. Recommandation : option (a) — c'est plus représentatif du métier (les vraies copros tournent à 10000).",
+      "known.callout.h4c": "Vérification",
+      "known.callout.p3": "<code>cd functions &amp;&amp; npm test -- assemblies.test.ts</code> doit passer 100% (zero failure, zero skip non-explicite). Une fois le fix posé, c'est la première chose à commiter — toute la suite de la passe dépend de cette baseline propre.",
+
+      "phasing.eyebrow": "09 · Phasage du test",
+      "phasing.h2": "Deux phases — la sentinelle, puis le négatif.",
+      "phasing.intro": "On sépare proprement le happy path du negative testing pour deux raisons : (a) la sentinelle est rapide et tient lieu de baseline avant tout négatif ; (b) le negative dépend que la sentinelle passe (sinon on confond bug et environnement). Pas de raison de fragmenter plus.",
+      "phasing.F.tag": "TEST·F",
+      "phasing.F.h3": "Setup + happy path Brugmann",
+      "phasing.F.p": "Setup (scratch copro sur staging, 5 lots, 5 owners, AG, 3 résolutions) + le scénario complet de §05 bout-en-bout. Objectif : le flux entier tourne sans erreur. <strong>Première chose</strong> : fixer les 5 échecs Phase D pré-existants de <code>assemblies.test.ts</code> — cf. §08. Sortie attendue : Brugmann replay vert, PV PDF dans <code>/tmp</code>, 5 e-mails dans Resend.",
+      "phasing.G.tag": "TEST·G",
+      "phasing.G.h3": "Negative testing sweep",
+      "phasing.G.p": "22 scénarios du tableau §06 exécutés un par un, chacun sur la même copro scratch. Pour chaque ligne : on déclenche la condition, on vérifie le code d'erreur, on note le résultat. Objectif final : 100% des scénarios produisent le code d'erreur attendu. Tout écart est un bug — diagnostic + fix dans la boucle §07.",
+      "phasing.outro": "<em>TEST·F = ~30 min wall-clock + temps de fix des 5 tests Phase D. TEST·G = ~1-2 h selon le nombre de fixes nécessaires.</em>",
+
+      "acceptance.eyebrow": "10 · Critères d'acceptation",
+      "acceptance.h2": "Sept conditions à cocher pour clôturer la passe.",
+      "acceptance.intro": "On est verts quand <em>chacun</em> de ces critères est satisfait. Pas de demi-passe. Si un critère résiste après deux itérations de fix, on remonte au reviewer plutôt que de boucler indéfiniment.",
+      "acceptance.l1": "<strong>Brugmann replay end-to-end</strong> tourne sans erreur inattendue (CLI + browser pour les votes mode token).",
+      "acceptance.l2": "<strong>Les 5 échecs Phase D pré-existants</strong> sont fixés ; <code>npm test -- assemblies.test.ts</code> passe 100%.",
+      "acceptance.l3": "<strong>Les 22 scénarios négatifs §06</strong> produisent chacun le code d'erreur attendu, ni plus ni moins.",
+      "acceptance.l4": "<strong>Le PV PDF généré pour la copro scratch</strong> matche structurellement le sample IGS (numéros de présence, exceptions nommées, métadonnées de seuil — cf. <code>article.html §06</code>).",
+      "acceptance.l5": "<strong>La rotation de magic link</strong> via <code>getMyVoteLink</code> invalide le token précédent en ≤ 2 s (vérifié en castant un vote avec l'ancien token : <code>permission-denied</code>).",
+      "acceptance.l6": "<strong>Le cleanup d'attendance stale</strong> (<code>cleanupStaleAttendance</code>) flippe une attendance « onglet ouvert mais inactif » à <code>left</code> en ≤ 3 min après le dernier heartbeat.",
+      "acceptance.l7": "<strong>Le journal d'activité</strong> contient au moins une entrée pour chaque scénario testé (création AG, send convocation, open R, cast vote, close R, end AG, generate PV, distribute PV) — format consistent.",
+
+      "cheatsheet.eyebrow": "11 · Commandes de référence",
+      "cheatsheet.h2": "Cheat sheet — CLI · firebase · gcloud · jest.",
+      "cheatsheet.intro": "Les commandes les plus utilisées pendant la passe, dans l'ordre où on en a besoin. Le sub-agent peut s'y référer sans relire le reste de l'article.",
+
+      "colo.eyebrow": "12 · Colophon",
+      "colo.h2": "Ce qu'est ce plan — et ce qu'il n'est pas.",
+      "colo.p1": "C'est un plan d'exécution de QA pour V1.1 + V1.1.5 + CLI. Le plan est statique ; l'exécution est confiée à un sub-agent qui prend cet article comme spec, déroule §05 puis §06, et applique §07 chaque fois qu'un test casse. La sortie attendue de l'exécution : tous les critères §10 cochés, plus une PR <code>fix(qa): post-deploy testing sweep</code> si des fixes ont été produits.",
+      "colo.p2": "Ce que ce plan ne traite pas : tout ce qui est dans la colonne OUT du §02 (load, pen-test, RGPD, multi-region, migration de données IGS legacy). Autant de chantiers séparés, à programmer après V1.1 stable. Et ce plan ne <em>fait</em> rien : il ne touche aucune ligne de code et ne déclenche aucun test. Tout cela vient de l'agent d'exécution, dans une session séparée.",
+      "colo.p3": "Suivis attendus, après cette passe : (a) load test à 500 votants concurrents, sur un environnement dédié ; (b) intégration des cas négatifs §06 dans la suite Jest comme tests d'intégration permanents (pas juste un one-shot QA) ; (c) automation de la séquence §05 dans <code>test:assembly-happy-path</code> côté CLI, pour que la sentinelle tourne en CI et pas seulement en QA manuelle.",
+
+      "miniNav.article": "Article",
+      "miniNav.plan": "Plan",
+      "miniNav.roadmap": "Feuille de route",
+      "miniNav.ownerView": "Vue copropriétaire",
+      "miniNav.cli": "CLI",
+      "miniNav.testing": "Tests",
+
+      "footer.updated": "Syndicable V1.1+CLI · QA — dernière mise à jour 2026-05-09."
+    }
+  };
+</script>
+
+<script src="app.js" defer></script>
+
+</body>
+</html>

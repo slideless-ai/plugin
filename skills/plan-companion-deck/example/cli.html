@@ -1,0 +1,1500 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title data-i18n-key="meta.title">Syndicable V1.1+CLI — Toutes les Cloud Functions au terminal</title>
+<meta name="description" data-i18n-key-attr="content" data-i18n-key="meta.description" content="Le plan d'extension du CLI Syndicable pour V1.1 + V1.1.5 : un wrapper par Cloud Function, deux modes d'authentification, sortie humaine / JSON / watch." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<script>
+  // Pre-paint language resolver — shares the localStorage key
+  // (`syndicable.article.lang`) with the four sibling deck pages
+  // so the user's choice survives cross-page navigation.
+  (function () {
+    try {
+      var saved = window.localStorage.getItem('syndicable.article.lang');
+      if (saved !== 'en' && saved !== 'fr') saved = 'fr';
+      document.documentElement.setAttribute('lang', saved);
+      document.documentElement.setAttribute('data-lang', saved);
+    } catch (e) {
+      document.documentElement.setAttribute('lang', 'fr');
+      document.documentElement.setAttribute('data-lang', 'fr');
+    }
+  })();
+</script>
+<style>
+  /* Page-local: shell session blocks (commands + sample output). */
+  .shell-block {
+    margin: 22px 0 28px;
+    padding: 18px 20px;
+    background: #0F2A3A;
+    color: #DCEAF1;
+    border-radius: 10px;
+    border: 1px solid rgba(29, 91, 122, 0.32);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    line-height: 1.6;
+    overflow-x: auto;
+    white-space: pre;
+  }
+  .shell-block .sh-prompt { color: #88BFE0; }
+  .shell-block .sh-cmd    { color: #F1E9D8; }
+  .shell-block .sh-flag   { color: #C7B0E5; }
+  .shell-block .sh-arg    { color: #9DD6B4; }
+  .shell-block .sh-out    { color: #6F8FA0; }
+  .shell-block .sh-ok     { color: #9DD6B4; }
+  .shell-block .sh-warn   { color: #E0B879; }
+  .shell-block .sh-com    { color: #6F8FA0; font-style: italic; }
+
+  /* Page-local: command tree (monospace ASCII). Same DNA as .mockup
+     in owner-view.html, but tighter for the long tree. */
+  .tree-block {
+    margin: 18px 0 26px;
+    padding: 18px 20px;
+    background: #0F2A3A;
+    color: #DCEAF1;
+    border-radius: 10px;
+    border: 1px solid rgba(29, 91, 122, 0.32);
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    line-height: 1.55;
+    overflow-x: auto;
+    white-space: pre;
+  }
+  .tree-block .t-grp { color: #88BFE0; font-weight: 700; }
+  .tree-block .t-cmd { color: #F1E9D8; }
+  .tree-block .t-new { color: #9DD6B4; }
+  .tree-block .t-tag { color: #C7B0E5; font-style: italic; }
+
+  /* Page-local: phase auth pill in the command table. */
+  .auth-pill {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    line-height: 1.5;
+    white-space: nowrap;
+  }
+  .auth-pill.syndic   { background: rgba(63, 42, 77, 0.10); color: var(--purple-deep); }
+  .auth-pill.token    { background: rgba(29, 91, 122, 0.12); color: var(--sky-deep); }
+  .auth-pill.either   { background: rgba(31, 122, 83, 0.12); color: #1F7A53; }
+  .auth-pill.read     { background: rgba(180, 130, 50, 0.12);  color: #B47A1F; }
+  .auth-pill.internal { background: rgba(150, 150, 150, 0.18); color: #555; }
+
+  /* Page-local: phase tag in the CF column. */
+  .phase-tag-inline {
+    display: inline-block;
+    background: var(--sky-deep);
+    color: #fff;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 4px;
+    letter-spacing: 0.06em;
+    margin-right: 6px;
+    vertical-align: 1px;
+  }
+  .phase-tag-inline.A { background: var(--purple); }
+  .phase-tag-inline.B { background: #4FA0C2; }
+  .phase-tag-inline.C { background: var(--sky-deep); }
+  .phase-tag-inline.D { background: #2C7090; }
+  .phase-tag-inline.E { background: var(--purple-deep); }
+  .phase-tag-inline.G { background: #1F7A53; }
+
+  /* Page-local: the big command table. Tighter monospace columns. */
+  .cmd-table { font-size: 13.5px; }
+  .cmd-table th { white-space: nowrap; }
+  .cmd-table td.cf      { font-family: var(--font-mono); font-size: 12.5px; white-space: nowrap; color: var(--ink-soft); }
+  .cmd-table td.cli     { font-family: var(--font-mono); font-size: 12.5px; color: var(--ink); }
+  .cmd-table td.flags   { font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-mute); }
+  .cmd-table td.flags code { font-size: 11.5px; }
+  .cmd-table td.desc    { color: var(--ink-soft); font-size: 13px; }
+
+  /* Page-local: file-list with NEW / MOD tags for the annexe. */
+  .filelist { list-style: none; padding: 0; margin: 18px 0 0; }
+  .filelist li {
+    padding: 10px 0;
+    border-bottom: 1px dashed var(--rule);
+    display: flex;
+    gap: 12px;
+    align-items: baseline;
+    font-size: 14.5px;
+    flex-wrap: wrap;
+  }
+  .filelist li:last-child { border-bottom: 0; }
+  .filelist .tag {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    padding: 2px 7px;
+    border-radius: 4px;
+    flex-shrink: 0;
+    min-width: 42px;
+    text-align: center;
+  }
+  .filelist .tag.new { background: rgba(31, 122, 83, 0.12); color: #1F7A53; }
+  .filelist .tag.mod { background: rgba(63, 42, 77, 0.10); color: var(--purple-deep); }
+  .filelist .tag.cfg { background: rgba(29, 91, 122, 0.12); color: var(--sky-deep); }
+  .filelist code { font-size: 13px; }
+  .filelist .desc { color: var(--ink-mute); font-size: 13.5px; }
+</style>
+</head>
+<body>
+
+<header class="miniNav" aria-label="Deck pages">
+  <div class="miniNav-inner">
+    <span class="miniNav-mark"><span class="nav-dot"></span><span>Syndicable&nbsp;V1.1</span></span>
+    <nav class="miniNav-tabs" aria-label="Sibling pages">
+      <a class="miniNav-tab" href="./article.html" data-i18n-key="miniNav.article">Article</a>
+      <a class="miniNav-tab" href="./plan.html" data-i18n-key="miniNav.plan">Plan</a>
+      <a class="miniNav-tab" href="./roadmap.html" data-i18n-key="miniNav.roadmap">Roadmap</a>
+      <a class="miniNav-tab" href="./owner-view.html" data-i18n-key="miniNav.ownerView">Vue copropriétaire</a>
+      <a class="miniNav-tab is-current" href="./cli.html" aria-current="page" data-i18n-key="miniNav.cli">CLI</a>
+      <a class="miniNav-tab" href="./testing.html" data-i18n-key="miniNav.testing">Tests</a>
+    </nav>
+    <div class="miniNav-lang">
+      <button
+        type="button"
+        class="lang-switch"
+        id="lang-switch"
+        role="switch"
+        aria-checked="false"
+        aria-label="Basculer la langue entre français et anglais"
+        data-i18n-key-attr="aria-label"
+        data-i18n-key="lang.aria"
+      >
+        <span data-lang-opt="en">EN</span>
+        <span data-lang-opt="fr">FR</span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<div class="shell">
+
+  <aside class="nav" aria-label="Sections">
+    <div class="nav-mark">
+      <span class="nav-dot"></span>
+      <span>Syndicable&nbsp;V1.1+CLI</span>
+    </div>
+    <div class="nav-eyebrow" data-i18n-key="nav.eyebrow">Sections</div>
+    <ol>
+      <li><a href="#thesis" data-i18n-key="nav.thesis">La thèse</a></li>
+      <li><a href="#scope" data-i18n-key="nav.scope">Périmètre</a></li>
+      <li><a href="#choices" data-i18n-key="nav.choices">Architecture</a></li>
+      <li><a href="#tree" data-i18n-key="nav.tree">L'arborescence</a></li>
+      <li><a href="#table" data-i18n-key="nav.table">Table des commandes</a></li>
+      <li><a href="#auth" data-i18n-key="nav.auth">Auth + flags</a></li>
+      <li><a href="#brugmann" data-i18n-key="nav.brugmann">Brugmann depuis le CLI</a></li>
+      <li><a href="#phasing" data-i18n-key="nav.phasing">Phasage</a></li>
+      <li><a href="#open-questions" data-i18n-key="nav.openQuestions">Questions ouvertes</a></li>
+      <li><a href="#annex" data-i18n-key="nav.annex">Annexe — fichiers touchés</a></li>
+      <li><a href="#colophon" data-i18n-key="nav.colophon">Colophon</a></li>
+    </ol>
+
+</aside>
+
+  <main>
+
+    <!-- ─────────── HERO ─────────── -->
+    <section id="hero" aria-labelledby="hero-h">
+      <div class="hero-meta">
+        <span class="pill brand"><span class="dot"></span>Version&nbsp;V1.1+CLI</span>
+        <span class="pill purple" data-i18n-key="hero.pill.module">Module&nbsp;·&nbsp;Surface&nbsp;CLI</span>
+        <span class="pill">2026-05-09</span>
+      </div>
+      <h1 id="hero-h" class="hero-title" data-i18n-key="hero.title">Toutes les fonctions Cloud, accessibles depuis le terminal.</h1>
+      <p class="hero-sub" data-i18n-key="hero.sub">
+        V1.0 a livré 23 wrappers callables dans le CLI. V1.1 ajoute ~25 Cloud Functions (assemblées,
+        convocations, session live, PV) ; V1.1.5 en ajoute une dernière (<code>getMyVoteLink</code>).
+        Ce plan dit lesquelles passent dans le CLI, sous quels noms, avec quels flags, et sous
+        quel régime d'authentification.
+      </p>
+      <div class="hero-rule"></div>
+    </section>
+
+    <!-- ─────────── 1. THESIS ─────────── -->
+    <section id="thesis">
+      <div class="prose">
+        <span class="eyebrow" data-i18n-key="thesis.eyebrow">01 · La thèse</span>
+        <h2 data-i18n-key="thesis.h2">Si une fonction Cloud existe, on doit pouvoir l'appeler depuis le terminal.</h2>
+        <p data-i18n-key="thesis.p1">
+          Le CLI <code>syndicable</code> existe pour trois usages : <strong>scripter</strong> les
+          tâches répétitives (création de copro, import de lots, smoke test bout-en-bout),
+          <strong>tester</strong> les Cloud Functions sans devoir cliquer dans la PWA, et
+          <strong>déboguer</strong> les opérations de prod / staging quand l'UI ne suffit pas.
+          V1.0 a tenu cette promesse pour les 23 fonctions livrées en Phase 5–14. V1.1 multiplie
+          la surface par deux. Si on ne suit pas, le CLI devient un musée.
+        </p>
+        <p data-i18n-key="thesis.p2">
+          Le test mental est simple : un agent LLM ou un opérateur humain doit pouvoir, en
+          enchaînant des commandes <code>syndicable</code>, dérouler une AG complète sur staging —
+          de la création de l'assemblée à la distribution du PV — sans jamais ouvrir un navigateur.
+          C'est ce que fait <code>test:happy-path</code> aujourd'hui pour V1.0 ; ce plan définit
+          son équivalent pour V1.1.
+        </p>
+        <p data-i18n-key="thesis.p3">
+          Le persona qui ancre ce travail, c'est <strong>l'agent de support qui doit reproduire
+          un bug de Brugmann à 22h</strong>. Si chaque CF a son wrapper CLI, l'agent n'a besoin
+          que d'un terminal et de son token de login. Si la moitié manque, il doit ouvrir la PWA,
+          se connecter, naviguer, cliquer — pendant que le client attend. L'investissement
+          d'aujourd'hui, c'est l'autonomie opérationnelle de demain.
+        </p>
+      </div>
+    </section>
+
+    <!-- ─────────── 2. SCOPE ─────────── -->
+    <section id="scope">
+      <div class="prose-wide">
+        <span class="eyebrow" data-i18n-key="scope.eyebrow">02 · Périmètre</span>
+        <h2 data-i18n-key="scope.h2">Ce qui sort en V1.1+CLI — et ce qui ne sort pas.</h2>
+        <p class="prose" data-i18n-key="scope.intro">
+          Pas de surprise ici : on suit la liste exhaustive des nouveaux exports de
+          <code>functions/src/index.ts</code> (V1.1 phases A à E + V1.1.5 phase G) et on ajoute
+          quelques commandes de lecture quand elles rendent service. Tout le reste est différé.
+        </p>
+        <div class="twocol">
+
+          <div class="col-card in">
+            <h4 data-i18n-key="scope.in.title">Inclus · livré en V1.1+CLI</h4>
+            <ul>
+              <li data-i18n-key="scope.in.li1">Un wrapper par CF nouvelle de V1.1 (~25) + V1.1.5 (1)</li>
+              <li data-i18n-key="scope.in.li2">Quelques commandes de lecture utiles : <code>assembly show</code>, <code>assembly list</code>, <code>vote show</code>, <code>attendance show</code></li>
+              <li data-i18n-key="scope.in.li3">Deux modes d'authentification : login persistant (syndic) + flag <code>--token</code> (public)</li>
+              <li data-i18n-key="scope.in.li4">Trois idiomes de sortie : humain par défaut, <code>--json</code> pour scripts, <code>--watch</code> pour les flux temps réel</li>
+              <li data-i18n-key="scope.in.li5">Profile multi-staging cohérent avec V1.0 (<code>--profile</code> sur toutes les commandes)</li>
+              <li data-i18n-key="scope.in.li6">Mise à jour du registre <code>CF</code> dans <code>src/lib/functions.ts</code> (+ types DTO inlined dans <code>src/types/syndicable-app-types.ts</code>)</li>
+              <li data-i18n-key="scope.in.li7">Smoke test <code>test:assembly-happy-path</code> — équivalent V1.1 du <code>test:happy-path</code> existant</li>
+            </ul>
+          </div>
+
+          <div class="col-card out">
+            <h4 data-i18n-key="scope.out.title">Hors · pas dans V1.1+CLI</h4>
+            <ul>
+              <li data-i18n-key="scope.out.li1">Flux scriptés multi-CF (« lance une AG complète en une commande ») — l'utilisateur les compose en bash</li>
+              <li data-i18n-key="scope.out.li2">Wrappers pour les triggers Firestore (<code>onAssemblyWritten</code>, <code>onResolutionWritten</code>, <code>onVoteWritten</code>, <code>cleanupStaleAttendance</code>) — non callables</li>
+              <li data-i18n-key="scope.out.li3"><code>heartbeat</code> en commande dédiée — usage interne du voter PWA, pas un cas-d'usage CLI</li>
+              <li data-i18n-key="scope.out.li4">Service-account auth — Firebase user OTP uniquement, comme V1.0</li>
+              <li data-i18n-key="scope.out.li5">REPL interactif, scripts de complétion shell — déjà OUT en V1.0</li>
+              <li data-i18n-key="scope.out.li6">Tests unitaires par commande — on s'appuie sur le smoke happy-path</li>
+              <li data-i18n-key="scope.out.li7">Réception d'e-mails de convocation côté CLI — on assume que l'opérateur va lire son inbox</li>
+            </ul>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────── 3. ARCHITECTURE ─────────── -->
+    <section id="choices">
+      <div class="prose-wide">
+        <span class="eyebrow" data-i18n-key="choices.eyebrow">03 · Architecture</span>
+        <h2 data-i18n-key="choices.h2">Trois choix dont le reste du plan découle.</h2>
+        <p class="prose" data-i18n-key="choices.intro">
+          Trois bifurcations actées, qui coupent court aux discussions de design pendant
+          l'implémentation. Le phasage et l'annexe partent de l'hypothèse que ces trois choix
+          sont pris.
+        </p>
+
+        <div class="choice">
+          <span class="choice-num" data-i18n-key="choices.c1.num">CHOIX&nbsp;01</span>
+          <h3 data-i18n-key="choices.c1.h3">Mirroir 1:1 du backend.</h3>
+          <p data-i18n-key="choices.c1.p1">
+            Une commande CLI par Cloud Function. Pas d'orchestration côté CLI ; pas de macros
+            qui appellent trois CFs en chaîne. Si l'utilisateur veut « envoyer la convocation et
+            ouvrir la première résolution dans la même action », il écrit deux lignes de bash —
+            le CLI ne se substitue pas à un agent.
+          </p>
+          <p data-i18n-key="choices.c1.p2">
+            Avantage : zéro surface d'intelligence côté CLI. Quand le backend renomme un
+            paramètre, on met à jour le wrapper et c'est tout. Pas de macro à débugger, pas de
+            divergence sémantique. C'est exactement le pattern de V1.0 — on le prolonge.
+          </p>
+        </div>
+
+        <div class="choice">
+          <span class="choice-num" data-i18n-key="choices.c2.num">CHOIX&nbsp;02</span>
+          <h3 data-i18n-key="choices.c2.h3">Deux modes d'authentification cohabitent.</h3>
+          <p data-i18n-key="choices.c2.p1">
+            Le CLI gère deux régimes d'auth qui ne se mélangent jamais. <strong>Mode A
+            (syndic)</strong> : login OTP persisté dans <code>~/.config/syndicable/config.json</code>,
+            ID token attaché automatiquement à chaque appel. C'est l'existant V1.0, intact.
+            Concerne tout ce qui est syndic-only : <code>createAssembly</code>,
+            <code>sendConvocation</code>, <code>startAssembly</code>, <code>generatePvDraft</code>...
+          </p>
+          <p data-i18n-key="choices.c2.p2">
+            <strong>Mode B (token public)</strong> : flag explicite <code>--token &lt;secret&gt;</code>
+            sur la ligne de commande. Pas de login requis, pas de persistance. Concerne les CFs
+            de la voter page : <code>validateToken</code>, <code>joinAssembly</code>,
+            <code>leaveAssembly</code>, <code>castVote</code>. Le secret transite en clair dans
+            l'historique shell — ce n'est pas un secret long-terme, c'est le même genre de
+            jetable que la magic link e-mail.
+          </p>
+          <p data-i18n-key="choices.c2.p3">
+            Question ouverte (§09 q01) : doit-on permettre au mode A d'invoquer aussi
+            <code>castVote</code> au nom du syndic, sans <code>--token</code> ? Il existe déjà
+            <code>syndicCastVote</code> côté backend pour ça — donc la réponse de bon sens est
+            non, on garde la frontière nette.
+          </p>
+        </div>
+
+        <div class="choice">
+          <span class="choice-num" data-i18n-key="choices.c3.num">CHOIX&nbsp;03</span>
+          <h3 data-i18n-key="choices.c3.h3">Sortie : humain / JSON / watch.</h3>
+          <p data-i18n-key="choices.c3.p1">
+            Trois idiomes de sortie, appliqués partout où c'est pertinent. <code>--json</code>
+            existe déjà sur toutes les commandes V1.0 ; on le garde. <strong>Nouveau pour
+            V1.1</strong> : <code>--watch</code> sur les commandes de lecture qui suivent un
+            état évolutif — <code>assembly show --watch</code>, <code>vote show --watch</code>,
+            <code>attendance show --watch</code>. Sous le capot, polling Firestore REST toutes
+            les 2 secondes (pas de listener SDK long-lived — on reste cohérent avec
+            <code>callable.ts</code> qui n'utilise que <code>fetch</code>).
+          </p>
+          <p data-i18n-key="choices.c3.p2">
+            Le polling REST n'est pas du « vrai » streaming, mais c'est suffisant pour observer
+            une session AG en temps semi-réel depuis le terminal. La latence de 2 s est plus
+            faible que la fréquence à laquelle un syndic ferait F5 dans le navigateur de toute
+            façon. Question ouverte (§09 q02) : faudra-t-il passer à un listener SDK plus tard ?
+            Probablement, si on observe des décalages en charge.
+          </p>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ─────────── 4. COMMAND TREE ─────────── -->
+    <section id="tree">
+      <div class="prose">
+        <span class="eyebrow" data-i18n-key="tree.eyebrow">04 · L'arborescence</span>
+        <h2 data-i18n-key="tree.h2">Six nouveaux groupes de commandes.</h2>
+        <p data-i18n-key="tree.p1">
+          On greffe six nouveaux <code>Command</code> au programme principal, sans toucher aux
+          neuf existants. Les noms de groupe (<code>assembly</code>, <code>convocation</code>,
+          <code>attendance</code>, <code>vote</code>, <code>pv</code>, <code>owner</code>) suivent
+          l'usage métier — pas les noms de feature backend (<code>assemblies</code>,
+          <code>convocations</code>, <code>attendance</code>, <code>votes</code>, <code>pv</code>,
+          <code>access-tokens</code>) — pour rester lisibles à voix haute lors d'un appel client.
+        </p>
+      </div>
+
+      <div class="tree-block" aria-hidden="true"><span class="t-grp">syndicable</span>
+├── <span class="t-grp">login</span> / login:request / login:verify / logout / whoami / use     <span class="t-tag">(V1.0, inchangé)</span>
+├── <span class="t-grp">copro</span>          create · update-settings · show                <span class="t-tag">(V1.0, inchangé)</span>
+├── <span class="t-grp">lot</span>            create · update · merge · split · ... · list   <span class="t-tag">(V1.0, inchangé)</span>
+├── <span class="t-grp">owner</span>          create · update · archive · list               <span class="t-tag">(V1.0, inchangé)</span>
+├── <span class="t-grp">ownership</span>      assign · transfer · remove · set-primary       <span class="t-tag">(V1.0, inchangé)</span>
+├── <span class="t-grp">rep</span>            invite · grant · revoke                        <span class="t-tag">(V1.0, inchangé)</span>
+├── <span class="t-grp">key</span>            create · update · archive · bulk-assign        <span class="t-tag">(V1.0, inchangé)</span>
+├── <span class="t-grp">doc</span>            create · archive · url                         <span class="t-tag">(V1.0, inchangé)</span>
+├── <span class="t-grp">activity</span>       tail                                            <span class="t-tag">(V1.0, inchangé)</span>
+│
+├── <span class="t-new">assembly</span>       <span class="t-tag">— V1.1 phases A + C + D</span>
+│   ├── <span class="t-cmd">create</span>           <span class="t-tag">→ createAssembly</span>
+│   ├── <span class="t-cmd">update</span>           <span class="t-tag">→ updateAssembly</span>
+│   ├── <span class="t-cmd">cancel</span>           <span class="t-tag">→ cancelAssembly</span>
+│   ├── <span class="t-cmd">start</span>            <span class="t-tag">→ startAssembly</span>
+│   ├── <span class="t-cmd">end</span>              <span class="t-tag">→ endAssembly</span>
+│   ├── <span class="t-cmd">show &lt;aId&gt;</span>      <span class="t-tag">→ Firestore REST (--watch)</span>
+│   ├── <span class="t-cmd">list &lt;coproId&gt;</span>  <span class="t-tag">→ Firestore REST</span>
+│   └── <span class="t-cmd">resolution</span>
+│       ├── <span class="t-cmd">add</span>          <span class="t-tag">→ addResolution</span>
+│       ├── <span class="t-cmd">update</span>       <span class="t-tag">→ updateResolution</span>
+│       ├── <span class="t-cmd">remove</span>       <span class="t-tag">→ removeResolution</span>
+│       ├── <span class="t-cmd">reorder</span>      <span class="t-tag">→ reorderResolutions</span>
+│       ├── <span class="t-cmd">open</span>         <span class="t-tag">→ openResolution</span>
+│       ├── <span class="t-cmd">close</span>        <span class="t-tag">→ closeResolution</span>
+│       ├── <span class="t-cmd">skip</span>         <span class="t-tag">→ skipResolution</span>
+│       └── <span class="t-cmd">show &lt;rId&gt;</span>  <span class="t-tag">→ Firestore REST (tally + --watch)</span>
+│
+├── <span class="t-new">convocation</span>    <span class="t-tag">— V1.1 phase B</span>
+│   ├── <span class="t-cmd">send</span>             <span class="t-tag">→ sendConvocation</span>
+│   ├── <span class="t-cmd">resend</span>           <span class="t-tag">→ resendConvocationToOwner</span>
+│   ├── <span class="t-cmd">validate</span>         <span class="t-tag">→ validateToken (debug-only)</span>
+│   ├── <span class="t-cmd">revoke</span>           <span class="t-tag">→ revokeAccessToken</span>
+│   └── <span class="t-cmd">procuration</span>
+│       └── <span class="t-cmd">issue</span>        <span class="t-tag">→ issueProcurationToken</span>
+│
+├── <span class="t-new">attendance</span>     <span class="t-tag">— V1.1 phase C</span>
+│   ├── <span class="t-cmd">join</span>             <span class="t-tag">→ joinAssembly (--token)</span>
+│   ├── <span class="t-cmd">leave</span>            <span class="t-tag">→ leaveAssembly (--token)</span>
+│   ├── <span class="t-cmd">mark-in-person</span>   <span class="t-tag">→ markAttendanceInPerson</span>
+│   ├── <span class="t-cmd">mark-left</span>        <span class="t-tag">→ markAttendanceLeft</span>
+│   └── <span class="t-cmd">show &lt;aId&gt;</span>      <span class="t-tag">→ Firestore REST (--watch)</span>
+│
+├── <span class="t-new">vote</span>           <span class="t-tag">— V1.1 phase C</span>
+│   ├── <span class="t-cmd">cast</span>             <span class="t-tag">→ castVote (--token)</span>
+│   ├── <span class="t-cmd">syndic-cast</span>      <span class="t-tag">→ syndicCastVote</span>
+│   └── <span class="t-cmd">show &lt;aId&gt; &lt;rId&gt;</span> <span class="t-tag">→ Firestore REST (--watch)</span>
+│
+├── <span class="t-new">pv</span>             <span class="t-tag">— V1.1 phase E</span>
+│   ├── <span class="t-cmd">generate</span>         <span class="t-tag">→ generatePvDraft</span>
+│   ├── <span class="t-cmd">update-text</span>      <span class="t-tag">→ updatePvFreeText</span>
+│   ├── <span class="t-cmd">export</span>           <span class="t-tag">→ exportPvPdf</span>
+│   └── <span class="t-cmd">distribute</span>       <span class="t-tag">→ distributePv</span>
+│
+└── <span class="t-new">owner</span>          <span class="t-tag">— V1.1.5 phase G (extension du groupe owner existant)</span>
+    └── <span class="t-cmd">vote-link</span>        <span class="t-tag">→ getMyVoteLink</span>
+
+<span class="t-tag">Légende :  →  = wrappe une Cloud Function     (--token) = mode token public</span>
+<span class="t-tag">           --watch  = polling Firestore REST toutes les 2 s</span></div>
+    </section>
+
+    <!-- ─────────── 5. COMMAND TABLE ─────────── -->
+    <section id="table">
+      <div class="prose-wide">
+        <span class="eyebrow" data-i18n-key="table.eyebrow">05 · La table des commandes</span>
+        <h2 data-i18n-key="table.h2">Mapping CF → CLI, exhaustif.</h2>
+        <p class="prose" data-i18n-key="table.intro">
+          Une ligne par Cloud Function nouvelle ou commande de lecture. Les flags listés sont
+          les principaux ; <code>--profile</code> et <code>--json</code> sont implicites partout.
+          Auth : <span class="auth-pill syndic">syndic</span> = login persisté requis ;
+          <span class="auth-pill token">token</span> = flag <code>--token</code> requis ;
+          <span class="auth-pill either">either</span> = les deux marchent (ex. <code>syndic-cast</code>) ;
+          <span class="auth-pill read">read</span> = lecture Firestore REST (login persisté).
+        </p>
+
+        <div class="tablewrap">
+          <table class="cmd-table">
+            <thead>
+              <tr>
+                <th data-i18n-key="table.th.phase">Phase</th>
+                <th data-i18n-key="table.th.cf">Cloud Function</th>
+                <th data-i18n-key="table.th.cli">Commande CLI</th>
+                <th data-i18n-key="table.th.flags">Flags principaux</th>
+                <th data-i18n-key="table.th.auth">Auth</th>
+                <th data-i18n-key="table.th.desc">Description</th>
+              </tr>
+            </thead>
+            <tbody>
+
+              <!-- Phase A -->
+              <tr><td><span class="phase-tag-inline A">A</span></td>
+                <td class="cf">createAssembly</td>
+                <td class="cli">assembly create</td>
+                <td class="flags"><code>--copro-id</code> <code>--title</code> <code>--scheduled-at</code> <code>--mode</code> <code>--default-language</code> <code>--location</code></td>
+                <td><span class="auth-pill syndic">syndic</span></td>
+                <td class="desc" data-i18n-key="table.r.createAssembly">Crée une AG en statut <code>draft</code>.</td></tr>
+              <tr><td><span class="phase-tag-inline A">A</span></td>
+                <td class="cf">updateAssembly</td>
+                <td class="cli">assembly update</td>
+                <td class="flags"><code>--copro-id</code> <code>--assembly-id</code> <code>--title</code>? <code>--scheduled-at</code>? <code>--mode</code>? <code>--location</code>?</td>
+                <td><span class="auth-pill syndic">syndic</span></td>
+                <td class="desc" data-i18n-key="table.r.updateAssembly">Édite les méta d'une AG <code>draft</code> (titre, date, mode...).</td></tr>
+              <tr><td><span class="phase-tag-inline A">A</span></td>
+                <td class="cf">cancelAssembly</td>
+                <td class="cli">assembly cancel</td>
+                <td class="flags"><code>--copro-id</code> <code>--assembly-id</code> <code>--reason</code>?</td>
+                <td><span class="auth-pill syndic">syndic</span></td>
+                <td class="desc" data-i18n-key="table.r.cancelAssembly">Annule une AG <code>draft</code> ou <code>convoked</code> (révoque les tokens).</td></tr>
+              <tr><td><span class="phase-tag-inline A">A</span></td>
+                <td class="cf">addResolution</td>
+                <td class="cli">assembly resolution add</td>
+                <td class="flags"><code>--copro-id</code> <code>--assembly-id</code> <code>--title</code> <code>--description</code>? <code>--threshold</code> <code>--key-id</code>?</td>
+                <td><span class="auth-pill syndic">syndic</span></td>
+                <td class="desc" data-i18n-key="table.r.addResolution">Ajoute une résolution à l'agenda (AG <code>draft</code>).</td></tr>
+              <tr><td><span class="phase-tag-inline A">A</span></td>
+                <td class="cf">updateResolution</td>
+                <td class="cli">assembly resolution update</td>
+                <td class="flags"><code>--copro-id</code> <code>--assembly-id</code> <code>--resolution-id</code> + champs optionnels</td>
+                <td><span class="auth-pill syndic">syndic</span></td>
+                <td class="desc" data-i18n-key="table.r.updateResolution">Édite une résolution <code>pending</code>.</td></tr>
+              <tr><td><span class="phase-tag-inline A">A</span></td>
+                <td class="cf">removeResolution</td>
+                <td class="cli">assembly resolution remove</td>
+                <td class="flags"><code>--copro-id</code> <code>--assembly-id</code> <code>--resolution-id</code></td>
+                <td><span class="auth-pill syndic">syndic</span></td>
+                <td class="desc" data-i18n-key="table.r.removeResolution">Supprime une résolution <code>pending</code>.</td></tr>
+              <tr><td><span class="phase-tag-inline A">A</span></td>
+                <td class="cf">reorderResolutions</td>
+                <td class="cli">assembly resolution reorder</td>
+                <td class="flags"><code>--copro-id</code> <code>--assembly-id</code> <code>--order</code> (CSV de rIds)</td>
+                <td><span class="auth-pill syndic">syndic</span></td>
+                <td class="desc" data-i18n-key="table.r.reorderResolutions">Réordonne l'agenda (AG <code>draft</code>).</td></tr>
+
+              <!-- Phase B -->
+              <tr><td><span class="phase-tag-inline B">B</span></td>
+                <td class="cf">sendConvocation</td>
+                <td class="cli">convocation send</td>
+                <td class="flags"><code>--copro-id</code> <code>--assembly-id</code> <code>--override-15-day-warning</code>?</td>
+                <td><span class="auth-pill syndic">syndic</span></td>
+                <td class="desc" data-i18n-key="table.r.sendConvocation">Passe l'AG en <code>convoked</code> ; émet un AccessToken par owner + e-mail.</td></tr>
+              <tr><td><span class="phase-tag-inline B">B</span></td>
+                <td class="cf">resendConvocationToOwner</td>
+                <td class="cli">convocation resend</td>
+                <td class="flags"><code>--copro-id</code> <code>--assembly-id</code> <code>--owner-id</code></td>
+                <td><span class="auth-pill syndic">syndic</span></td>
+                <td class="desc" data-i18n-key="table.r.resendConvocation">Réémet le token + e-mail pour un seul owner (cas de bounce).</td></tr>
+              <tr><td><span class="phase-tag-inline B">B</span></td>
+                <td class="cf">issueProcurationToken</td>
+                <td class="cli">convocation procuration issue</td>
+                <td class="flags"><code>--copro-id</code> <code>--assembly-id</code> <code>--mandant-owner-id</code> <code>--proxy-name</code> <code>--proxy-email</code></td>
+                <td><span class="auth-pill syndic">syndic</span></td>
+                <td class="desc" data-i18n-key="table.r.issueProcuration">Émet un token de procuration scopé à un mandataire nommé.</td></tr>
+              <tr><td><span class="phase-tag-inline B">B</span></td>
+                <td class="cf">revokeAccessToken</td>
+                <td class="cli">convocation revoke</td>
+                <td class="flags"><code>--copro-id</code> <code>--assembly-id</code> <code>--token-id</code></td>
+                <td><span class="auth-pill syndic">syndic</span></td>
+                <td class="desc" data-i18n-key="table.r.revokeAccessToken">Révoque un AccessToken par son ID (= hash du secret).</td></tr>
+              <tr><td><span class="phase-tag-inline B">B</span></td>
+                <td class="cf">validateToken</td>
+                <td class="cli">convocation validate</td>
+                <td class="flags"><code>--token</code></td>
+                <td><span class="auth-pill token">token</span></td>
+                <td class="desc" data-i18n-key="table.r.validateToken">Valide un secret de magic link et imprime le contexte sanitized. Debug-only.</td></tr>
+
+              <!-- Phase C — live session -->
+              <tr><td><span class="phase-tag-inline C">C</span></td>
+                <td class="cf">startAssembly</td>
+                <td class="cli">assembly start</td>
+                <td class="flags"><code>--copro-id</code> <code>--assembly-id</code></td>
+                <td><span class="auth-pill syndic">syndic</span></td>
+                <td class="desc" data-i18n-key="table.r.startAssembly">Passe l'AG en <code>live</code>.</td></tr>
+              <tr><td><span class="phase-tag-inline C">C</span></td>
+                <td class="cf">endAssembly</td>
+                <td class="cli">assembly end</td>
+                <td class="flags"><code>--copro-id</code> <code>--assembly-id</code></td>
+                <td><span class="auth-pill syndic">syndic</span></td>
+                <td class="desc" data-i18n-key="table.r.endAssembly">Passe l'AG en <code>ended</code> (auto-clôture toute résolution ouverte).</td></tr>
+              <tr><td><span class="phase-tag-inline C">C</span></td>
+                <td class="cf">openResolution</td>
+                <td class="cli">assembly resolution open</td>
+                <td class="flags"><code>--copro-id</code> <code>--assembly-id</code> <code>--resolution-id</code></td>
+                <td><span class="auth-pill syndic">syndic</span></td>
+                <td class="desc" data-i18n-key="table.r.openResolution">Ouvre une résolution au vote (<code>pending → voting_open</code>).</td></tr>
+              <tr><td><span class="phase-tag-inline C">C</span></td>
+                <td class="cf">closeResolution</td>
+                <td class="cli">assembly resolution close</td>
+                <td class="flags"><code>--copro-id</code> <code>--assembly-id</code> <code>--resolution-id</code> <code>--confirm-auto-default</code>?</td>
+                <td><span class="auth-pill syndic">syndic</span></td>
+                <td class="desc" data-i18n-key="table.r.closeResolution">Clôture une résolution ; <code>--confirm-auto-default</code> répond au dialogue d'abstention auto.</td></tr>
+              <tr><td><span class="phase-tag-inline C">C</span></td>
+                <td class="cf">skipResolution</td>
+                <td class="cli">assembly resolution skip</td>
+                <td class="flags"><code>--copro-id</code> <code>--assembly-id</code> <code>--resolution-id</code> <code>--reason</code>?</td>
+                <td><span class="auth-pill syndic">syndic</span></td>
+                <td class="desc" data-i18n-key="table.r.skipResolution">Marque une résolution comme passée sans vote (info-only).</td></tr>
+              <tr><td><span class="phase-tag-inline C">C</span></td>
+                <td class="cf">joinAssembly</td>
+                <td class="cli">attendance join</td>
+                <td class="flags"><code>--token</code></td>
+                <td><span class="auth-pill token">token</span></td>
+                <td class="desc" data-i18n-key="table.r.joinAssembly">Premier appel d'une session ; flag d'Attendance à <code>present_online</code>. Test-only.</td></tr>
+              <tr><td><span class="phase-tag-inline C">C</span></td>
+                <td class="cf">leaveAssembly</td>
+                <td class="cli">attendance leave</td>
+                <td class="flags"><code>--token</code></td>
+                <td><span class="auth-pill token">token</span></td>
+                <td class="desc" data-i18n-key="table.r.leaveAssembly">Sortie explicite ; Attendance à <code>left</code>. Test-only.</td></tr>
+              <tr><td><span class="phase-tag-inline C">C</span></td>
+                <td class="cf">heartbeat</td>
+                <td class="cli">— <em data-i18n-key="table.r.heartbeatNote">(non exposé)</em></td>
+                <td class="flags">—</td>
+                <td><span class="auth-pill internal">internal</span></td>
+                <td class="desc" data-i18n-key="table.r.heartbeat">Battement périodique de la voter PWA. Pas un cas-d'usage CLI ; non wrappé.</td></tr>
+              <tr><td><span class="phase-tag-inline C">C</span></td>
+                <td class="cf">markAttendanceInPerson</td>
+                <td class="cli">attendance mark-in-person</td>
+                <td class="flags"><code>--copro-id</code> <code>--assembly-id</code> <code>--lot-id</code></td>
+                <td><span class="auth-pill syndic">syndic</span></td>
+                <td class="desc" data-i18n-key="table.r.markInPerson">Le syndic flippe l'Attendance d'un lot à <code>present_in_person</code>.</td></tr>
+              <tr><td><span class="phase-tag-inline C">C</span></td>
+                <td class="cf">markAttendanceLeft</td>
+                <td class="cli">attendance mark-left</td>
+                <td class="flags"><code>--copro-id</code> <code>--assembly-id</code> <code>--lot-id</code></td>
+                <td><span class="auth-pill syndic">syndic</span></td>
+                <td class="desc" data-i18n-key="table.r.markLeft">Le syndic flippe l'Attendance à <code>left</code>.</td></tr>
+              <tr><td><span class="phase-tag-inline C">C</span></td>
+                <td class="cf">castVote</td>
+                <td class="cli">vote cast</td>
+                <td class="flags"><code>--token</code> <code>--assembly-id</code> <code>--resolution-id</code> <code>--lot-id</code> <code>--choice</code> (for|against|abstain)</td>
+                <td><span class="auth-pill token">token</span></td>
+                <td class="desc" data-i18n-key="table.r.castVote">Vote public (mode token). Le seul wrapper « voter » de la table.</td></tr>
+              <tr><td><span class="phase-tag-inline C">C</span></td>
+                <td class="cf">syndicCastVote</td>
+                <td class="cli">vote syndic-cast</td>
+                <td class="flags"><code>--copro-id</code> <code>--assembly-id</code> <code>--resolution-id</code> <code>--lot-id</code> <code>--choice</code></td>
+                <td><span class="auth-pill syndic">syndic</span></td>
+                <td class="desc" data-i18n-key="table.r.syndicCastVote">Vote syndic au nom d'un owner (privilège DV1).</td></tr>
+
+              <!-- Phase D — read-only inspection -->
+              <tr><td><span class="phase-tag-inline D">D</span></td>
+                <td class="cf">— <em data-i18n-key="table.r.readNote">(lecture)</em></td>
+                <td class="cli">assembly show</td>
+                <td class="flags"><code>--copro-id</code> <code>--assembly-id</code> <code>--watch</code>?</td>
+                <td><span class="auth-pill read">read</span></td>
+                <td class="desc" data-i18n-key="table.r.assemblyShow">Détail d'une AG + agenda + jauge de quorum (calculée côté CLI).</td></tr>
+              <tr><td><span class="phase-tag-inline D">D</span></td>
+                <td class="cf">— <em data-i18n-key="table.r.readNote">(lecture)</em></td>
+                <td class="cli">assembly list</td>
+                <td class="flags"><code>--copro-id</code> <code>--limit</code>? <code>--status</code>?</td>
+                <td><span class="auth-pill read">read</span></td>
+                <td class="desc" data-i18n-key="table.r.assemblyList">Liste les AG d'une copropriété avec statut + date.</td></tr>
+              <tr><td><span class="phase-tag-inline D">D</span></td>
+                <td class="cf">— <em data-i18n-key="table.r.readNote">(lecture)</em></td>
+                <td class="cli">assembly resolution show</td>
+                <td class="flags"><code>--copro-id</code> <code>--assembly-id</code> <code>--resolution-id</code> <code>--watch</code>?</td>
+                <td><span class="auth-pill read">read</span></td>
+                <td class="desc" data-i18n-key="table.r.resolutionShow">Détail + tally d'une résolution (lecture du <code>tally</code> denormalisé après close).</td></tr>
+              <tr><td><span class="phase-tag-inline D">D</span></td>
+                <td class="cf">— <em data-i18n-key="table.r.readNote">(lecture)</em></td>
+                <td class="cli">attendance show</td>
+                <td class="flags"><code>--copro-id</code> <code>--assembly-id</code> <code>--watch</code>?</td>
+                <td><span class="auth-pill read">read</span></td>
+                <td class="desc" data-i18n-key="table.r.attendanceShow">Liste des Attendance par lot (état actuel, dernier heartbeat).</td></tr>
+              <tr><td><span class="phase-tag-inline D">D</span></td>
+                <td class="cf">— <em data-i18n-key="table.r.readNote">(lecture)</em></td>
+                <td class="cli">vote show</td>
+                <td class="flags"><code>--copro-id</code> <code>--assembly-id</code> <code>--resolution-id</code> <code>--watch</code>?</td>
+                <td><span class="auth-pill read">read</span></td>
+                <td class="desc" data-i18n-key="table.r.voteShow">Liste les votes castés sur une résolution + totaux courants.</td></tr>
+
+              <!-- Phase E -->
+              <tr><td><span class="phase-tag-inline E">E</span></td>
+                <td class="cf">generatePvDraft</td>
+                <td class="cli">pv generate</td>
+                <td class="flags"><code>--copro-id</code> <code>--assembly-id</code></td>
+                <td><span class="auth-pill syndic">syndic</span></td>
+                <td class="desc" data-i18n-key="table.r.generatePv">Construit le brouillon de PV depuis l'état AG (singleton <code>pv/document</code>).</td></tr>
+              <tr><td><span class="phase-tag-inline E">E</span></td>
+                <td class="cf">updatePvFreeText</td>
+                <td class="cli">pv update-text</td>
+                <td class="flags"><code>--copro-id</code> <code>--assembly-id</code> <code>--section</code> <code>--content</code> (ou <code>--from-file</code>)</td>
+                <td><span class="auth-pill syndic">syndic</span></td>
+                <td class="desc" data-i18n-key="table.r.updatePv">Patch des sections free-text du PV.</td></tr>
+              <tr><td><span class="phase-tag-inline E">E</span></td>
+                <td class="cf">exportPvPdf</td>
+                <td class="cli">pv export</td>
+                <td class="flags"><code>--copro-id</code> <code>--assembly-id</code> <code>--output</code>? (défaut : URL signée stdout)</td>
+                <td><span class="auth-pill syndic">syndic</span></td>
+                <td class="desc" data-i18n-key="table.r.exportPv">Rend le PDF, upload Storage, retourne URL signée. <code>--output</code> télécharge en local.</td></tr>
+              <tr><td><span class="phase-tag-inline E">E</span></td>
+                <td class="cf">distributePv</td>
+                <td class="cli">pv distribute</td>
+                <td class="flags"><code>--copro-id</code> <code>--assembly-id</code></td>
+                <td><span class="auth-pill syndic">syndic</span></td>
+                <td class="desc" data-i18n-key="table.r.distributePv">E-mail le PDF du PV à tous les owners + flag distribué.</td></tr>
+
+              <!-- Phase G — V1.1.5 -->
+              <tr><td><span class="phase-tag-inline G">G</span></td>
+                <td class="cf">getMyVoteLink</td>
+                <td class="cli">owner vote-link</td>
+                <td class="flags"><code>--copro-id</code> <code>--assembly-id</code></td>
+                <td><span class="auth-pill syndic">syndic</span></td>
+                <td class="desc" data-i18n-key="table.r.getVoteLink">Régénère un secret frais + retourne l'URL <code>/vote/&lt;secret&gt;</code>. Mode owner OU syndic-aussi-copropriétaire.</td></tr>
+
+            </tbody>
+          </table>
+        </div>
+
+        <p class="prose" data-i18n-key="table.outro">
+          <strong>Total :</strong> 28 lignes — 23 wrappers de Cloud Function (16 phases A–C + 4
+          phase E + 1 V1.1.5 + 2 procuration/access-token + <code>validateToken</code> debug) +
+          5 commandes de lecture phase D. Plus la note <code>heartbeat</code> non exposée.
+        </p>
+      </div>
+    </section>
+
+    <!-- ─────────── 6. AUTH + FLAGS ─────────── -->
+    <section id="auth">
+      <div class="prose">
+        <span class="eyebrow" data-i18n-key="auth.eyebrow">06 · Auth + flags — exemples concrets</span>
+        <h2 data-i18n-key="auth.h2">Six exemples qui couvrent les six idiomes du CLI.</h2>
+        <p data-i18n-key="auth.p1">
+          Login OTP, création d'AG, envoi de convocation avec override 15 jours, vote token,
+          génération + export du PV, lecture watch. Tout ce que l'agent de support nocturne
+          aura besoin de connaître.
+        </p>
+      </div>
+
+      <div class="shell-block" aria-hidden="true"><span class="sh-com"># 1) Login OTP — V1.0, inchangé.</span>
+<span class="sh-prompt">$</span> <span class="sh-cmd">syndicable login</span> <span class="sh-flag">--email</span> <span class="sh-arg">kd@igsyndic.be</span>
+<span class="sh-out">Code OTP envoyé à kd@igsyndic.be. Saisir le code :</span> <span class="sh-arg">123456</span>
+<span class="sh-ok">✓ Profile "default" (kd@igsyndic.be), uid: T9k...</span>
+
+<span class="sh-com"># 2) Création d'AG (syndic-only, login persisté).</span>
+<span class="sh-prompt">$</span> <span class="sh-cmd">syndicable assembly create</span> \
+    <span class="sh-flag">--copro-id</span> <span class="sh-arg">brugmann-fr</span> \
+    <span class="sh-flag">--title</span> <span class="sh-arg">"AGO 2026 — Brugmann"</span> \
+    <span class="sh-flag">--scheduled-at</span> <span class="sh-arg">2026-06-12T17:30</span> \
+    <span class="sh-flag">--mode</span> <span class="sh-arg">hybrid</span> \
+    <span class="sh-flag">--default-language</span> <span class="sh-arg">fr</span>
+<span class="sh-ok">✓ Assembly created: a_01HX9...</span>
+
+<span class="sh-com"># 3) Envoi de la convocation, avec override de l'avertissement 15 jours.</span>
+<span class="sh-prompt">$</span> <span class="sh-cmd">syndicable convocation send</span> \
+    <span class="sh-flag">--copro-id</span> <span class="sh-arg">brugmann-fr</span> \
+    <span class="sh-flag">--assembly-id</span> <span class="sh-arg">a_01HX9...</span> \
+    <span class="sh-flag">--override-15-day-warning</span>
+<span class="sh-ok">✓ Convocation sent · 166 tokens issued · 166 emails queued</span>
+
+<span class="sh-com"># 4) Vote en mode token public (le secret arrive par e-mail).</span>
+<span class="sh-prompt">$</span> <span class="sh-cmd">syndicable vote cast</span> \
+    <span class="sh-flag">--token</span> <span class="sh-arg">5b8...d2f</span> \
+    <span class="sh-flag">--assembly-id</span> <span class="sh-arg">a_01HX9...</span> \
+    <span class="sh-flag">--resolution-id</span> <span class="sh-arg">R001</span> \
+    <span class="sh-flag">--lot-id</span> <span class="sh-arg">A12-B</span> \
+    <span class="sh-flag">--choice</span> <span class="sh-arg">for</span>
+<span class="sh-ok">✓ Vote cast · A12-B · R001 · for</span>
+
+<span class="sh-com"># 5) PV : génération, édition, export local.</span>
+<span class="sh-prompt">$</span> <span class="sh-cmd">syndicable pv generate</span> <span class="sh-flag">--copro-id</span> <span class="sh-arg">brugmann-fr</span> <span class="sh-flag">--assembly-id</span> <span class="sh-arg">a_01HX9...</span>
+<span class="sh-ok">✓ PV draft created · 18 resolutions imported</span>
+<span class="sh-prompt">$</span> <span class="sh-cmd">syndicable pv export</span> \
+    <span class="sh-flag">--copro-id</span> <span class="sh-arg">brugmann-fr</span> \
+    <span class="sh-flag">--assembly-id</span> <span class="sh-arg">a_01HX9...</span> \
+    <span class="sh-flag">--output</span> <span class="sh-arg">/tmp/pv-brugmann-2026.pdf</span>
+<span class="sh-ok">✓ PDF exported to /tmp/pv-brugmann-2026.pdf (4.2 MB)</span>
+
+<span class="sh-com"># 6) Lecture en mode watch — utile pendant la session live.</span>
+<span class="sh-prompt">$</span> <span class="sh-cmd">syndicable assembly show</span> <span class="sh-flag">--copro-id</span> <span class="sh-arg">brugmann-fr</span> <span class="sh-flag">--assembly-id</span> <span class="sh-arg">a_01HX9...</span> <span class="sh-flag">--json</span> <span class="sh-flag">--watch</span>
+<span class="sh-out">{</span>
+<span class="sh-out">  "status": "live",</span>
+<span class="sh-out">  "currentResolutionId": "R003",</span>
+<span class="sh-out">  "quorumIn": 0.62, "quorumOut": 0.71,</span>
+<span class="sh-out">  "attendance": { "online": 23, "in_person": 41, "left": 5 }</span>
+<span class="sh-out">}</span>
+<span class="sh-out">[poll t+2s] (no change)</span>
+<span class="sh-out">[poll t+4s] currentResolutionId: R003 → R004</span>
+<span class="sh-out">...</span></div>
+
+      <div class="prose">
+        <p data-i18n-key="auth.p2">
+          <strong>Patterns récurrents.</strong> Toute commande syndic prend
+          <code>--copro-id</code> (ou utilise le défaut configuré). Toute commande sur une AG
+          prend <code>--assembly-id</code> ; toute commande sur une résolution ajoute
+          <code>--resolution-id</code>. Les flags qui éditent du free-text long acceptent
+          <code>--from-file</code> en alternative à un <code>--content</code> mono-ligne. Les
+          flags d'override critiques (15-day-warning, force-close, etc.) sont nommés
+          explicitement et n'ont pas de valeur par défaut implicite.
+        </p>
+        <p data-i18n-key="auth.p3">
+          <strong>Sortie.</strong> Par défaut, ligne d'OK colorée + résultat lisible. Avec
+          <code>--json</code>, JSON strict sur stdout (parseable, scriptable). Avec
+          <code>--watch</code>, polling 2 s ; signal SIGINT (Ctrl-C) pour arrêter ; chaque tick
+          imprime soit un diff, soit un <code>(no change)</code> en gris.
+        </p>
+      </div>
+    </section>
+
+    <!-- ─────────── 7. BRUGMANN SCENARIO ─────────── -->
+    <section id="brugmann">
+      <div class="prose">
+        <span class="eyebrow" data-i18n-key="brug.eyebrow">07 · Brugmann depuis le CLI</span>
+        <h2 data-i18n-key="brug.h2">Une AG complète, du terminal, sans jamais ouvrir le navigateur.</h2>
+        <p data-i18n-key="brug.p1">
+          Pour vérifier que la surface CLI tient debout, on déroule l'AG Brugmann 2026 entièrement
+          depuis le shell. Login, création, agenda, convocation, démarrage, vote, fermeture,
+          PV, distribution. Une seule session bash, une seule AG.
+        </p>
+      </div>
+
+      <div class="shell-block" aria-hidden="true"><span class="sh-com"># Setup — login en tant que syndic.</span>
+<span class="sh-prompt">$</span> <span class="sh-cmd">syndicable login:request</span> <span class="sh-flag">--email</span> <span class="sh-arg">kd@igsyndic.be</span>
+<span class="sh-prompt">$</span> <span class="sh-cmd">syndicable login:verify</span> <span class="sh-flag">--email</span> <span class="sh-arg">kd@igsyndic.be</span> <span class="sh-flag">--code</span> <span class="sh-arg">847291</span>
+<span class="sh-ok">✓ Profile "default" persisted</span>
+
+<span class="sh-com"># 1. Créer l'AG, ajouter 5 résolutions, réordonner.</span>
+<span class="sh-prompt">$</span> <span class="sh-cmd">AID</span>=<span class="sh-arg">$(syndicable assembly create --copro-id brugmann --title "AGO 2026" \</span>
+       <span class="sh-arg">--scheduled-at 2026-06-12T17:30 --mode hybrid --default-language fr --json | jq -r .assemblyId)</span>
+<span class="sh-prompt">$</span> <span class="sh-cmd">syndicable assembly resolution add</span> <span class="sh-flag">--copro-id</span> <span class="sh-arg">brugmann</span> <span class="sh-flag">--assembly-id</span> <span class="sh-arg">$AID</span> \
+    <span class="sh-flag">--title</span> <span class="sh-arg">"Approbation comptes 2025"</span> <span class="sh-flag">--threshold</span> <span class="sh-arg">absolute</span> <span class="sh-flag">--key-id</span> <span class="sh-arg">GEN</span>
+<span class="sh-prompt">$</span> <span class="sh-cmd">syndicable assembly resolution add</span> <span class="sh-flag">--copro-id</span> <span class="sh-arg">brugmann</span> <span class="sh-flag">--assembly-id</span> <span class="sh-arg">$AID</span> \
+    <span class="sh-flag">--title</span> <span class="sh-arg">"Décharge syndic"</span> <span class="sh-flag">--threshold</span> <span class="sh-arg">absolute</span> <span class="sh-flag">--key-id</span> <span class="sh-arg">GEN</span>
+<span class="sh-prompt">$</span> <span class="sh-cmd">syndicable assembly resolution add</span> <span class="sh-flag">--copro-id</span> <span class="sh-arg">brugmann</span> <span class="sh-flag">--assembly-id</span> <span class="sh-arg">$AID</span> \
+    <span class="sh-flag">--title</span> <span class="sh-arg">"Budget 2026"</span> <span class="sh-flag">--threshold</span> <span class="sh-arg">absolute</span> <span class="sh-flag">--key-id</span> <span class="sh-arg">GEN</span>
+<span class="sh-prompt">$</span> <span class="sh-cmd">syndicable assembly resolution add</span> <span class="sh-flag">--copro-id</span> <span class="sh-arg">brugmann</span> <span class="sh-flag">--assembly-id</span> <span class="sh-arg">$AID</span> \
+    <span class="sh-flag">--title</span> <span class="sh-arg">"Réfection toiture (~80k€)"</span> <span class="sh-flag">--threshold</span> <span class="sh-arg">four_fifths</span> <span class="sh-flag">--key-id</span> <span class="sh-arg">GEN</span>
+<span class="sh-prompt">$</span> <span class="sh-cmd">syndicable assembly resolution add</span> <span class="sh-flag">--copro-id</span> <span class="sh-arg">brugmann</span> <span class="sh-flag">--assembly-id</span> <span class="sh-arg">$AID</span> \
+    <span class="sh-flag">--title</span> <span class="sh-arg">"Rapport CC (info)"</span> <span class="sh-flag">--threshold</span> <span class="sh-arg">information_only</span>
+
+<span class="sh-com"># 2. Envoyer la convocation à 166 propriétaires.</span>
+<span class="sh-prompt">$</span> <span class="sh-cmd">syndicable convocation send</span> <span class="sh-flag">--copro-id</span> <span class="sh-arg">brugmann</span> <span class="sh-flag">--assembly-id</span> <span class="sh-arg">$AID</span>
+<span class="sh-ok">✓ Convocation sent · 166 tokens issued · 166 emails queued</span>
+
+<span class="sh-com"># 3. Démarrer l'AG le jour J.</span>
+<span class="sh-prompt">$</span> <span class="sh-cmd">syndicable assembly start</span> <span class="sh-flag">--copro-id</span> <span class="sh-arg">brugmann</span> <span class="sh-flag">--assembly-id</span> <span class="sh-arg">$AID</span>
+<span class="sh-ok">✓ Assembly is now LIVE</span>
+
+<span class="sh-com"># 4. Ouvrir R1, observer les votes en temps réel, clôturer.</span>
+<span class="sh-prompt">$</span> <span class="sh-cmd">syndicable assembly resolution open</span> <span class="sh-flag">--copro-id</span> <span class="sh-arg">brugmann</span> <span class="sh-flag">--assembly-id</span> <span class="sh-arg">$AID</span> <span class="sh-flag">--resolution-id</span> <span class="sh-arg">R001</span>
+<span class="sh-prompt">$</span> <span class="sh-cmd">syndicable vote show</span> <span class="sh-flag">--copro-id</span> <span class="sh-arg">brugmann</span> <span class="sh-flag">--assembly-id</span> <span class="sh-arg">$AID</span> <span class="sh-flag">--resolution-id</span> <span class="sh-arg">R001</span> <span class="sh-flag">--watch</span>
+<span class="sh-out">[poll t+0s]   for: 0      against: 0      abstain: 0    not_voted: 166</span>
+<span class="sh-out">[poll t+2s]   for: 1240   against: 0      abstain: 0    not_voted: 165</span>
+<span class="sh-out">[poll t+12s]  for: 5720   against: 4050   abstain: 230  not_voted: 0</span>
+<span class="sh-out">^C</span>
+<span class="sh-prompt">$</span> <span class="sh-cmd">syndicable assembly resolution close</span> <span class="sh-flag">--copro-id</span> <span class="sh-arg">brugmann</span> <span class="sh-flag">--assembly-id</span> <span class="sh-arg">$AID</span> <span class="sh-flag">--resolution-id</span> <span class="sh-arg">R001</span>
+<span class="sh-ok">✓ R001 closed · for=5720 against=4050 abstain=230 → PASSED</span>
+
+<span class="sh-com"># 5–8. Idem pour R002..R005, puis terminer l'AG.</span>
+<span class="sh-prompt">$</span> <span class="sh-cmd">syndicable assembly end</span> <span class="sh-flag">--copro-id</span> <span class="sh-arg">brugmann</span> <span class="sh-flag">--assembly-id</span> <span class="sh-arg">$AID</span>
+<span class="sh-ok">✓ Assembly ended at 2026-06-12T20:14Z</span>
+
+<span class="sh-com"># 9. Générer + distribuer le PV.</span>
+<span class="sh-prompt">$</span> <span class="sh-cmd">syndicable pv generate</span> <span class="sh-flag">--copro-id</span> <span class="sh-arg">brugmann</span> <span class="sh-flag">--assembly-id</span> <span class="sh-arg">$AID</span>
+<span class="sh-prompt">$</span> <span class="sh-cmd">syndicable pv export</span> <span class="sh-flag">--copro-id</span> <span class="sh-arg">brugmann</span> <span class="sh-flag">--assembly-id</span> <span class="sh-arg">$AID</span> <span class="sh-flag">--output</span> <span class="sh-arg">/tmp/pv-brugmann-2026.pdf</span>
+<span class="sh-prompt">$</span> <span class="sh-cmd">syndicable pv distribute</span> <span class="sh-flag">--copro-id</span> <span class="sh-arg">brugmann</span> <span class="sh-flag">--assembly-id</span> <span class="sh-arg">$AID</span>
+<span class="sh-ok">✓ PV distributed to 166 owners</span></div>
+
+      <div class="prose">
+        <p data-i18n-key="brug.p2">
+          Le scénario tient en une trentaine de lignes de bash. Si <code>test:assembly-happy-path</code>
+          (smoke test scripté) reproduit ces étapes en mode JSON sans intervention humaine, la
+          surface CLI est validée. C'est le seul critère <em>go/no-go</em> de la phase CLI·F.
+        </p>
+        <p data-i18n-key="brug.p3">
+          Ce que ce scénario ne montre pas : le mode token (utilisé par les copropriétaires
+          eux-mêmes — pas par le syndic) et la commande <code>owner vote-link</code> de V1.1.5
+          (qui s'invoque depuis un compte copropriétaire authentifié, pas depuis le compte
+          syndic). Les deux entrent en jeu uniquement quand on simule un copropriétaire
+          end-to-end avec son propre profil <code>--profile</code>.
+        </p>
+      </div>
+    </section>
+
+    <!-- ─────────── 8. PHASING ─────────── -->
+    <section id="phasing">
+      <div class="prose-wide">
+        <span class="eyebrow" data-i18n-key="phase.eyebrow">08 · Phasage</span>
+        <h2 data-i18n-key="phase.h2">Deux phases d'implémentation, alignées sur le backend.</h2>
+        <p class="prose" data-i18n-key="phase.intro">
+          Le CLI suit le backend de près mais pas trop. On groupe les wrappers en deux vagues :
+          la grosse (CLI·F, en parallèle de l'arrivée de Phase D côté backend) et la petite
+          (CLI·G, après la Phase E + la V1.1.5). Pas de raison de fragmenter plus.
+        </p>
+
+        <div class="phases">
+
+          <div class="phase">
+            <span class="phase-tag" data-i18n-key="phase.F.tag">CLI·F</span>
+            <h3 data-i18n-key="phase.F.h3">Wrappers A → C + lectures D</h3>
+            <p data-i18n-key="phase.F.p">19 wrappers (createAssembly..syndicCastVote, hors PV) + 5 commandes de lecture (assembly show/list, resolution show, attendance show, vote show) + le smoke test. Vérification : <code>test:assembly-happy-path --cleanup</code> exécute le scénario Brugmann en JSON sans erreur, en moins d'une minute, et nettoie ses traces. Mise à jour des types DTO + du registre <code>CF</code>.</p>
+          </div>
+
+          <div class="phase">
+            <span class="phase-tag" data-i18n-key="phase.G.tag">CLI·G</span>
+            <h3 data-i18n-key="phase.G.h3">Wrappers E + V1.1.5</h3>
+            <p data-i18n-key="phase.G.p">4 wrappers PV (generate, update-text, export, distribute) + 1 wrapper V1.1.5 (owner vote-link). Plus petit, plus tard. Vérification : depuis le scénario Brugmann CLI·F, on peut maintenant exécuter pv generate → pv export → pv distribute en bout de chaîne, et dans une session séparée logguée comme copropriétaire, owner vote-link retourne une URL <code>/vote/&lt;secret&gt;</code> valide.</p>
+          </div>
+
+        </div>
+
+        <p class="prose" data-i18n-key="phase.outro"><em>CLI·F = ~3-4 jours d'un implémenteur concentré (24 commandes). CLI·G = ~1 jour (5 commandes).</em></p>
+      </div>
+    </section>
+
+    <!-- ─────────── 9. OPEN QUESTIONS ─────────── -->
+    <section id="open-questions">
+      <div class="prose-wide">
+        <span class="eyebrow" data-i18n-key="oq.eyebrow">09 · Questions ouvertes</span>
+        <h2 data-i18n-key="oq.h2">Sept points à trancher avant ou pendant l'implémentation.</h2>
+        <p class="prose" data-i18n-key="oq.intro">
+          Aucune ne bloque CLI·F. Chacune se résout au moment où la commande qui la rencontre
+          est codée. La recommandation est ma meilleure lecture actuelle ; la décision finale
+          revient au reviewer.
+        </p>
+
+        <div class="tablewrap">
+          <table>
+            <thead>
+              <tr>
+                <th data-i18n-key="oq.th.num">#</th>
+                <th data-i18n-key="oq.th.q">Question</th>
+                <th data-i18n-key="oq.th.r">Recommandation</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="q-num">01</td>
+                <td data-i18n-key="oq.q1">Le mode A (login persisté) doit-il aussi accepter <code>vote cast</code> sans <code>--token</code>, pour faciliter le test syndic ?</td>
+                <td data-i18n-key="oq.r1"><strong>Non.</strong> <code>syndicCastVote</code> existe précisément pour ça côté backend. On garde la frontière nette : <code>vote cast</code> = mode token public exclusivement.</td>
+              </tr>
+              <tr>
+                <td class="q-num">02</td>
+                <td data-i18n-key="oq.q2">Le flag <code>--watch</code> utilise-t-il un listener Firestore SDK ou du polling REST ?</td>
+                <td data-i18n-key="oq.r2"><strong>Polling REST 2 s</strong> par défaut. Reste cohérent avec l'architecture <code>callable.ts</code> (fetch-only). Un listener SDK long-lived demanderait de garder le module Firebase Web SDK chaud — pas un investissement justifié pour V1.1.</td>
+              </tr>
+              <tr>
+                <td class="q-num">03</td>
+                <td data-i18n-key="oq.q3"><code>pv export</code> : sauvegarder en local (<code>--output</code>) ou retourner l'URL signée ?</td>
+                <td data-i18n-key="oq.r3"><strong>Les deux.</strong> Par défaut, URL signée sur stdout (cohérent avec <code>doc url</code>). Avec <code>--output &lt;path&gt;</code>, on télécharge via fetch + écrit le PDF localement. Plus pratique pour les agents.</td>
+              </tr>
+              <tr>
+                <td class="q-num">04</td>
+                <td data-i18n-key="oq.q4">Faut-il une commande <code>convocation list</code> qui affiche tous les AccessTokens d'une AG (pour debug bounces) ?</td>
+                <td data-i18n-key="oq.r4"><strong>Oui</strong>, à ajouter dans CLI·F. C'est la seule façon raisonnable de répondre à « pourquoi tel owner n'a pas reçu sa convocation ». Lecture Firestore REST + masquage des secrets.</td>
+              </tr>
+              <tr>
+                <td class="q-num">05</td>
+                <td data-i18n-key="oq.q5">Doit-on stocker le <code>--copro-id</code> par défaut dans <code>config.json</code> pour ne plus le retaper ?</td>
+                <td data-i18n-key="oq.r5"><strong>Oui</strong>, via une commande <code>syndicable use-copro &lt;id&gt;</code> (ou un flag de <code>use</code>). Évite de polluer chaque ligne. À ajouter en CLI·F si le temps le permet, sinon en CLI·G.</td>
+              </tr>
+              <tr>
+                <td class="q-num">06</td>
+                <td data-i18n-key="oq.q6">Le smoke test <code>test:assembly-happy-path</code> doit-il aussi tester le mode token (<code>vote cast</code> avec un secret extrait du e-mail) ?</td>
+                <td data-i18n-key="oq.r6"><strong>Non en CLI·F</strong>, oui en CLI·G. Récupérer un secret de magic link demande soit un email-fixture soit une lecture directe d'AccessToken (admin SDK). On utilise <code>syndicCastVote</code> dans CLI·F et on ajoute le test mode-token quand le test framework du backend le permet.</td>
+              </tr>
+              <tr>
+                <td class="q-num">07</td>
+                <td data-i18n-key="oq.q7">Le wrapper <code>convocation validate</code> est-il vraiment utile, ou pure dette ?</td>
+                <td data-i18n-key="oq.r7">Utile pour debug : « ce token marche-t-il toujours ? est-ce qu'il a été révoqué ? ». À garder dans CLI·F mais marqué « debug-only » dans la description. Pas dans le smoke test.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────── 10. ANNEXE ─────────── -->
+    <section id="annex">
+      <div class="prose-wide">
+        <span class="eyebrow" data-i18n-key="annex.eyebrow">10 · Annexe — fichiers touchés</span>
+        <h2 data-i18n-key="annex.h2">La liste exacte côté <code>syndicable-cli/</code>.</h2>
+        <p class="prose" data-i18n-key="annex.intro">
+          Six nouveaux dossiers de commandes (un par groupe) + deux modifications de fichiers
+          partagés (registre <code>CF</code>, types DTO inline). Pas de modification de
+          <code>callable.ts</code>, <code>auth.ts</code>, <code>config.ts</code>,
+          <code>firebase.ts</code> — l'infra de V1.0 supporte la nouvelle surface telle quelle.
+          Le seul ajout potentiel d'infra : un helper <code>watch.ts</code> pour le polling
+          Firestore REST.
+        </p>
+
+        <ul class="filelist">
+          <li>
+            <span class="tag new" data-i18n-key="annex.tag.new">NEW</span>
+            <code>src/cli/commands/assembly/{create,update,cancel,start,end,show,list}.ts</code>
+            <span class="desc" data-i18n-key="annex.f1">7 fichiers — wrappers Phase A + C + lectures D pour les commandes de niveau AG.</span>
+          </li>
+          <li>
+            <span class="tag new" data-i18n-key="annex.tag.new">NEW</span>
+            <code>src/cli/commands/assembly/resolution/{add,update,remove,reorder,open,close,skip,show}.ts</code>
+            <span class="desc" data-i18n-key="annex.f2">8 fichiers — wrappers Phase A + C + lecture D pour le sous-groupe résolution.</span>
+          </li>
+          <li>
+            <span class="tag new" data-i18n-key="annex.tag.new">NEW</span>
+            <code>src/cli/commands/convocation/{send,resend,validate,revoke}.ts</code>
+            <span class="desc" data-i18n-key="annex.f3">4 fichiers — Phase B + commande <code>list</code> (lecture) ajoutée par §09 q04.</span>
+          </li>
+          <li>
+            <span class="tag new" data-i18n-key="annex.tag.new">NEW</span>
+            <code>src/cli/commands/convocation/procuration/issue.ts</code>
+            <span class="desc" data-i18n-key="annex.f4">1 fichier — sous-groupe procuration.</span>
+          </li>
+          <li>
+            <span class="tag new" data-i18n-key="annex.tag.new">NEW</span>
+            <code>src/cli/commands/attendance/{join,leave,mark-in-person,mark-left,show}.ts</code>
+            <span class="desc" data-i18n-key="annex.f5">5 fichiers — Phase C + lecture D.</span>
+          </li>
+          <li>
+            <span class="tag new" data-i18n-key="annex.tag.new">NEW</span>
+            <code>src/cli/commands/vote/{cast,syndic-cast,show}.ts</code>
+            <span class="desc" data-i18n-key="annex.f6">3 fichiers — Phase C + lecture D.</span>
+          </li>
+          <li>
+            <span class="tag new" data-i18n-key="annex.tag.new">NEW</span>
+            <code>src/cli/commands/pv/{generate,update-text,export,distribute}.ts</code>
+            <span class="desc" data-i18n-key="annex.f7">4 fichiers — Phase E (CLI·G).</span>
+          </li>
+          <li>
+            <span class="tag new" data-i18n-key="annex.tag.new">NEW</span>
+            <code>src/cli/commands/owner/vote-link.ts</code>
+            <span class="desc" data-i18n-key="annex.f8">1 fichier — V1.1.5 (CLI·G), greffé sur le groupe <code>owner</code> existant.</span>
+          </li>
+          <li>
+            <span class="tag new" data-i18n-key="annex.tag.new">NEW</span>
+            <code>src/cli/commands/test/assembly-happy-path.ts</code>
+            <span class="desc" data-i18n-key="annex.f9">Smoke test bout-en-bout V1.1, calqué sur <code>test/happy-path.ts</code>.</span>
+          </li>
+          <li>
+            <span class="tag new" data-i18n-key="annex.tag.new">NEW</span>
+            <code>src/lib/watch.ts</code>
+            <span class="desc" data-i18n-key="annex.f10">Helper polling Firestore REST 2 s pour le flag <code>--watch</code> + diff printer.</span>
+          </li>
+          <li>
+            <span class="tag mod" data-i18n-key="annex.tag.mod">MOD</span>
+            <code>src/lib/functions.ts</code>
+            <span class="desc" data-i18n-key="annex.f11">Ajout des ~26 nouveaux noms au registre <code>CF</code> (ordre + commentaires par feature).</span>
+          </li>
+          <li>
+            <span class="tag mod" data-i18n-key="annex.tag.mod">MOD</span>
+            <code>src/types/syndicable-app-types.ts</code>
+            <span class="desc" data-i18n-key="annex.f12">Inline des DTO Input/Output pour chaque CF wrappée (provenance backend en commentaire).</span>
+          </li>
+          <li>
+            <span class="tag mod" data-i18n-key="annex.tag.mod">MOD</span>
+            <code>src/cli/index.ts</code>
+            <span class="desc" data-i18n-key="annex.f13">Enregistrement des 6 nouveaux groupes <code>Command</code> + 1 extension du groupe owner.</span>
+          </li>
+          <li>
+            <span class="tag mod" data-i18n-key="annex.tag.mod">MOD</span>
+            <code>src/lib/firestore.ts</code>
+            <span class="desc" data-i18n-key="annex.f14">Helpers de lecture <code>readAssembly</code>, <code>listAssemblies</code>, <code>readResolution</code>, <code>listAttendance</code>, <code>listVotes</code>, <code>listAccessTokens</code>.</span>
+          </li>
+          <li>
+            <span class="tag mod" data-i18n-key="annex.tag.mod">MOD</span>
+            <code>README.md</code>
+            <span class="desc" data-i18n-key="annex.f15">Nouvelle section « V1.1 commands » dans le catalog ; bump à <code>0.3.0</code> (CLI·F) puis <code>0.4.0</code> (CLI·G).</span>
+          </li>
+          <li>
+            <span class="tag cfg" data-i18n-key="annex.tag.cfg">CFG</span>
+            <code>package.json</code>
+            <span class="desc" data-i18n-key="annex.f16">Aucune nouvelle dépendance attendue ; <code>commander</code> + <code>firebase</code> + <code>firebase-admin</code>? non — le CLI reste sans Admin SDK.</span>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ─────────── 11. COLOPHON ─────────── -->
+    <section id="colophon">
+      <div class="prose">
+        <span class="eyebrow" data-i18n-key="colo.eyebrow">11 · Colophon</span>
+        <h2 data-i18n-key="colo.h2">Ce qu'est ce plan — et ce qu'il n'est pas.</h2>
+        <p data-i18n-key="colo.p1">
+          C'est la conception de la surface CLI pour V1.1 + V1.1.5. Ce n'est pas un patch — aucun
+          fichier de <code>syndicable-cli/</code> n'est modifié par sa lecture. Ce n'est pas un
+          engagement de livraison à N jours — le phasage suppose un implémenteur concentré, et
+          chaque phase peut respirer si le backend bouge.
+        </p>
+        <p data-i18n-key="colo.p2">
+          Ce que cet article fige : la <em>forme</em>. Six nouveaux groupes de commandes,
+          28 lignes dans la table CF→CLI, deux modes d'authentification, trois idiomes de
+          sortie. Le code commence à la validation. Si quelque chose dans la forme cloche — un
+          nom de groupe, une frontière d'auth, un flag manquant, une question ouverte mal
+          tranchée — c'est maintenant qu'il faut le dire, avant que CLI·F ne démarre.
+        </p>
+        <p data-i18n-key="colo.p3">
+          Ce qui n'est <em>pas</em> couvert : tout ce qui est dans la colonne OUT du §02. Les
+          flux scriptés multi-CF, les wrappers de triggers, le service-account auth, le REPL.
+          Autant de pistes pour V1.2 ou plus tard. CLI·F + CLI·G livrent le minimum suffisant
+          pour qu'un agent de support nocturne puisse dérouler une AG complète sans ouvrir le
+          navigateur — et c'est exactement la barre qu'on cherche.
+        </p>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<footer>
+  <div data-i18n-key="footer.updated">Syndicable V1.1+CLI — dernière mise à jour 2026-05-09.</div>
+</footer>
+
+<script>
+  // ───────── i18n dictionary ─────────
+  window.I18N = {
+    en: {
+      "meta.title": "Syndicable V1.1+CLI — Every Cloud Function on the command line",
+      "meta.description": "The CLI extension plan for Syndicable V1.1 + V1.1.5: one wrapper per Cloud Function, two authentication modes, human / JSON / watch output.",
+
+      "lang.label": "Language",
+      "lang.aria": "Switch language between English and French",
+
+      "nav.eyebrow": "Sections",
+      "nav.thesis": "The thesis",
+      "nav.scope": "Scope",
+      "nav.choices": "Architecture",
+      "nav.tree": "Command tree",
+      "nav.table": "Command table",
+      "nav.auth": "Auth + flags",
+      "nav.brugmann": "Brugmann from the CLI",
+      "nav.phasing": "Phasing",
+      "nav.openQuestions": "Open questions",
+      "nav.annex": "Annex — files touched",
+      "nav.colophon": "Colophon",
+
+      "hero.pill.module": "Module&nbsp;·&nbsp;CLI&nbsp;surface",
+      "hero.title": "Every Cloud Function, on the command line.",
+      "hero.sub": "V1.0 shipped 23 callable wrappers in the CLI. V1.1 adds ~25 Cloud Functions (assemblies, convocations, live session, PV); V1.1.5 adds one more (<code>getMyVoteLink</code>). This plan says which ones land in the CLI, under which names, with which flags, and under which auth regime.",
+
+      "thesis.eyebrow": "01 · The thesis",
+      "thesis.h2": "If a Cloud Function exists, it must be callable from the terminal.",
+      "thesis.p1": "The <code>syndicable</code> CLI exists for three uses: <strong>scripting</strong> repetitive tasks (copro creation, lot import, end-to-end smoke tests), <strong>testing</strong> Cloud Functions without clicking through the PWA, and <strong>debugging</strong> staging / prod operations when the UI isn't enough. V1.0 honored that promise for the 23 functions shipped in Phase 5–14. V1.1 doubles the surface. If we don't follow, the CLI becomes a museum.",
+      "thesis.p2": "The mental test is simple: an LLM agent or a human operator should be able, by chaining <code>syndicable</code> commands, to run a full AG end-to-end on staging — from assembly creation to PV distribution — without ever opening a browser. That's what <code>test:happy-path</code> does today for V1.0; this plan defines its V1.1 equivalent.",
+      "thesis.p3": "The persona that anchors this work is <strong>the support agent who has to reproduce a Brugmann bug at 10pm</strong>. If every CF has its CLI wrapper, the agent only needs a terminal and their login token. If half is missing, they need to open the PWA, log in, navigate, click — while the client is waiting. Today's investment is tomorrow's operational autonomy.",
+
+      "scope.eyebrow": "02 · Scope",
+      "scope.h2": "What ships in V1.1+CLI — and what doesn't.",
+      "scope.intro": "No surprises here: we follow the exhaustive list of new exports in <code>functions/src/index.ts</code> (V1.1 phases A through E + V1.1.5 phase G) and add a few read-only commands where they pull their weight. Everything else is deferred.",
+      "scope.in.title": "In · V1.1+CLI ships",
+      "scope.in.li1": "One wrapper per new V1.1 CF (~25) + V1.1.5 (1)",
+      "scope.in.li2": "A few useful read commands: <code>assembly show</code>, <code>assembly list</code>, <code>vote show</code>, <code>attendance show</code>",
+      "scope.in.li3": "Two authentication modes: persisted login (syndic) + <code>--token</code> flag (public)",
+      "scope.in.li4": "Three output idioms: human by default, <code>--json</code> for scripts, <code>--watch</code> for live streams",
+      "scope.in.li5": "Multi-staging profile consistency with V1.0 (<code>--profile</code> on every command)",
+      "scope.in.li6": "Update of the <code>CF</code> registry in <code>src/lib/functions.ts</code> (+ DTO types inlined in <code>src/types/syndicable-app-types.ts</code>)",
+      "scope.in.li7": "Smoke test <code>test:assembly-happy-path</code> — V1.1 equivalent of the existing <code>test:happy-path</code>",
+      "scope.out.title": "Out · not in V1.1+CLI",
+      "scope.out.li1": "Scripted multi-CF flows (\"run a full AG in one command\") — the user composes those in bash",
+      "scope.out.li2": "Wrappers for Firestore triggers (<code>onAssemblyWritten</code>, <code>onResolutionWritten</code>, <code>onVoteWritten</code>, <code>cleanupStaleAttendance</code>) — not callable",
+      "scope.out.li3": "<code>heartbeat</code> as a dedicated command — voter-PWA internal usage, not a CLI use case",
+      "scope.out.li4": "Service-account auth — Firebase user OTP only, like V1.0",
+      "scope.out.li5": "Interactive REPL, shell completion scripts — already OUT in V1.0",
+      "scope.out.li6": "Per-command unit tests — we lean on the smoke happy-path",
+      "scope.out.li7": "CLI-side reception of convocation emails — we assume the operator reads their inbox",
+
+      "choices.eyebrow": "03 · Architecture",
+      "choices.h2": "Three choices everything else hangs from.",
+      "choices.intro": "Three settled forks that cut design discussions short during implementation. Phasing and the annex assume these three choices are taken.",
+      "choices.c1.num": "CHOICE&nbsp;01",
+      "choices.c1.h3": "1:1 mirror of the backend.",
+      "choices.c1.p1": "One CLI command per Cloud Function. No CLI-side orchestration; no macros that chain three CFs. If the user wants to \"send the convocation and open the first resolution in the same action\", they write two bash lines — the CLI does not stand in for an agent.",
+      "choices.c1.p2": "Upside: zero intelligence surface on the CLI side. When the backend renames a parameter, we update the wrapper and that's it. No macro to debug, no semantic drift. That's exactly the V1.0 pattern — we extend it.",
+      "choices.c2.num": "CHOICE&nbsp;02",
+      "choices.c2.h3": "Two authentication modes coexist.",
+      "choices.c2.p1": "The CLI handles two auth regimes that never mix. <strong>Mode A (syndic)</strong>: OTP login persisted in <code>~/.config/syndicable/config.json</code>, ID token attached automatically to every call. That's the V1.0 existing flow, untouched. Covers everything syndic-only: <code>createAssembly</code>, <code>sendConvocation</code>, <code>startAssembly</code>, <code>generatePvDraft</code>...",
+      "choices.c2.p2": "<strong>Mode B (public token)</strong>: explicit <code>--token &lt;secret&gt;</code> flag on the command line. No login required, no persistence. Covers the voter-page CFs: <code>validateToken</code>, <code>joinAssembly</code>, <code>leaveAssembly</code>, <code>castVote</code>. The secret transits in cleartext through shell history — it's not a long-lived secret, it's the same throwaway as the email magic link.",
+      "choices.c2.p3": "Open question (§09 q01): should mode A also be allowed to invoke <code>castVote</code> on behalf of the syndic, without <code>--token</code>? <code>syndicCastVote</code> already exists for that on the backend — so the common-sense answer is no, we keep the boundary clean.",
+      "choices.c3.num": "CHOICE&nbsp;03",
+      "choices.c3.h3": "Output: human / JSON / watch.",
+      "choices.c3.p1": "Three output idioms, applied wherever they're relevant. <code>--json</code> already exists on every V1.0 command; we keep it. <strong>New for V1.1</strong>: <code>--watch</code> on read commands that follow evolving state — <code>assembly show --watch</code>, <code>vote show --watch</code>, <code>attendance show --watch</code>. Under the hood, Firestore REST polling every 2 seconds (no long-lived SDK listener — we stay consistent with <code>callable.ts</code> which uses only <code>fetch</code>).",
+      "choices.c3.p2": "REST polling isn't \"true\" streaming, but it's enough to observe an AG session in semi-real time from the terminal. The 2-s latency is faster than how often a syndic would F5 in their browser anyway. Open question (§09 q02): will we need to switch to an SDK listener later? Probably, if we observe lag under load.",
+
+      "tree.eyebrow": "04 · The command tree",
+      "tree.h2": "Six new command groups.",
+      "tree.p1": "We graft six new <code>Command</code>s onto the main program, without touching the existing nine. Group names (<code>assembly</code>, <code>convocation</code>, <code>attendance</code>, <code>vote</code>, <code>pv</code>, <code>owner</code>) follow business usage — not the backend feature names (<code>assemblies</code>, <code>convocations</code>, <code>attendance</code>, <code>votes</code>, <code>pv</code>, <code>access-tokens</code>) — to stay readable when said out loud during a client call.",
+
+      "table.eyebrow": "05 · The command table",
+      "table.h2": "CF → CLI mapping, exhaustive.",
+      "table.intro": "One row per new Cloud Function or read-only command. Listed flags are the principal ones; <code>--profile</code> and <code>--json</code> are implicit everywhere. Auth: <span class=\"auth-pill syndic\">syndic</span> = persisted login required; <span class=\"auth-pill token\">token</span> = <code>--token</code> flag required; <span class=\"auth-pill either\">either</span> = both work (e.g. <code>syndic-cast</code>); <span class=\"auth-pill read\">read</span> = Firestore REST read (persisted login).",
+      "table.th.phase": "Phase",
+      "table.th.cf": "Cloud Function",
+      "table.th.cli": "CLI command",
+      "table.th.flags": "Main flags",
+      "table.th.auth": "Auth",
+      "table.th.desc": "Description",
+      "table.r.createAssembly": "Creates an AG in <code>draft</code> status.",
+      "table.r.updateAssembly": "Edits the metadata of a <code>draft</code> AG (title, date, mode...).",
+      "table.r.cancelAssembly": "Cancels a <code>draft</code> or <code>convoked</code> AG (revokes tokens).",
+      "table.r.addResolution": "Adds a resolution to the agenda (<code>draft</code> AG).",
+      "table.r.updateResolution": "Edits a <code>pending</code> resolution.",
+      "table.r.removeResolution": "Removes a <code>pending</code> resolution.",
+      "table.r.reorderResolutions": "Reorders the agenda (<code>draft</code> AG).",
+      "table.r.sendConvocation": "Flips the AG to <code>convoked</code>; issues one AccessToken per owner + email.",
+      "table.r.resendConvocation": "Re-issues the token + email for one owner (bounce case).",
+      "table.r.issueProcuration": "Issues a procuration token scoped to a named proxy holder.",
+      "table.r.revokeAccessToken": "Revokes an AccessToken by its ID (= secret hash).",
+      "table.r.validateToken": "Validates a magic-link secret and prints the sanitized context. Debug-only.",
+      "table.r.startAssembly": "Flips the AG to <code>live</code>.",
+      "table.r.endAssembly": "Flips the AG to <code>ended</code> (auto-closes any open resolution).",
+      "table.r.openResolution": "Opens a resolution to vote (<code>pending → voting_open</code>).",
+      "table.r.closeResolution": "Closes a resolution; <code>--confirm-auto-default</code> answers the auto-abstain dialog.",
+      "table.r.skipResolution": "Marks a resolution as passed without vote (info-only).",
+      "table.r.joinAssembly": "First call of a session; flips Attendance to <code>present_online</code>. Test-only.",
+      "table.r.leaveAssembly": "Explicit leave; Attendance to <code>left</code>. Test-only.",
+      "table.r.heartbeatNote": "(not exposed)",
+      "table.r.heartbeat": "Periodic heartbeat from the voter PWA. Not a CLI use case; not wrapped.",
+      "table.r.markInPerson": "Syndic flips a lot's Attendance to <code>present_in_person</code>.",
+      "table.r.markLeft": "Syndic flips Attendance to <code>left</code>.",
+      "table.r.castVote": "Public vote (token mode). The only \"voter\" wrapper in the table.",
+      "table.r.syndicCastVote": "Syndic vote on behalf of an owner (DV1 privilege).",
+      "table.r.readNote": "(read)",
+      "table.r.assemblyShow": "AG detail + agenda + quorum gauge (computed CLI-side).",
+      "table.r.assemblyList": "Lists the AGs of a copro with status + date.",
+      "table.r.resolutionShow": "Resolution detail + tally (read of the denormalized <code>tally</code> after close).",
+      "table.r.attendanceShow": "Per-lot Attendance list (current state, last heartbeat).",
+      "table.r.voteShow": "Lists votes cast on a resolution + running totals.",
+      "table.r.generatePv": "Builds the PV draft from AG state (singleton <code>pv/document</code>).",
+      "table.r.updatePv": "Patches PV free-text sections.",
+      "table.r.exportPv": "Renders the PDF, uploads to Storage, returns signed URL. <code>--output</code> downloads locally.",
+      "table.r.distributePv": "Emails the PV PDF to all owners + flags as distributed.",
+      "table.r.getVoteLink": "Regenerates a fresh secret + returns the <code>/vote/&lt;secret&gt;</code> URL. Owner mode OR syndic-also-owner.",
+      "table.outro": "<strong>Total:</strong> 28 rows — 23 Cloud Function wrappers (16 phases A–C + 4 phase E + 1 V1.1.5 + 2 procuration/access-token + <code>validateToken</code> debug) + 5 read commands phase D. Plus the <code>heartbeat</code> not-exposed note.",
+
+      "auth.eyebrow": "06 · Auth + flags — concrete examples",
+      "auth.h2": "Six examples covering the six CLI idioms.",
+      "auth.p1": "OTP login, AG creation, convocation send with 15-day override, token vote, PV generate + export, watch read. Everything the nightly support agent needs to know.",
+      "auth.p2": "<strong>Recurring patterns.</strong> Every syndic command takes <code>--copro-id</code> (or uses the configured default). Every command on an AG takes <code>--assembly-id</code>; every command on a resolution adds <code>--resolution-id</code>. Flags that edit long free text accept <code>--from-file</code> as an alternative to a single-line <code>--content</code>. Critical override flags (15-day-warning, force-close, etc.) are named explicitly and have no implicit default.",
+      "auth.p3": "<strong>Output.</strong> By default, colored OK line + readable result. With <code>--json</code>, strict JSON on stdout (parseable, scriptable). With <code>--watch</code>, 2-s polling; SIGINT (Ctrl-C) stops it; each tick prints either a diff or a gray <code>(no change)</code>.",
+
+      "brug.eyebrow": "07 · Brugmann from the CLI",
+      "brug.h2": "A full AG, from the terminal, never opening a browser.",
+      "brug.p1": "To verify the CLI surface holds together, we run the Brugmann 2026 AG entirely from the shell. Login, creation, agenda, convocation, start, vote, close, PV, distribute. One bash session, one AG.",
+      "brug.p2": "The scenario fits in about thirty bash lines. If <code>test:assembly-happy-path</code> (scripted smoke test) reproduces those steps in JSON mode without human intervention, the CLI surface is validated. That's the single <em>go/no-go</em> gate of CLI·F.",
+      "brug.p3": "What this scenario doesn't show: token mode (used by owners themselves — not by the syndic) and the V1.1.5 <code>owner vote-link</code> command (invoked from an owner-authenticated account, not the syndic account). Both come into play only when simulating an owner end-to-end with their own <code>--profile</code>.",
+
+      "phase.eyebrow": "08 · Phasing",
+      "phase.h2": "Two implementation phases, aligned with the backend.",
+      "phase.intro": "The CLI follows the backend closely but not too closely. We group wrappers into two waves: the big one (CLI·F, in parallel with backend Phase D landing) and the small one (CLI·G, after Phase E + V1.1.5). No reason to fragment further.",
+      "phase.F.tag": "CLI·F",
+      "phase.F.h3": "Wrappers A → C + reads D",
+      "phase.F.p": "19 wrappers (createAssembly..syndicCastVote, no PV) + 5 read commands (assembly show/list, resolution show, attendance show, vote show) + the smoke test. Verify: <code>test:assembly-happy-path --cleanup</code> runs the Brugmann scenario in JSON without error, in under a minute, and cleans up after itself. DTO types update + <code>CF</code> registry update.",
+      "phase.G.tag": "CLI·G",
+      "phase.G.h3": "Wrappers E + V1.1.5",
+      "phase.G.p": "4 PV wrappers (generate, update-text, export, distribute) + 1 V1.1.5 wrapper (owner vote-link). Smaller, later. Verify: from the CLI·F Brugmann scenario, we can now chain pv generate → pv export → pv distribute at the end, and in a separate session logged in as an owner, owner vote-link returns a valid <code>/vote/&lt;secret&gt;</code> URL.",
+      "phase.outro": "<em>CLI·F = ~3-4 days for a focused implementer (24 commands). CLI·G = ~1 day (5 commands).</em>",
+
+      "oq.eyebrow": "09 · Open questions",
+      "oq.h2": "Seven points to settle before or during implementation.",
+      "oq.intro": "None block CLI·F. Each resolves at the moment the command that hits it gets coded. The recommendation is my current best read; final decision is the reviewer's.",
+      "oq.th.num": "#",
+      "oq.th.q": "Question",
+      "oq.th.r": "Recommendation",
+      "oq.q1": "Should mode A (persisted login) also accept <code>vote cast</code> without <code>--token</code>, to make syndic testing easier?",
+      "oq.r1": "<strong>No.</strong> <code>syndicCastVote</code> exists exactly for that on the backend. We keep the boundary clean: <code>vote cast</code> = public-token mode exclusively.",
+      "oq.q2": "Does the <code>--watch</code> flag use a Firestore SDK listener or REST polling?",
+      "oq.r2": "<strong>2-s REST polling</strong> by default. Stays consistent with <code>callable.ts</code> (fetch-only) architecture. A long-lived SDK listener would require keeping the Firebase Web SDK module hot — not a justified investment for V1.1.",
+      "oq.q3": "<code>pv export</code>: save locally (<code>--output</code>) or return signed URL?",
+      "oq.r3": "<strong>Both.</strong> By default, signed URL on stdout (consistent with <code>doc url</code>). With <code>--output &lt;path&gt;</code>, we fetch + write the PDF locally. Better for agents.",
+      "oq.q4": "Do we need a <code>convocation list</code> command that shows all AccessTokens of an AG (for bounce debugging)?",
+      "oq.r4": "<strong>Yes</strong>, add it in CLI·F. It's the only reasonable way to answer \"why didn't owner X get their convocation?\". Firestore REST read + secret masking.",
+      "oq.q5": "Should we store the <code>--copro-id</code> default in <code>config.json</code> so we don't retype it?",
+      "oq.r5": "<strong>Yes</strong>, via a <code>syndicable use-copro &lt;id&gt;</code> command (or a flag on <code>use</code>). Avoids polluting every line. Add it in CLI·F if time allows, otherwise CLI·G.",
+      "oq.q6": "Should the <code>test:assembly-happy-path</code> smoke also test token mode (<code>vote cast</code> with a secret extracted from the email)?",
+      "oq.r6": "<strong>No in CLI·F</strong>, yes in CLI·G. Pulling a magic-link secret needs either an email fixture or a direct AccessToken read (admin SDK). We use <code>syndicCastVote</code> in CLI·F and add the token-mode test once the backend test framework allows it.",
+      "oq.q7": "Is the <code>convocation validate</code> wrapper actually useful, or pure debt?",
+      "oq.r7": "Useful for debugging: \"does this token still work? has it been revoked?\". Keep it in CLI·F but tag it \"debug-only\" in the description. Not in the smoke test.",
+
+      "annex.eyebrow": "10 · Annex — files touched",
+      "annex.h2": "The exact list on the <code>syndicable-cli/</code> side.",
+      "annex.intro": "Six new command folders (one per group) + two modifications of shared files (<code>CF</code> registry, inline DTO types). No modification to <code>callable.ts</code>, <code>auth.ts</code>, <code>config.ts</code>, <code>firebase.ts</code> — V1.0's infra supports the new surface as-is. The only potential infra add: a <code>watch.ts</code> helper for Firestore REST polling.",
+      "annex.tag.new": "NEW",
+      "annex.tag.mod": "MOD",
+      "annex.tag.cfg": "CFG",
+      "annex.f1": "7 files — Phase A + C wrappers + D reads for AG-level commands.",
+      "annex.f2": "8 files — Phase A + C wrappers + D read for the resolution sub-group.",
+      "annex.f3": "4 files — Phase B + a <code>list</code> read added per §09 q04.",
+      "annex.f4": "1 file — procuration sub-group.",
+      "annex.f5": "5 files — Phase C + D read.",
+      "annex.f6": "3 files — Phase C + D read.",
+      "annex.f7": "4 files — Phase E (CLI·G).",
+      "annex.f8": "1 file — V1.1.5 (CLI·G), grafted on the existing <code>owner</code> group.",
+      "annex.f9": "End-to-end V1.1 smoke test, modeled on <code>test/happy-path.ts</code>.",
+      "annex.f10": "2-s Firestore REST polling helper for the <code>--watch</code> flag + diff printer.",
+      "annex.f11": "Add the ~26 new names to the <code>CF</code> registry (order + per-feature comments).",
+      "annex.f12": "Inline Input/Output DTOs for each wrapped CF (backend provenance in comments).",
+      "annex.f13": "Register the 6 new <code>Command</code> groups + 1 owner-group extension.",
+      "annex.f14": "Read helpers <code>readAssembly</code>, <code>listAssemblies</code>, <code>readResolution</code>, <code>listAttendance</code>, <code>listVotes</code>, <code>listAccessTokens</code>.",
+      "annex.f15": "New \"V1.1 commands\" section in the catalog; bump to <code>0.3.0</code> (CLI·F) then <code>0.4.0</code> (CLI·G).",
+      "annex.f16": "No new dependency expected; <code>commander</code> + <code>firebase</code>; CLI stays Admin-SDK-free.",
+
+      "colo.eyebrow": "11 · Colophon",
+      "colo.h2": "What this plan is — and what it isn't.",
+      "colo.p1": "This is the design of the CLI surface for V1.1 + V1.1.5. It is not a code patch — no file in <code>syndicable-cli/</code> is modified by reading it. It is not a delivery commitment in N days — phasing assumes one focused implementer, and each phase can breathe if the backend shifts.",
+      "colo.p2": "What this article freezes: the <em>shape</em>. Six new command groups, 28 rows in the CF→CLI table, two auth modes, three output idioms. Code starts on sign-off. If something in the shape is off — a group name, an auth boundary, a missing flag, a misanswered open question — now is the time to flag it, before CLI·F starts.",
+      "colo.p3": "What is <em>not</em> covered: anything in §02's OUT column. Scripted multi-CF flows, trigger wrappers, service-account auth, REPL. All of those are V1.2 or later. CLI·F + CLI·G ship the bare minimum for a nightly support agent to run a full AG without opening a browser — and that is exactly the bar we're aiming for.",
+
+      "miniNav.article": "Article",
+      "miniNav.plan": "Plan",
+      "miniNav.roadmap": "Roadmap",
+      "miniNav.ownerView": "Owner view",
+      "miniNav.cli": "CLI",
+      "miniNav.testing": "Testing",
+
+      "footer.updated": "Syndicable V1.1+CLI — last updated 2026-05-09."
+    },
+
+    fr: {
+      "meta.title": "Syndicable V1.1+CLI — Toutes les Cloud Functions au terminal",
+      "meta.description": "Le plan d'extension du CLI Syndicable pour V1.1 + V1.1.5 : un wrapper par Cloud Function, deux modes d'authentification, sortie humaine / JSON / watch.",
+
+      "lang.label": "Langue",
+      "lang.aria": "Basculer la langue entre français et anglais",
+
+      "nav.eyebrow": "Sections",
+      "nav.thesis": "La thèse",
+      "nav.scope": "Périmètre",
+      "nav.choices": "Architecture",
+      "nav.tree": "L'arborescence",
+      "nav.table": "Table des commandes",
+      "nav.auth": "Auth + flags",
+      "nav.brugmann": "Brugmann depuis le CLI",
+      "nav.phasing": "Phasage",
+      "nav.openQuestions": "Questions ouvertes",
+      "nav.annex": "Annexe — fichiers touchés",
+      "nav.colophon": "Colophon",
+
+      "hero.pill.module": "Module&nbsp;·&nbsp;Surface&nbsp;CLI",
+      "hero.title": "Toutes les fonctions Cloud, accessibles depuis le terminal.",
+      "hero.sub": "V1.0 a livré 23 wrappers callables dans le CLI. V1.1 ajoute ~25 Cloud Functions (assemblées, convocations, session live, PV) ; V1.1.5 en ajoute une dernière (<code>getMyVoteLink</code>). Ce plan dit lesquelles passent dans le CLI, sous quels noms, avec quels flags, et sous quel régime d'authentification.",
+
+      "thesis.eyebrow": "01 · La thèse",
+      "thesis.h2": "Si une fonction Cloud existe, on doit pouvoir l'appeler depuis le terminal.",
+      "thesis.p1": "Le CLI <code>syndicable</code> existe pour trois usages : <strong>scripter</strong> les tâches répétitives (création de copro, import de lots, smoke test bout-en-bout), <strong>tester</strong> les Cloud Functions sans devoir cliquer dans la PWA, et <strong>déboguer</strong> les opérations de prod / staging quand l'UI ne suffit pas. V1.0 a tenu cette promesse pour les 23 fonctions livrées en Phase 5–14. V1.1 multiplie la surface par deux. Si on ne suit pas, le CLI devient un musée.",
+      "thesis.p2": "Le test mental est simple : un agent LLM ou un opérateur humain doit pouvoir, en enchaînant des commandes <code>syndicable</code>, dérouler une AG complète sur staging — de la création de l'assemblée à la distribution du PV — sans jamais ouvrir un navigateur. C'est ce que fait <code>test:happy-path</code> aujourd'hui pour V1.0 ; ce plan définit son équivalent pour V1.1.",
+      "thesis.p3": "Le persona qui ancre ce travail, c'est <strong>l'agent de support qui doit reproduire un bug de Brugmann à 22h</strong>. Si chaque CF a son wrapper CLI, l'agent n'a besoin que d'un terminal et de son token de login. Si la moitié manque, il doit ouvrir la PWA, se connecter, naviguer, cliquer — pendant que le client attend. L'investissement d'aujourd'hui, c'est l'autonomie opérationnelle de demain.",
+
+      "scope.eyebrow": "02 · Périmètre",
+      "scope.h2": "Ce qui sort en V1.1+CLI — et ce qui ne sort pas.",
+      "scope.intro": "Pas de surprise ici : on suit la liste exhaustive des nouveaux exports de <code>functions/src/index.ts</code> (V1.1 phases A à E + V1.1.5 phase G) et on ajoute quelques commandes de lecture quand elles rendent service. Tout le reste est différé.",
+      "scope.in.title": "Inclus · livré en V1.1+CLI",
+      "scope.in.li1": "Un wrapper par CF nouvelle de V1.1 (~25) + V1.1.5 (1)",
+      "scope.in.li2": "Quelques commandes de lecture utiles : <code>assembly show</code>, <code>assembly list</code>, <code>vote show</code>, <code>attendance show</code>",
+      "scope.in.li3": "Deux modes d'authentification : login persistant (syndic) + flag <code>--token</code> (public)",
+      "scope.in.li4": "Trois idiomes de sortie : humain par défaut, <code>--json</code> pour scripts, <code>--watch</code> pour les flux temps réel",
+      "scope.in.li5": "Profile multi-staging cohérent avec V1.0 (<code>--profile</code> sur toutes les commandes)",
+      "scope.in.li6": "Mise à jour du registre <code>CF</code> dans <code>src/lib/functions.ts</code> (+ types DTO inlined dans <code>src/types/syndicable-app-types.ts</code>)",
+      "scope.in.li7": "Smoke test <code>test:assembly-happy-path</code> — équivalent V1.1 du <code>test:happy-path</code> existant",
+      "scope.out.title": "Hors · pas dans V1.1+CLI",
+      "scope.out.li1": "Flux scriptés multi-CF (« lance une AG complète en une commande ») — l'utilisateur les compose en bash",
+      "scope.out.li2": "Wrappers pour les triggers Firestore (<code>onAssemblyWritten</code>, <code>onResolutionWritten</code>, <code>onVoteWritten</code>, <code>cleanupStaleAttendance</code>) — non callables",
+      "scope.out.li3": "<code>heartbeat</code> en commande dédiée — usage interne du voter PWA, pas un cas-d'usage CLI",
+      "scope.out.li4": "Service-account auth — Firebase user OTP uniquement, comme V1.0",
+      "scope.out.li5": "REPL interactif, scripts de complétion shell — déjà OUT en V1.0",
+      "scope.out.li6": "Tests unitaires par commande — on s'appuie sur le smoke happy-path",
+      "scope.out.li7": "Réception d'e-mails de convocation côté CLI — on assume que l'opérateur va lire son inbox",
+
+      "choices.eyebrow": "03 · Architecture",
+      "choices.h2": "Trois choix dont le reste du plan découle.",
+      "choices.intro": "Trois bifurcations actées, qui coupent court aux discussions de design pendant l'implémentation. Le phasage et l'annexe partent de l'hypothèse que ces trois choix sont pris.",
+      "choices.c1.num": "CHOIX&nbsp;01",
+      "choices.c1.h3": "Mirroir 1:1 du backend.",
+      "choices.c1.p1": "Une commande CLI par Cloud Function. Pas d'orchestration côté CLI ; pas de macros qui appellent trois CFs en chaîne. Si l'utilisateur veut « envoyer la convocation et ouvrir la première résolution dans la même action », il écrit deux lignes de bash — le CLI ne se substitue pas à un agent.",
+      "choices.c1.p2": "Avantage : zéro surface d'intelligence côté CLI. Quand le backend renomme un paramètre, on met à jour le wrapper et c'est tout. Pas de macro à débugger, pas de divergence sémantique. C'est exactement le pattern de V1.0 — on le prolonge.",
+      "choices.c2.num": "CHOIX&nbsp;02",
+      "choices.c2.h3": "Deux modes d'authentification cohabitent.",
+      "choices.c2.p1": "Le CLI gère deux régimes d'auth qui ne se mélangent jamais. <strong>Mode A (syndic)</strong> : login OTP persisté dans <code>~/.config/syndicable/config.json</code>, ID token attaché automatiquement à chaque appel. C'est l'existant V1.0, intact. Concerne tout ce qui est syndic-only : <code>createAssembly</code>, <code>sendConvocation</code>, <code>startAssembly</code>, <code>generatePvDraft</code>...",
+      "choices.c2.p2": "<strong>Mode B (token public)</strong> : flag explicite <code>--token &lt;secret&gt;</code> sur la ligne de commande. Pas de login requis, pas de persistance. Concerne les CFs de la voter page : <code>validateToken</code>, <code>joinAssembly</code>, <code>leaveAssembly</code>, <code>castVote</code>. Le secret transite en clair dans l'historique shell — ce n'est pas un secret long-terme, c'est le même genre de jetable que la magic link e-mail.",
+      "choices.c2.p3": "Question ouverte (§09 q01) : doit-on permettre au mode A d'invoquer aussi <code>castVote</code> au nom du syndic, sans <code>--token</code> ? Il existe déjà <code>syndicCastVote</code> côté backend pour ça — donc la réponse de bon sens est non, on garde la frontière nette.",
+      "choices.c3.num": "CHOIX&nbsp;03",
+      "choices.c3.h3": "Sortie : humain / JSON / watch.",
+      "choices.c3.p1": "Trois idiomes de sortie, appliqués partout où c'est pertinent. <code>--json</code> existe déjà sur toutes les commandes V1.0 ; on le garde. <strong>Nouveau pour V1.1</strong> : <code>--watch</code> sur les commandes de lecture qui suivent un état évolutif — <code>assembly show --watch</code>, <code>vote show --watch</code>, <code>attendance show --watch</code>. Sous le capot, polling Firestore REST toutes les 2 secondes (pas de listener SDK long-lived — on reste cohérent avec <code>callable.ts</code> qui n'utilise que <code>fetch</code>).",
+      "choices.c3.p2": "Le polling REST n'est pas du « vrai » streaming, mais c'est suffisant pour observer une session AG en temps semi-réel depuis le terminal. La latence de 2 s est plus faible que la fréquence à laquelle un syndic ferait F5 dans le navigateur de toute façon. Question ouverte (§09 q02) : faudra-t-il passer à un listener SDK plus tard ? Probablement, si on observe des décalages en charge.",
+
+      "tree.eyebrow": "04 · L'arborescence",
+      "tree.h2": "Six nouveaux groupes de commandes.",
+      "tree.p1": "On greffe six nouveaux <code>Command</code> au programme principal, sans toucher aux neuf existants. Les noms de groupe (<code>assembly</code>, <code>convocation</code>, <code>attendance</code>, <code>vote</code>, <code>pv</code>, <code>owner</code>) suivent l'usage métier — pas les noms de feature backend (<code>assemblies</code>, <code>convocations</code>, <code>attendance</code>, <code>votes</code>, <code>pv</code>, <code>access-tokens</code>) — pour rester lisibles à voix haute lors d'un appel client.",
+
+      "table.eyebrow": "05 · La table des commandes",
+      "table.h2": "Mapping CF → CLI, exhaustif.",
+      "table.intro": "Une ligne par Cloud Function nouvelle ou commande de lecture. Les flags listés sont les principaux ; <code>--profile</code> et <code>--json</code> sont implicites partout. Auth : <span class=\"auth-pill syndic\">syndic</span> = login persisté requis ; <span class=\"auth-pill token\">token</span> = flag <code>--token</code> requis ; <span class=\"auth-pill either\">either</span> = les deux marchent (ex. <code>syndic-cast</code>) ; <span class=\"auth-pill read\">read</span> = lecture Firestore REST (login persisté).",
+      "table.th.phase": "Phase",
+      "table.th.cf": "Cloud Function",
+      "table.th.cli": "Commande CLI",
+      "table.th.flags": "Flags principaux",
+      "table.th.auth": "Auth",
+      "table.th.desc": "Description",
+      "table.r.createAssembly": "Crée une AG en statut <code>draft</code>.",
+      "table.r.updateAssembly": "Édite les méta d'une AG <code>draft</code> (titre, date, mode...).",
+      "table.r.cancelAssembly": "Annule une AG <code>draft</code> ou <code>convoked</code> (révoque les tokens).",
+      "table.r.addResolution": "Ajoute une résolution à l'agenda (AG <code>draft</code>).",
+      "table.r.updateResolution": "Édite une résolution <code>pending</code>.",
+      "table.r.removeResolution": "Supprime une résolution <code>pending</code>.",
+      "table.r.reorderResolutions": "Réordonne l'agenda (AG <code>draft</code>).",
+      "table.r.sendConvocation": "Passe l'AG en <code>convoked</code> ; émet un AccessToken par owner + e-mail.",
+      "table.r.resendConvocation": "Réémet le token + e-mail pour un seul owner (cas de bounce).",
+      "table.r.issueProcuration": "Émet un token de procuration scopé à un mandataire nommé.",
+      "table.r.revokeAccessToken": "Révoque un AccessToken par son ID (= hash du secret).",
+      "table.r.validateToken": "Valide un secret de magic link et imprime le contexte sanitized. Debug-only.",
+      "table.r.startAssembly": "Passe l'AG en <code>live</code>.",
+      "table.r.endAssembly": "Passe l'AG en <code>ended</code> (auto-clôture toute résolution ouverte).",
+      "table.r.openResolution": "Ouvre une résolution au vote (<code>pending → voting_open</code>).",
+      "table.r.closeResolution": "Clôture une résolution ; <code>--confirm-auto-default</code> répond au dialogue d'abstention auto.",
+      "table.r.skipResolution": "Marque une résolution comme passée sans vote (info-only).",
+      "table.r.joinAssembly": "Premier appel d'une session ; flag d'Attendance à <code>present_online</code>. Test-only.",
+      "table.r.leaveAssembly": "Sortie explicite ; Attendance à <code>left</code>. Test-only.",
+      "table.r.heartbeatNote": "(non exposé)",
+      "table.r.heartbeat": "Battement périodique de la voter PWA. Pas un cas-d'usage CLI ; non wrappé.",
+      "table.r.markInPerson": "Le syndic flippe l'Attendance d'un lot à <code>present_in_person</code>.",
+      "table.r.markLeft": "Le syndic flippe l'Attendance à <code>left</code>.",
+      "table.r.castVote": "Vote public (mode token). Le seul wrapper « voter » de la table.",
+      "table.r.syndicCastVote": "Vote syndic au nom d'un owner (privilège DV1).",
+      "table.r.readNote": "(lecture)",
+      "table.r.assemblyShow": "Détail d'une AG + agenda + jauge de quorum (calculée côté CLI).",
+      "table.r.assemblyList": "Liste les AG d'une copropriété avec statut + date.",
+      "table.r.resolutionShow": "Détail + tally d'une résolution (lecture du <code>tally</code> denormalisé après close).",
+      "table.r.attendanceShow": "Liste des Attendance par lot (état actuel, dernier heartbeat).",
+      "table.r.voteShow": "Liste les votes castés sur une résolution + totaux courants.",
+      "table.r.generatePv": "Construit le brouillon de PV depuis l'état AG (singleton <code>pv/document</code>).",
+      "table.r.updatePv": "Patch des sections free-text du PV.",
+      "table.r.exportPv": "Rend le PDF, upload Storage, retourne URL signée. <code>--output</code> télécharge en local.",
+      "table.r.distributePv": "E-mail le PDF du PV à tous les owners + flag distribué.",
+      "table.r.getVoteLink": "Régénère un secret frais + retourne l'URL <code>/vote/&lt;secret&gt;</code>. Mode owner OU syndic-aussi-copropriétaire.",
+      "table.outro": "<strong>Total :</strong> 28 lignes — 23 wrappers de Cloud Function (16 phases A–C + 4 phase E + 1 V1.1.5 + 2 procuration/access-token + <code>validateToken</code> debug) + 5 commandes de lecture phase D. Plus la note <code>heartbeat</code> non exposée.",
+
+      "auth.eyebrow": "06 · Auth + flags — exemples concrets",
+      "auth.h2": "Six exemples qui couvrent les six idiomes du CLI.",
+      "auth.p1": "Login OTP, création d'AG, envoi de convocation avec override 15 jours, vote token, génération + export du PV, lecture watch. Tout ce que l'agent de support nocturne aura besoin de connaître.",
+      "auth.p2": "<strong>Patterns récurrents.</strong> Toute commande syndic prend <code>--copro-id</code> (ou utilise le défaut configuré). Toute commande sur une AG prend <code>--assembly-id</code> ; toute commande sur une résolution ajoute <code>--resolution-id</code>. Les flags qui éditent du free-text long acceptent <code>--from-file</code> en alternative à un <code>--content</code> mono-ligne. Les flags d'override critiques (15-day-warning, force-close, etc.) sont nommés explicitement et n'ont pas de valeur par défaut implicite.",
+      "auth.p3": "<strong>Sortie.</strong> Par défaut, ligne d'OK colorée + résultat lisible. Avec <code>--json</code>, JSON strict sur stdout (parseable, scriptable). Avec <code>--watch</code>, polling 2 s ; signal SIGINT (Ctrl-C) pour arrêter ; chaque tick imprime soit un diff, soit un <code>(no change)</code> en gris.",
+
+      "brug.eyebrow": "07 · Brugmann depuis le CLI",
+      "brug.h2": "Une AG complète, du terminal, sans jamais ouvrir le navigateur.",
+      "brug.p1": "Pour vérifier que la surface CLI tient debout, on déroule l'AG Brugmann 2026 entièrement depuis le shell. Login, création, agenda, convocation, démarrage, vote, fermeture, PV, distribution. Une seule session bash, une seule AG.",
+      "brug.p2": "Le scénario tient en une trentaine de lignes de bash. Si <code>test:assembly-happy-path</code> (smoke test scripté) reproduit ces étapes en mode JSON sans intervention humaine, la surface CLI est validée. C'est le seul critère <em>go/no-go</em> de la phase CLI·F.",
+      "brug.p3": "Ce que ce scénario ne montre pas : le mode token (utilisé par les copropriétaires eux-mêmes — pas par le syndic) et la commande <code>owner vote-link</code> de V1.1.5 (qui s'invoque depuis un compte copropriétaire authentifié, pas depuis le compte syndic). Les deux entrent en jeu uniquement quand on simule un copropriétaire end-to-end avec son propre profil <code>--profile</code>.",
+
+      "phase.eyebrow": "08 · Phasage",
+      "phase.h2": "Deux phases d'implémentation, alignées sur le backend.",
+      "phase.intro": "Le CLI suit le backend de près mais pas trop. On groupe les wrappers en deux vagues : la grosse (CLI·F, en parallèle de l'arrivée de Phase D côté backend) et la petite (CLI·G, après la Phase E + la V1.1.5). Pas de raison de fragmenter plus.",
+      "phase.F.tag": "CLI·F",
+      "phase.F.h3": "Wrappers A → C + lectures D",
+      "phase.F.p": "19 wrappers (createAssembly..syndicCastVote, hors PV) + 5 commandes de lecture (assembly show/list, resolution show, attendance show, vote show) + le smoke test. Vérification : <code>test:assembly-happy-path --cleanup</code> exécute le scénario Brugmann en JSON sans erreur, en moins d'une minute, et nettoie ses traces. Mise à jour des types DTO + du registre <code>CF</code>.",
+      "phase.G.tag": "CLI·G",
+      "phase.G.h3": "Wrappers E + V1.1.5",
+      "phase.G.p": "4 wrappers PV (generate, update-text, export, distribute) + 1 wrapper V1.1.5 (owner vote-link). Plus petit, plus tard. Vérification : depuis le scénario Brugmann CLI·F, on peut maintenant exécuter pv generate → pv export → pv distribute en bout de chaîne, et dans une session séparée logguée comme copropriétaire, owner vote-link retourne une URL <code>/vote/&lt;secret&gt;</code> valide.",
+      "phase.outro": "<em>CLI·F = ~3-4 jours d'un implémenteur concentré (24 commandes). CLI·G = ~1 jour (5 commandes).</em>",
+
+      "oq.eyebrow": "09 · Questions ouvertes",
+      "oq.h2": "Sept points à trancher avant ou pendant l'implémentation.",
+      "oq.intro": "Aucune ne bloque CLI·F. Chacune se résout au moment où la commande qui la rencontre est codée. La recommandation est ma meilleure lecture actuelle ; la décision finale revient au reviewer.",
+      "oq.th.num": "#",
+      "oq.th.q": "Question",
+      "oq.th.r": "Recommandation",
+      "oq.q1": "Le mode A (login persisté) doit-il aussi accepter <code>vote cast</code> sans <code>--token</code>, pour faciliter le test syndic ?",
+      "oq.r1": "<strong>Non.</strong> <code>syndicCastVote</code> existe précisément pour ça côté backend. On garde la frontière nette : <code>vote cast</code> = mode token public exclusivement.",
+      "oq.q2": "Le flag <code>--watch</code> utilise-t-il un listener Firestore SDK ou du polling REST ?",
+      "oq.r2": "<strong>Polling REST 2 s</strong> par défaut. Reste cohérent avec l'architecture <code>callable.ts</code> (fetch-only). Un listener SDK long-lived demanderait de garder le module Firebase Web SDK chaud — pas un investissement justifié pour V1.1.",
+      "oq.q3": "<code>pv export</code> : sauvegarder en local (<code>--output</code>) ou retourner l'URL signée ?",
+      "oq.r3": "<strong>Les deux.</strong> Par défaut, URL signée sur stdout (cohérent avec <code>doc url</code>). Avec <code>--output &lt;path&gt;</code>, on télécharge via fetch + écrit le PDF localement. Plus pratique pour les agents.",
+      "oq.q4": "Faut-il une commande <code>convocation list</code> qui affiche tous les AccessTokens d'une AG (pour debug bounces) ?",
+      "oq.r4": "<strong>Oui</strong>, à ajouter dans CLI·F. C'est la seule façon raisonnable de répondre à « pourquoi tel owner n'a pas reçu sa convocation ». Lecture Firestore REST + masquage des secrets.",
+      "oq.q5": "Doit-on stocker le <code>--copro-id</code> par défaut dans <code>config.json</code> pour ne plus le retaper ?",
+      "oq.r5": "<strong>Oui</strong>, via une commande <code>syndicable use-copro &lt;id&gt;</code> (ou un flag de <code>use</code>). Évite de polluer chaque ligne. À ajouter en CLI·F si le temps le permet, sinon en CLI·G.",
+      "oq.q6": "Le smoke test <code>test:assembly-happy-path</code> doit-il aussi tester le mode token (<code>vote cast</code> avec un secret extrait du e-mail) ?",
+      "oq.r6": "<strong>Non en CLI·F</strong>, oui en CLI·G. Récupérer un secret de magic link demande soit un email-fixture soit une lecture directe d'AccessToken (admin SDK). On utilise <code>syndicCastVote</code> dans CLI·F et on ajoute le test mode-token quand le test framework du backend le permet.",
+      "oq.q7": "Le wrapper <code>convocation validate</code> est-il vraiment utile, ou pure dette ?",
+      "oq.r7": "Utile pour debug : « ce token marche-t-il toujours ? est-ce qu'il a été révoqué ? ». À garder dans CLI·F mais marqué « debug-only » dans la description. Pas dans le smoke test.",
+
+      "annex.eyebrow": "10 · Annexe — fichiers touchés",
+      "annex.h2": "La liste exacte côté <code>syndicable-cli/</code>.",
+      "annex.intro": "Six nouveaux dossiers de commandes (un par groupe) + deux modifications de fichiers partagés (registre <code>CF</code>, types DTO inline). Pas de modification de <code>callable.ts</code>, <code>auth.ts</code>, <code>config.ts</code>, <code>firebase.ts</code> — l'infra de V1.0 supporte la nouvelle surface telle quelle. Le seul ajout potentiel d'infra : un helper <code>watch.ts</code> pour le polling Firestore REST.",
+      "annex.tag.new": "NEW",
+      "annex.tag.mod": "MOD",
+      "annex.tag.cfg": "CFG",
+      "annex.f1": "7 fichiers — wrappers Phase A + C + lectures D pour les commandes de niveau AG.",
+      "annex.f2": "8 fichiers — wrappers Phase A + C + lecture D pour le sous-groupe résolution.",
+      "annex.f3": "4 fichiers — Phase B + commande <code>list</code> (lecture) ajoutée par §09 q04.",
+      "annex.f4": "1 fichier — sous-groupe procuration.",
+      "annex.f5": "5 fichiers — Phase C + lecture D.",
+      "annex.f6": "3 fichiers — Phase C + lecture D.",
+      "annex.f7": "4 fichiers — Phase E (CLI·G).",
+      "annex.f8": "1 fichier — V1.1.5 (CLI·G), greffé sur le groupe <code>owner</code> existant.",
+      "annex.f9": "Smoke test bout-en-bout V1.1, calqué sur <code>test/happy-path.ts</code>.",
+      "annex.f10": "Helper polling Firestore REST 2 s pour le flag <code>--watch</code> + diff printer.",
+      "annex.f11": "Ajout des ~26 nouveaux noms au registre <code>CF</code> (ordre + commentaires par feature).",
+      "annex.f12": "Inline des DTO Input/Output pour chaque CF wrappée (provenance backend en commentaire).",
+      "annex.f13": "Enregistrement des 6 nouveaux groupes <code>Command</code> + 1 extension du groupe owner.",
+      "annex.f14": "Helpers de lecture <code>readAssembly</code>, <code>listAssemblies</code>, <code>readResolution</code>, <code>listAttendance</code>, <code>listVotes</code>, <code>listAccessTokens</code>.",
+      "annex.f15": "Nouvelle section « V1.1 commands » dans le catalog ; bump à <code>0.3.0</code> (CLI·F) puis <code>0.4.0</code> (CLI·G).",
+      "annex.f16": "Aucune nouvelle dépendance attendue ; <code>commander</code> + <code>firebase</code> ; le CLI reste sans Admin SDK.",
+
+      "colo.eyebrow": "11 · Colophon",
+      "colo.h2": "Ce qu'est ce plan — et ce qu'il n'est pas.",
+      "colo.p1": "C'est la conception de la surface CLI pour V1.1 + V1.1.5. Ce n'est pas un patch — aucun fichier de <code>syndicable-cli/</code> n'est modifié par sa lecture. Ce n'est pas un engagement de livraison à N jours — le phasage suppose un implémenteur concentré, et chaque phase peut respirer si le backend bouge.",
+      "colo.p2": "Ce que cet article fige : la <em>forme</em>. Six nouveaux groupes de commandes, 28 lignes dans la table CF→CLI, deux modes d'authentification, trois idiomes de sortie. Le code commence à la validation. Si quelque chose dans la forme cloche — un nom de groupe, une frontière d'auth, un flag manquant, une question ouverte mal tranchée — c'est maintenant qu'il faut le dire, avant que CLI·F ne démarre.",
+      "colo.p3": "Ce qui n'est <em>pas</em> couvert : tout ce qui est dans la colonne OUT du §02. Les flux scriptés multi-CF, les wrappers de triggers, le service-account auth, le REPL. Autant de pistes pour V1.2 ou plus tard. CLI·F + CLI·G livrent le minimum suffisant pour qu'un agent de support nocturne puisse dérouler une AG complète sans ouvrir le navigateur — et c'est exactement la barre qu'on cherche.",
+
+      "miniNav.article": "Article",
+      "miniNav.plan": "Plan",
+      "miniNav.roadmap": "Feuille de route",
+      "miniNav.ownerView": "Vue copropriétaire",
+      "miniNav.cli": "CLI",
+      "miniNav.testing": "Tests",
+
+      "footer.updated": "Syndicable V1.1+CLI — dernière mise à jour 2026-05-09."
+    }
+  };
+</script>
+
+<script src="app.js" defer></script>
+
+</body>
+</html>

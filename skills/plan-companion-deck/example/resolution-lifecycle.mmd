@@ -1,0 +1,9 @@
+stateDiagram-v2
+    [*] --> pending: created in agenda
+    pending --> pending: edit (title, description, threshold, key, order)
+    pending --> voting_open: openResolution (only when session.state='live')
+    voting_open --> voting_open: vote cast / re-cast / late-join
+    voting_open --> voting_closed: closeResolution (with confirm-on-incomplete)
+    pending --> skipped: syndic explicitly marks information-only
+    voting_closed --> [*]
+    skipped --> [*]

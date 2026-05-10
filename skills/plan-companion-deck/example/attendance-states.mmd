@@ -1,0 +1,13 @@
+stateDiagram-v2
+    [*] --> absent: AG starts; no token used yet
+    absent --> present_online: validateToken first time
+    absent --> present_in_person: syndic manually marks
+    present_online --> present_online: heartbeat keeps lastActiveAt fresh
+    present_online --> left: explicit Quitter OR heartbeat lapses >3min
+    present_in_person --> left: syndic manually marks
+    left --> present_online: token re-used (re-join)
+    left --> present_in_person: syndic manually re-marks
+    present_online --> [*]: AG ends
+    present_in_person --> [*]: AG ends
+    left --> [*]: AG ends
+    absent --> [*]: AG ends (never joined)

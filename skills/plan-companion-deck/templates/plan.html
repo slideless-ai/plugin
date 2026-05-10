@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title data-i18n-key="meta.title">PROJECT — Full Plan</title>
+<meta name="description" data-i18n-key-attr="content" data-i18n-key="meta.description" content="The canonical PROJECT plan, rendered from the source markdown." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<script src="marked.min.js" defer></script>
+<script>
+  // Pre-paint language resolver — same key as article.html + roadmap.html.
+  (function () {
+    try {
+      var saved = window.localStorage.getItem('plan-companion.lang');
+      if (saved !== 'en' && saved !== 'fr') saved = 'en';
+      document.documentElement.setAttribute('lang', saved);
+      document.documentElement.setAttribute('data-lang', saved);
+    } catch (e) {
+      document.documentElement.setAttribute('lang', 'en');
+      document.documentElement.setAttribute('data-lang', 'en');
+    }
+  })();
+</script>
+</head>
+<body>
+
+<header class="miniNav" aria-label="Deck pages">
+  <div class="miniNav-inner">
+    <span class="miniNav-mark"><span class="nav-dot"></span><span>PROJECT</span></span>
+    <nav class="miniNav-tabs" aria-label="Sibling pages">
+      <a class="miniNav-tab" href="./article.html" data-i18n-key="miniNav.article">Article</a>
+      <a class="miniNav-tab is-current" href="./plan.html" aria-current="page" data-i18n-key="miniNav.plan">Plan</a>
+      <a class="miniNav-tab" href="./roadmap.html" data-i18n-key="miniNav.roadmap">Roadmap</a>
+    </nav>
+    <div class="miniNav-lang">
+      <button
+        type="button"
+        class="lang-switch"
+        id="lang-switch"
+        role="switch"
+        aria-checked="false"
+        aria-label="Switch language between English and French"
+        data-i18n-key-attr="aria-label"
+        data-i18n-key="lang.aria"
+      >
+        <span data-lang-opt="en">EN</span>
+        <span data-lang-opt="fr">FR</span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<div class="shell">
+
+  <aside class="toc" aria-label="Plan sections">
+    <div class="toc-eyebrow" data-i18n-key="toc.eyebrow">Sections</div>
+    <ol id="toc-list">
+      <li><a href="#" class="toc-loading" data-i18n-key="toc.loading">Loading…</a></li>
+    </ol>
+  </aside>
+
+  <main class="padded">
+    <header class="page-header">
+      <span class="page-eyebrow" data-i18n-key="page.eyebrow">Canonical plan</span>
+      <h1 class="page-title" data-i18n-key="page.title">PROJECT — full implementation plan.</h1>
+      <p class="page-sub" data-i18n-key="page.sub">
+        The source plan, rendered straight from the markdown file the article is built from. No new tab, no download.
+      </p>
+      <p class="page-note" data-i18n-key="page.note">
+        <em>The plan is maintained in English; this rendering is the canonical version.</em>
+      </p>
+    </header>
+
+    <article class="plan-rendered" id="plan-rendered">
+      <p class="plan-loading" data-i18n-key="plan.loading">Loading the plan…</p>
+    </article>
+
+    <aside class="source-strip">
+      <p class="source-strip-text" data-i18n-key="source.text">
+        Need the raw markdown for an agent or for diffing? Open the source file directly.
+      </p>
+      <!-- Update the href to your plan markdown filename. -->
+      <a class="source-link" href="./plan.md" target="_blank" rel="noopener">
+        <span data-i18n-key="source.link">Source markdown</span>
+        <span class="source-link-icon" aria-hidden="true">↗</span>
+      </a>
+    </aside>
+  </main>
+
+</div>
+
+<footer>
+  <div data-i18n-key="footer.updated">PROJECT — last updated YYYY-MM-DD.</div>
+</footer>
+
+<script>
+  window.I18N = {
+    en: {
+      "meta.title": "PROJECT — Full Plan",
+      "meta.description": "The canonical PROJECT plan, rendered from the source markdown.",
+
+      "lang.aria": "Switch language between English and French",
+
+      "miniNav.article": "Article",
+      "miniNav.plan": "Plan",
+      "miniNav.roadmap": "Roadmap",
+
+      "toc.eyebrow": "Sections",
+      "toc.loading": "Loading…",
+
+      "page.eyebrow": "Canonical plan",
+      "page.title": "PROJECT — full implementation plan.",
+      "page.sub": "The source plan, rendered straight from the markdown file the article is built from. No new tab, no download.",
+      "page.note": "<em>The plan is maintained in English; this rendering is the canonical version.</em>",
+
+      "plan.loading": "Loading the plan…",
+      "plan.unavailable": "Plan unavailable",
+
+      "source.text": "Need the raw markdown for an agent or for diffing? Open the source file directly.",
+      "source.link": "Source markdown",
+
+      "footer.updated": "PROJECT — last updated YYYY-MM-DD."
+    },
+
+    fr: {
+      "meta.title": "PROJECT — Plan complet",
+      "meta.description": "Le plan PROJECT canonique, rendu depuis le markdown source.",
+
+      "lang.aria": "Basculer la langue entre français et anglais",
+
+      "miniNav.article": "Article",
+      "miniNav.plan": "Plan",
+      "miniNav.roadmap": "Feuille de route",
+
+      "toc.eyebrow": "Sommaire",
+      "toc.loading": "Chargement…",
+
+      "page.eyebrow": "Plan canonique",
+      "page.title": "PROJECT — plan d'implémentation complet.",
+      "page.sub": "Le plan source, rendu directement depuis le fichier markdown qui sert de référence à l'article. Aucun nouvel onglet, aucun téléchargement.",
+      "page.note": "<em>The plan is maintained in English; this rendering is the canonical version.</em>",
+
+      "plan.loading": "Chargement du plan…",
+      "plan.unavailable": "Plan indisponible",
+
+      "source.text": "Besoin du markdown brut pour un agent ou pour faire un diff ? Ouvrez le fichier source directement.",
+      "source.link": "Markdown source",
+
+      "footer.updated": "PROJECT — dernière mise à jour YYYY-MM-DD."
+    }
+  };
+</script>
+
+<script src="app.js" defer></script>
+
+<script>
+  // ───────── Markdown render + TOC build ─────────
+  // CHANGE the fetch path below ('plan.md') to your actual plan markdown.
+  (function () {
+    var PLAN_FILE = 'plan.md'; // <-- update this to your plan filename
+
+    var target = document.getElementById('plan-rendered');
+    var tocList = document.getElementById('toc-list');
+    if (!target) return;
+
+    function escapeHtml(s) {
+      return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function slugify(s) {
+      return String(s)
+        .toLowerCase()
+        .replace(/<[^>]+>/g, '')
+        .replace(/&[a-z0-9#]+;/gi, ' ')
+        .replace(/[^a-z0-9\s-]/g, '')
+        .trim()
+        .replace(/\s+/g, '-')
+        .slice(0, 80);
+    }
+
+    function buildToc() {
+      if (!tocList) return;
+      var h2s = target.querySelectorAll('h2');
+      if (!h2s.length) {
+        tocList.innerHTML = '';
+        return;
+      }
+      var html = '';
+      for (var i = 0; i < h2s.length; i++) {
+        var h = h2s[i];
+        var id = h.id;
+        if (!id) continue;
+        var label = h.textContent.replace(/^\s*\d+\.\s*/, '').trim();
+        html += '<li><a href="#' + id + '">' + escapeHtml(label) + '</a></li>';
+      }
+      tocList.innerHTML = html;
+      if (window.SyndDeck && window.SyndDeck.wireSectionHighlight) {
+        window.SyndDeck.wireSectionHighlight();
+      }
+    }
+
+    function renderWhenReady() {
+      if (typeof window.marked === 'undefined' || !window.marked.parse) {
+        return window.requestAnimationFrame(renderWhenReady);
+      }
+
+      var renderer = new window.marked.Renderer();
+      var slugCounts = {};
+
+      // Heading IDs prefixed with `plan--` so they can't collide with the
+      // article page's anchors.
+      renderer.heading = function (token) {
+        var depth = token.depth;
+        var rawText = token.text || '';
+        var text = this.parser.parseInline(token.tokens);
+        var base = slugify(rawText) || ('heading-' + depth);
+        slugCounts[base] = (slugCounts[base] || 0) + 1;
+        var id = 'plan--' + base + (slugCounts[base] > 1 ? '-' + slugCounts[base] : '');
+        return '<h' + depth + ' id="' + id + '">' + text + '</h' + depth + '>';
+      };
+
+      renderer.code = function (token) {
+        var lang = (token.lang || '').trim().split(/\s+/)[0];
+        var code = escapeHtml(token.text || '');
+        var attr = lang ? ' data-lang="' + escapeHtml(lang) + '"' : '';
+        var classAttr = lang ? ' class="language-' + escapeHtml(lang) + '"' : '';
+        return '<pre' + attr + '><code' + classAttr + '>' + code + '</code></pre>';
+      };
+
+      window.marked.use({ renderer: renderer, gfm: true, breaks: false });
+
+      fetch(PLAN_FILE, { credentials: 'same-origin' })
+        .then(function (res) {
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          return res.text();
+        })
+        .then(function (md) {
+          // Strip a leading YAML front-matter block, if any.
+          var stripped = md.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n+/, '');
+          target.innerHTML = window.marked.parse(stripped);
+          buildToc();
+          if (window.location.hash) {
+            var el = document.getElementById(window.location.hash.slice(1));
+            if (el && el.scrollIntoView) {
+              el.scrollIntoView({ block: 'start', behavior: 'auto' });
+            }
+          }
+        })
+        .catch(function (err) {
+          var lang = (window.SyndDeck && window.SyndDeck.currentLang())
+            ? window.SyndDeck.currentLang()
+            : 'en';
+          var label = (window.I18N[lang] && window.I18N[lang]['plan.unavailable']) || 'Plan unavailable';
+          target.innerHTML =
+            '<p class="plan-loading">' + label + ' (' +
+            escapeHtml(err && err.message ? err.message : 'fetch failed') +
+            ').</p>';
+          if (tocList) tocList.innerHTML = '';
+        });
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', renderWhenReady);
+    } else {
+      renderWhenReady();
+    }
+  })();
+</script>
+
+</body>
+</html>
