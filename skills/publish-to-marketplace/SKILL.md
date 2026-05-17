@@ -24,7 +24,7 @@ If the deck was created with `remix-template`, publishing **automatically record
 | `tags` | optional | Comma-separated tags for search/filtering (e.g. `pitch,saas,dark`). |
 | `stack` | optional | Tech stack: lowercase technology slugs, comma-separated (e.g. `nextjs,firebase,n8n`). One slug per technology — no display names, no version numbers. Free-form (any slug is accepted); maps to the listing's `techStack`. |
 | `category` | optional | Single category bucket (e.g. `pitch-decks`, `utilities`). |
-| `version` | optional | Which pushed version to publish. Defaults to the deck's latest version. |
+| `to_version` | optional | Which pushed version to publish (`--to-version N`). Defaults to the deck's latest version. |
 
 ## Prerequisites
 
@@ -38,7 +38,7 @@ If the deck was created with `remix-template`, publishing **automatically record
 1. Verify the CLI + auth (`slideless --version`, `slideless whoami`). Confirm `marketplace:publish` is in scopes.
 2. Confirm `slideless.json` exists in the current directory. If it doesn't, the deck isn't pushed — stop and run `push-presentation`.
 3. Decide `kind` with the user if unclear: a deck to view → `presentation`; a self-contained interactive HTML app → `app`; an agent-executable build plan → `plan`. Remind them it's permanent.
-4. Run `slideless publish --kind <presentation|app|plan> --description "…" [--slug …] [--title "…"] [--tags a,b,c] [--stack a,b,c] [--category …] [--version N] --json`.
+4. Run `slideless publish --kind <presentation|app|plan> --description "…" [--slug …] [--title "…"] [--tags a,b,c] [--stack a,b,c] [--category …] [--to-version N] --json`.
 5. Parse JSON. Report the `slug`, the public `marketplace/<slug>` URL, and the published `version`.
 
 ## Expected response

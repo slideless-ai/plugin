@@ -7,7 +7,7 @@ description: Mint a viewer URL for an existing slideless presentation. Use this 
 
 Wraps `slideless share <id>`. In v0.5, **share** means "grant view access by URL". Uploading content is handled by `push-presentation`. This skill only mints a named token.
 
-Every token is independently revocable. By default tokens follow the latest version; `--pin <version>` freezes the recipient on a specific version.
+Every token is independently revocable. By default tokens follow the latest version; `--to-version <N>` freezes the recipient on a specific version.
 
 ## Inputs
 
@@ -15,7 +15,7 @@ Every token is independently revocable. By default tokens follow the latest vers
 |---|---|---|
 | `presentation_id` | yes | The presentation to mint a URL for. |
 | `name` | optional | Human-readable label (e.g. recipient name). Default: `default`. |
-| `pin_version` | optional | Pin the token to a specific version. Default: follows latest. |
+| `to_version` | optional | Pin the token to a specific version (`--to-version N`). Default: follows latest. |
 
 ## Prerequisites
 
@@ -25,7 +25,7 @@ Every token is independently revocable. By default tokens follow the latest vers
 ## Steps
 
 1. Confirm the caller is the owner of `presentation_id` (via `get-presentation` if unclear).
-2. Run `slideless share <presentation_id> [--name "…"] [--pin N] --json`.
+2. Run `slideless share <presentation_id> [--name "…"] [--to-version N] --json`.
 3. Parse JSON, return the `shareUrl`. The recipient opens it in a browser — no login required.
 
 ## Example JSON

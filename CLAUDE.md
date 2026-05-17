@@ -101,7 +101,7 @@ All non-`generate-presentation` and non-`export-presentation-pdf` skills delegat
 | `setup-slideless` | `slideless auth signup-*/login-*` (primary), `slideless login` (fallback), `slideless whoami` / `verify` | `POST /cliRequestSignupOtp`, `/cliCompleteSignup`, `/cliRequestLoginOtp`, `/cliCompleteLogin`, `/verifyApiKey` | (mints its own `cko_` key with `presentations:read` + `presentations:write`) |
 | `push-presentation` | `slideless push <folder-or-file>` | `precheckAssets` → `uploadPresentationAsset` → `commitPresentationVersion` | `presentations:write` |
 | `pull-presentation` | `slideless pull <presentationId>` | `GET /getPresentationVersion` + `GET /downloadPresentationAsset` | `presentations:read` (owner or dev) |
-| `share-presentation` | `slideless share <presentationId> [--name <n>] [--pin <v>]` | `POST /addPresentationToken` | `presentations:write` |
+| `share-presentation` | `slideless share <presentationId> [--name <n>] [--to-version <N>]` | `POST /addPresentationToken` | `presentations:write` |
 | `unshare-presentation` | `slideless unshare <presentationId> [--token <tokenId>]` | `POST /unsharePresentation` | `presentations:write` |
 | `delete-presentation` | `slideless delete <presentationId> --yes` | `POST /deletePresentation` | `presentations:write` |
 | `invite-collaborator` | `slideless invite <presentationId> --email <addr>` | `POST /inviteCollaborator` | `presentations:write` |
