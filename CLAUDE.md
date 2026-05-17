@@ -45,7 +45,15 @@ Public agent plugin for generating, sharing, and managing HTML presentations. Pu
 │   │   └── SKILL.md
 │   ├── get-presentation/
 │   │   └── SKILL.md
-│   └── export-presentation-pdf/
+│   ├── export-presentation-pdf/
+│   │   └── SKILL.md
+│   ├── browse-marketplace/
+│   │   └── SKILL.md
+│   ├── publish-to-marketplace/
+│   │   └── SKILL.md
+│   ├── remix-template/
+│   │   └── SKILL.md
+│   └── plan-companion-deck/
 │       └── SKILL.md
 ├── README.md
 ├── CLAUDE.md
@@ -101,6 +109,9 @@ All non-`generate-presentation` and non-`export-presentation-pdf` skills delegat
 | `share-presentation-email` | `slideless share-email` | `POST /sharePresentationViaEmail` | `presentations:write` |
 | `list-presentations` | `slideless list` | `GET /listMyPresentations` | `presentations:read` |
 | `get-presentation` | `slideless get` | `GET /getSharedPresentationInfo/<presentationId>` | `presentations:read` |
+| `browse-marketplace` | `slideless search` | `GET /listMarketplaceListings` | (none — public) |
+| `publish-to-marketplace` | `slideless publish` | `POST /publishMarketplaceListing` | `marketplace:publish` |
+| `remix-template` | `slideless remix` | `GET /getMarketplaceListing` + `GET /getMarketplaceListingFiles` + `GET /downloadMarketplaceAsset` | (none — public) |
 | (viewer, public) | (no CLI — recipients open the share URL) | `GET /getSharedPresentation/<presentationId>/_t/<token>/<assetPath>` | unguessable token in URL |
 
 The `push-presentation` skill accepts a `source_path` that can be either a folder (with `index.html` + sibling assets) or a single `.html` file. Static scan catches parent-directory escapes (`../outside/foo.jpg`) as hard errors. The CLI writes `slideless.json` at the deck root on the first push — the same skill handles subsequent updates because the CLI detects the file and sends `expectedBaseVersion`. Unchanged assets across versions are deduplicated by SHA-256 — only modified files re-upload.

@@ -1,11 +1,11 @@
 ---
 name: browse-marketplace
-description: Search and browse the public Slideless marketplace for remixable presentation templates and interactive tools. Wraps `slideless search`. No API key required. Use when the user asks to "find a template", "browse the marketplace", "show me pitch deck templates", "what marketplace tools are there", or wants a starting point before generating a deck.
+description: Search and browse the public Slideless marketplace for remixable presentations, apps, and plans. Wraps `slideless search`. No API key required. Use when the user asks to "find a template", "browse the marketplace", "show me pitch deck templates", "what marketplace tools are there", or wants a starting point before generating a deck.
 ---
 
 # Browse Marketplace
 
-Wraps `slideless search`. Lists and filters public marketplace listings — both `template` decks and interactive `tool` listings. No authentication required; the marketplace is public.
+Wraps `slideless search`. Lists and filters public marketplace listings — `presentation` decks, interactive `app` listings, and agent-executable `plan` listings. No authentication required; the marketplace is public.
 
 Lead every result with its **`slug`** — that is the identifier the user (or you) feeds into `remix-template` to copy a listing locally.
 
@@ -14,7 +14,7 @@ Lead every result with its **`slug`** — that is the identifier the user (or yo
 | Input | Required | Notes |
 |---|---|---|
 | `query` | optional | Free-text search term. Omit to list everything (subject to filters/sort). |
-| `kind` | optional | Filter by `template` or `tool`. |
+| `kind` | optional | Filter by `presentation`, `app`, or `plan`. |
 | `tag` | optional | Filter to listings carrying a given tag. |
 | `category` | optional | Filter to a single category bucket. |
 | `sort` | optional | `recent` (newest first), `popular` (most remixed/viewed), or `stars` (most starred). |
@@ -26,7 +26,7 @@ Lead every result with its **`slug`** — that is the identifier the user (or yo
 ## Steps
 
 1. Verify the CLI is installed (`slideless --version`). Auth is not required.
-2. Translate the user's intent into filters: a deck design → `--kind template`; an interactive utility → `--kind tool`. Map "best"/"most popular" → `--sort popular`, "newest" → `--sort recent`.
+2. Translate the user's intent into filters: a deck to view → `--kind presentation`; a self-contained HTML app → `--kind app`; an agent-executable build plan → `--kind plan`. Map "best"/"most popular" → `--sort popular`, "newest" → `--sort recent`.
 3. Run `slideless search [query] [--kind …] [--tag …] [--category …] [--sort recent|popular|stars] --json`.
 4. Parse JSON. Present each listing leading with its `slug`.
 
@@ -39,10 +39,12 @@ Lead every result with its **`slug`** — that is the identifier the user (or yo
     "listings": [
       {
         "slug": "minimal-saas-pitch",
-        "kind": "template",
+        "kind": "presentation",
+        "interactive": false,
         "title": "Minimal SaaS Pitch",
         "description": "Clean dark-mode pitch deck for early-stage SaaS.",
         "tags": ["pitch", "saas", "dark"],
+        "techStack": [],
         "category": "pitch-decks",
         "authorDisplayName": "Romain",
         "authorHandle": "romain",
@@ -54,7 +56,7 @@ Lead every result with its **`slug`** — that is the identifier the user (or yo
         "updatedAt": "2026-05-10T09:00:00.000Z"
       }
     ],
-    "total": 1
+    "nextCursor": null
   }
 }
 ```
