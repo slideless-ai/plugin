@@ -23,6 +23,9 @@ One plugin, `slideless`, with skills covering the full lifecycle:
 | `list-presentations` | List every deck you can access — owned plus shared-with-you. Each row carries a `role` column. |
 | `get-presentation` | Fetch full metadata for a single presentation: per-token view counts, `versionMode`, share URLs, and (for owners) the collaborator list. |
 | `export-presentation-pdf` | Convert a local HTML deck into a PDF via a bundled Puppeteer runner. |
+| `browse-marketplace` | Search and filter the public marketplace for remixable templates and tools. No API key required. |
+| `remix-template` | Download a marketplace listing into a fresh, unlinked folder so the user can make it their own. No API key required. |
+| `publish-to-marketplace` | Publish a pushed deck to the public marketplace as a `template` or `tool`. Requires a key with the `marketplace:publish` scope. |
 
 ## Lifecycle at a glance
 
