@@ -31,6 +31,8 @@ Three core pages (always) + optional companion pages (added on demand):
 | `plan.html` | The canonical plan markdown rendered with `marked.min.js`. Heading IDs prefixed `plan--<slug>` to avoid collisions. Sticky TOC built from h2s. | **Always**. |
 | `roadmap.html` | Live execution log driven by `roadmap.json`. Phase cards + a top summary table aggregating runtime + tokens + PR links. | **Always**. |
 | Companion article (e.g. `owner-view.html`, `cli.html`, `testing.html`, `<sub-version>.html`) | Same shape as `article.html`, scoped to a sub-plan that emerges mid-stream — a sub-version, a CLI surface plan, a test strategy. Each is its own tab. | **As needed** when scope expands beyond the initial plan. |
+| `tests.html` (Tests tab) | The QA case table: every E2E / UI case with its assertion and result. Assertions must check the **database and any external system** (e.g. "the calendar event actually exists / moved / was deleted"), not merely "the API returned 200". | **After a QA pass** (see the QA loop). |
+| `review.html` (Review tab) | The code-quality audit rendered as findings by severity (Critical / High / Medium / Low / Nit), each with file + recommendation. | **After a code-review pass**. |
 
 Folder layout (slideless folder mode):
 
@@ -46,7 +48,9 @@ my-plan-deck/
 ├── marked.min.js              ← vendored markdown renderer
 ├── <diagram-N>.png ...        ← rendered diagram figures
 ├── <diagram-N>.mmd ...        ← mermaid sources alongside
-├── <companion-1>.html ...     ← optional companion articles
+├── <companion-1>.html ...     ← optional companion articles (incl. tests.html, review.html after QA)
+├── ORCHESTRATION.md           ← per-project runbook (resume checklist + context kit + per-phase briefs)
+├── SETUP-NOTES.md             ← Phase 0 outputs + pending secrets + deploy gotchas
 └── slideless.json             ← created by `slideless push`
 ```
 
@@ -87,6 +91,34 @@ For each implementation phase:
 
 The realistic parallelism win: D ∥ E only after C lands, and only if you accept the contamination risk; or B-only-on-app ∥ X-only-on-cli — different repos, full parallel.
 
+## Phase 0 — front-load every manual step (pre-flight)
+
+The single biggest enabler of an unattended, overnight run is a deliberate **Phase 0**: before the chain starts, do *everything only a human can do*, so nothing blocks the agents mid-flight. An agent cannot click an OAuth consent screen, log a CLI into a browser, register a domain, or paste a secret it was never given — so those all happen up front.
+
+Phase 0 is a real **roadmap phase** (`phase: "0"`, owner = you), and its output is captured in `SETUP-NOTES.md` (below). A typical checklist:
+
+- **Accounts + cloud projects** — create the project(s), enable the APIs.
+- **OAuth / consent** — configure the consent screen + create the client; copy the client id/secret (consent screens are interactive — no agent can pass them).
+- **CLI logins** — authenticate every CLI the run uses (`gh`, the DB CLI, the deploy CLI, the platform CLI) into the correct org/team.
+- **Secrets** — gather every key/secret the build needs (or confirm they're in the vault); generate the ones you can (`openssl rand`).
+- **Domains / DNS** — decide the domains; add records if the run needs them live.
+
+The rule: **engineer the plan so that, after Phase 0, zero human intervention is required.** Anything that would otherwise pause the chain belongs in Phase 0. If a critical decision still surfaces mid-run, that's a signal Phase 0 missed something — abort and patch the plan rather than let an agent improvise (the stop rule). The one touch that's genuinely hard to remove is a per-user interactive OAuth *connect* during testing — flag it explicitly as the single mid-run human action, don't pretend it's gone.
+
+## The per-project `ORCHESTRATION.md` runbook + `SETUP-NOTES.md`
+
+This skill describes the orchestration loop in the abstract, but **a fresh phase subagent starts with zero context** — it never saw the planning conversation. The artifact that makes the build resumable (across compaction) and lets every subagent self-onboard is a per-project **`ORCHESTRATION.md`**, written once up front and kept beside the deck. It contains:
+
+1. **A resume-after-compaction checklist** — the ordered list of files an orchestrator reads to know "where are we": the canonical plan, `roadmap.json` (the live state — which phases are `shipped` vs `pending`), `SETUP-NOTES.md`, this runbook, and the workspace rules. After a context reset you read these and continue from the first `pending` phase.
+2. **The shared "context kit"** — the *exact list of paths* every phase subagent must read before writing code (workspace rules, the canonical plan, the repo's own `CLAUDE.md`, and the specific template/reference files to mirror). Paste this block verbatim into every brief so a zero-context agent acquires the same grounding every time.
+3. **Per-phase briefs** — for each phase: scope IN, scope OUT (everything belonging to other phases), the files it reads, the files it creates/modifies, the verification commands, and the report shape. The orchestrator fills the brief template from this entry.
+4. **Known additions / gotchas** — things discovered missing or surprising (deps the template lacks, dirs that don't exist yet, env quirks), so later phases don't re-trip them.
+
+`SETUP-NOTES.md` is its companion: it records the **Phase 0 outputs** (project ids, client ids, chosen domains), **which secrets are still pending**, and the **deploy gotchas** learned along the way. Two recur on serverless stacks and are worth writing down:
+
+- *Every statically-imported env var must exist in every deploy scope* — e.g. SvelteKit's `$env/static/private` fails the build if a key is absent in a given environment, even an unused one (set placeholders in each scope).
+- *Local tests pass but serverless drops fire-and-forget work* — a function can freeze the moment it returns the response, so un-awaited side effects (emails, webhooks) silently never run; `await` them or use the platform's `waitUntil`. A local dev server doesn't reproduce this — which is exactly why an independent review pass catches what local E2E masks.
+
 ## Tracking time + tokens + PRs on the roadmap
 
 Every implementation phase emits two metrics the orchestrator captures from the task-notification's `<usage>` block:
@@ -109,6 +141,8 @@ These all go into the phase's entry in `roadmap.json` under `agent` + `branch` +
 2. **Summary table at the top** — one row per shipped phase with agent metrics, `PR` column with the clickable `#N`, plus a TOTAL row aggregating runtime + tokens across the whole effort. Phases without metrics (planning subagents, manual polish, shared agent runs) show `—` and are excluded from the total.
 
 This makes the roadmap a real ship log — at any moment, you can see "we burned 8h 19m of agent runtime and 3.2M tokens to ship phases A–E + V1.1.5 F–G + CLI-F + CLI-G + 4 QA rounds." Cost is visible, not hidden.
+
+The roadmap is not only feature phases — carry the full taxonomy so the story runs from "nothing existed" to "shipped + verified + hardened": **`0`** (manual prerequisites, owner = you), **`S`** (scaffold / setup — repos, DB, first deploy), the lettered **feature phases** (`A`…`Z`), the **`TEST-*`** QA phases, and a **`FIX`** phase for the QA fix pass. Setup + manual phases have no agent metrics (they render `—` and are excluded from the total); they still belong on the roadmap.
 
 ## Companion articles for emergent scope
 
@@ -140,6 +174,8 @@ After the implementation phases land + deploy to staging, run a three-stage QA l
 | **TEST coverage** (e.g. `TEST-I`) | Analyze the Jest integration suite, identify CFs without negative tests, write missing tests, run the **full** suite to confirm 100% green, mark genuine emulator-only flakes as `it.skip` with documentation. | A regression net so the bugs caught manually never come back silently. |
 
 Each appears as a phase on the roadmap with its own runtime + tokens + PR. The summary table totals everything — including QA — into the cumulative cost.
+
+The QA loop also produces two deck tabs (see *What it produces*): a **`tests.html`** with the full case table, where each case's assertion verifies the **database and any external system** ("the calendar event actually exists / moved / was deleted"), not merely "the endpoint returned 200"; and a **`review.html`** rendering the code-quality findings by severity. These make the verification legible — the audience sees *what* was checked, not just green ticks. Run the code-review as its own independent agent (fresh context, no implementation bias): it catches the class of bug that local E2E masks (e.g. serverless fire-and-forget drops).
 
 ## Auto-merge — PR as log, not gate
 
