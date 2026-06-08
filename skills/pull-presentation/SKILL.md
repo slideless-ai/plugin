@@ -43,6 +43,10 @@ Wraps `slideless pull`. Streams every asset of the requested version into a loca
 }
 ```
 
+## Live editing
+
+For a live edit loop, tell the user to run `slideless dev .` in their terminal from inside the pulled folder — it serves the deck locally and auto-reloads the browser on save (offline; no upload). This is a long-running server, so the **user** runs it in their own terminal, not the agent. Publishing still happens via `push-presentation` when they're done.
+
 ## Pitfalls
 
 - Pulling into a non-empty folder without `--force` is refused. Either pick an empty directory or pass `--force` (overwrites files with remote content).

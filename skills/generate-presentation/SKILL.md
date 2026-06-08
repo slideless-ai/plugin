@@ -70,7 +70,7 @@ For every generation request:
 5. **Write to disk** at the path the user requested.
    - Single-file mode (default): `./presentation.html`
    - Folder mode (when the deck uses local images/video/3D): create a folder like `./presentation/` with `index.html` at its root and sibling asset files at any paths the HTML references. No forced `/assets/` convention — `./hero.jpg`, `./images/hero.jpg`, and `./media/hero.jpg` all work; match what the HTML's `src=` attributes point at.
-6. **Tell the user how to view it**: open the `.html` in a browser (single-file) or open the `index.html` (folder) — both modes render identically.
+6. **Tell the user how to view it**: open the `.html` in a browser (single-file) or open the `index.html` (folder) — both modes render identically. For folder decks they plan to keep editing, suggest they run `slideless dev <folder>` in their terminal — a local server with auto-reload on every save (the user runs it themselves; it's a long-running process, not an agent step).
 7. **Optionally suggest sharing** via the `share-presentation` skill. Pass the file (single-file mode) or the folder path (folder mode) as `source_path`.
 
 ## Using local assets
