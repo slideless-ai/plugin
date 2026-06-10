@@ -43,7 +43,8 @@ html, body {
 
 /* Force all reveal-on-activate animations to their final state. */
 .slide .anim,
-.slide .reveal-word {
+.slide .reveal-word,
+.slide .fragment {
   opacity: 1 !important;
   transform: none !important;
   filter: none !important;

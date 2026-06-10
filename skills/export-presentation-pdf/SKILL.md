@@ -116,7 +116,7 @@ If not found, tell the user: "I can't find the `export-presentation-pdf` skill a
 
 - **Chromium not installed** → `npm install` in `scripts/` downloads it. If blocked, set `PUPPETEER_EXECUTABLE_PATH` to a local Chrome.
 - **Google Fonts missed** → the runner uses `waitUntil: 'networkidle0'`; if the host is offline, fonts silently fall back. Warn the user if offline.
-- **Animations frozen mid-state** → the print CSS forces `.anim`, `.reveal-word`, `.panel` to their end state. If a custom style uses different class names, add overrides or pass `--inject` with your own CSS.
+- **Animations frozen mid-state** → the print CSS forces `.anim`, `.reveal-word`, `.fragment`, `.panel` to their end state, and for `full-deck` the runner also finalizes JS-driven states before printing (adds `fragment--shown`, writes the final `[data-count]`/`[data-text]` values — counters would otherwise print as `0` because they only animate on `.active` slides). The JSON output reports `prepped: true` when this ran. If a custom style uses different class names, add overrides or pass `--inject` with your own CSS.
 - **Inline base64 images >1 MB** → the PDF will be large. The runner surfaces `bytes` so you can decide.
 - **Truncated HTML** → Puppeteer will time out waiting for `networkidle0`. Error surfaces after ~60s; suggest re-running `generate-presentation`.
 - **Unknown style** → the runner reports `"style": "unknown"` and renders without CSS injection. Output may paginate poorly. Pass `--style full-deck` if the layout is close, or `--inject` with a custom CSS.

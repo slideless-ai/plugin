@@ -97,9 +97,11 @@ async function main() {
 
   const outPath = args.out ?? defaultOut(args.in);
 
-  // Decide which CSS (if any) to inject.
+  // Always detect the style (also needed for the print-prep step below),
+  // then decide which CSS (if any) to inject.
   // Precedence: explicit --inject > explicit --style > auto-detect.
-  let detected: Style = 'unknown';
+  const html = await readFile(args.in, 'utf8');
+  let detected: Style = detectStyle(html);
   let cssToInject: string | null = null;
 
   if (args.inject) {
@@ -108,8 +110,6 @@ async function main() {
   } else if (args.style === 'none') {
     cssToInject = null;
   } else if (args.style === 'auto') {
-    const html = await readFile(args.in, 'utf8');
-    detected = detectStyle(html);
     cssToInject = cssPathFor(detected);
   } else {
     detected = args.style as Style;
@@ -131,6 +131,37 @@ async function main() {
     if (cssToInject) {
       const css = await readFile(cssToInject, 'utf8');
       await page.addStyleTag({ content: css });
+    }
+
+    // Print-prep: finalize JS-driven states that CSS alone can't reach.
+    // full-deck decks reveal fragments on keypress and animate counters only
+    // when a slide becomes .active — in print, every slide must show its end
+    // state. Mirrors the style's own animateCounters() formatting.
+    let prepped = false;
+    if (detected === 'full-deck' && args.style !== 'none') {
+      prepped = await page.evaluate(() => {
+        let touched = 0;
+        document.querySelectorAll('.fragment').forEach((f) => {
+          f.classList.add('fragment--shown');
+          touched++;
+        });
+        document.querySelectorAll<HTMLElement>('[data-count]').forEach((el) => {
+          const target = parseInt(el.dataset.count || '', 10);
+          if (Number.isNaN(target)) return;
+          const prefix = el.dataset.prefix || '';
+          const suffix = el.dataset.suffix || '';
+          const v = el.dataset.format === 'comma' ? target.toLocaleString() : String(target);
+          el.textContent = prefix + v + suffix;
+          touched++;
+        });
+        document.querySelectorAll<HTMLElement>('[data-text]').forEach((el) => {
+          if (el.dataset.text) {
+            el.textContent = el.dataset.text;
+            touched++;
+          }
+        });
+        return touched > 0;
+      });
     }
 
     await page.emulateMediaType('print');
@@ -155,6 +186,7 @@ async function main() {
       landscape: args.landscape,
       style: args.inject ? 'custom' : detected,
       injected: cssToInject,
+      prepped,
     });
   } catch (err) {
     fail('render failed', String((err as Error)?.stack ?? err));
