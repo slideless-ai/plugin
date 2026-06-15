@@ -14,7 +14,9 @@ One plugin, `slideless`, with skills covering the full lifecycle:
 | `generate-presentation` | Generate an HTML presentation in one of several built-in visual styles. Output is either a single `.html` or a folder with sibling assets (images, video, 3D models, CSS, JS) depending on what the deck needs. |
 | `push-presentation` | Upload a deck (folder or single HTML file). First push creates a new presentation and writes `slideless.json` at the deck root; subsequent pushes from the same folder re-publish to the same `presentationId` with view counts preserved. |
 | `pull-presentation` | Download a deck to a local folder (writes `slideless.json` so a subsequent `push` re-publishes in place). Works for owners on another machine and for invited dev collaborators. |
-| `share-presentation` | Mint a public viewer URL for an existing presentation. Mint as many named tokens as you need (one per recipient for per-recipient tracking). |
+| `share-presentation` | Mint a public viewer URL for an existing presentation. Mint as many named tokens as you need (one per recipient for per-recipient tracking). Pass `annotator` to mint a **review link** whose holder can leave notes in the viewer. |
+| `pull-annotations` | Owner-only: collect reviewer notes left on a hosted deck (via annotator links) into the deck's local `.slideless/annotations.json`. Additive, deduped by note id. |
+| `apply-annotations` | Agent skill: read the local `.slideless/annotations.json` and edit the deck's HTML to address each unprocessed note, best-effort anchoring each one back to its spot. Local-only, no network. |
 | `unshare-presentation` | Revoke viewer URLs — one token with `--token`, or every token without. The deck stays editable. |
 | `delete-presentation` | Hard-delete a presentation: Firestore doc, every version, every asset, every collaborator row. Irreversible. |
 | `invite-collaborator` | Invite a dev collaborator by email. They gain push + pull access once they have a Slideless account (auto-claims on signup if they don't). |
@@ -42,6 +44,12 @@ share-presentation <presentationId>                                 (mint a publ
   ↓
   → returns shareUrl + tokenId
   ↓
+share-presentation <presentationId> --name "Alice" --annotator      (optional review loop: mint a link Alice can leave notes on)
+  → [reviewers annotate in the browser]
+  → pull-annotations    (owner collects their notes into .slideless/annotations.json)
+  → apply-annotations   (edit the deck to address each note)
+  → push-presentation   (ship the new version)
+  ↓
 share-presentation-email <presentationId> alice@x.com bob@y.com     (optional: email it out)
   ↓
 [recipients open the URL; images, video, 3D assets load natively]
@@ -58,6 +66,8 @@ unshare-presentation <presentationId> [--token <tokenId>]           (revoke one 
   ↓
 delete-presentation <presentationId>                                (hard-delete, irreversible)
 ```
+
+Local notes too: `slideless dev` (run from a deck folder) serves the deck with live reload and lets you select text in your browser to leave your own notes — saved into the same `.slideless/annotations.json` (as `source: "local"`). `apply-annotations` consumes local and pulled-hosted notes alike.
 
 ## Bundled Styles
 

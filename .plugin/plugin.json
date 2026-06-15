@@ -1,7 +1,7 @@
 {
   "name": "slideless",
-  "version": "0.5.0",
-  "description": "Generate, push, pull, share, and collaborate on HTML presentations. Decks are either a single self-contained HTML file or a folder with sibling assets; Slideless serves them like a static website. In v0.5: push/pull from any device, invite dev collaborators by email, decouple publishing from sharing. Skills delegate to the official `slideless` CLI (≥ 0.5.0). Run `setup-slideless` first.",
+  "version": "0.6.0",
+  "description": "Generate, push, pull, share, annotate, and collaborate on HTML presentations. Decks are either a single self-contained HTML file or a folder with sibling assets; Slideless serves them like a static website. Push/pull from any device, invite dev collaborators by email, decouple publishing from sharing, and run a review loop: share an annotator link, pull reviewer notes, apply them, re-push. Skills delegate to the official `slideless` CLI (≥ 0.5.0). Run `setup-slideless` first.",
   "author": {
     "name": "Slideless",
     "email": "team@slideless.ai",
@@ -18,6 +18,8 @@
     "pitch",
     "slideless",
     "share",
-    "email"
+    "email",
+    "annotations",
+    "review"
   ]
 }

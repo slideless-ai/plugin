@@ -31,6 +31,10 @@ Public agent plugin for generating, sharing, and managing HTML presentations. Pu
 │   │   └── SKILL.md
 │   ├── share-presentation/
 │   │   └── SKILL.md
+│   ├── pull-annotations/
+│   │   └── SKILL.md
+│   ├── apply-annotations/
+│   │   └── SKILL.md
 │   ├── unshare-presentation/
 │   │   └── SKILL.md
 │   ├── delete-presentation/
@@ -101,7 +105,9 @@ All non-`generate-presentation` and non-`export-presentation-pdf` skills delegat
 | `setup-slideless` | `slideless auth signup-*/login-*` (primary), `slideless login` (fallback), `slideless whoami` / `verify` | `POST /cliRequestSignupOtp`, `/cliCompleteSignup`, `/cliRequestLoginOtp`, `/cliCompleteLogin`, `/verifyApiKey` | (mints its own `cko_` key with `presentations:read` + `presentations:write`) |
 | `push-presentation` | `slideless push <folder-or-file>` | `precheckAssets` → `uploadPresentationAsset` → `commitPresentationVersion` | `presentations:write` |
 | `pull-presentation` | `slideless pull <presentationId>` | `GET /getPresentationVersion` + `GET /downloadPresentationAsset` | `presentations:read` (owner or dev) |
-| `share-presentation` | `slideless share <presentationId> [--name <n>] [--to-version <N>]` | `POST /addPresentationToken` | `presentations:write` |
+| `share-presentation` | `slideless share <presentationId> [--name <n>] [--annotator] [--to-version <N>]` | `POST /addPresentationToken` | `presentations:write` |
+| `pull-annotations` | `slideless pull-annotations [<presentationId>] [--at <N>] [--path <dir>]` | `GET /listAnnotationsForOwner` | `presentations:read` (owner-only) |
+| `apply-annotations` | (no CLI — agent reads local `.slideless/annotations.json` and edits the deck) | (local only) | (none) |
 | `unshare-presentation` | `slideless unshare <presentationId> [--token <tokenId>]` | `POST /unsharePresentation` | `presentations:write` |
 | `delete-presentation` | `slideless delete <presentationId> --yes` | `POST /deletePresentation` | `presentations:write` |
 | `invite-collaborator` | `slideless invite <presentationId> --email <addr>` | `POST /inviteCollaborator` | `presentations:write` |
@@ -117,6 +123,14 @@ All non-`generate-presentation` and non-`export-presentation-pdf` skills delegat
 The `push-presentation` skill accepts a `source_path` that can be either a folder (with `index.html` + sibling assets) or a single `.html` file. Static scan catches parent-directory escapes (`../outside/foo.jpg`) as hard errors. The CLI writes `slideless.json` at the deck root on the first push — the same skill handles subsequent updates because the CLI detects the file and sends `expectedBaseVersion`. Unchanged assets across versions are deduplicated by SHA-256 — only modified files re-upload.
 
 A fresh push does not mint a viewer URL. The agent must call `share-presentation` afterwards if the user wants a public link.
+
+**Annotation review loop.** `share-presentation --annotator --name "<reviewer>"` mints a link whose holder can leave notes in the shared viewer (the name becomes the note author). The review loop is:
+
+```
+share-presentation --annotator → [reviewers annotate in the browser] → pull-annotations → apply-annotations → push-presentation
+```
+
+`pull-annotations` is owner-only and merges hosted reviewer notes into the deck's local `.slideless/annotations.json` (schema v2; deduped by note id, additive, `source: "hosted"`). `apply-annotations` is a network-free **agent** skill (no CLI command): it reads that local file and best-effort edits the deck to address each `processed: false` note, anchoring via `anchor.selector` → `anchor.container` → `selectedText` + `context`. `slideless dev` captures the user's own notes into the same file (`source: "local"`); `apply-annotations` handles local and hosted notes identically.
 
 Skills always pass `--json` so the response shape is stable: `{ success: true, data: ... }` or `{ success: false, status, error: { code, message } }`.
 
