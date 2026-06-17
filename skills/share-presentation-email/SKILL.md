@@ -101,7 +101,7 @@ Every failure includes `error.code` and `error.nextAction`. Handle each without 
 | `error.code` | When it happens | What to do |
 |---|---|---|
 | `unauthenticated` | No key / invalid key | Ask the user to run `slideless auth login` or pass `--api-key`, then retry. |
-| `permission-denied` | Key doesn't own the share | Verify the key belongs to the org that owns the presentationId. Ask user for the right key if not. |
+| `permission-denied` | Key isn't the owner, same-org, or an active collaborator | Verify the key belongs to the owner, the owning org, or a collaborator on the presentationId. Ask user for the right key if not. |
 | `not-found` | `presentationId` doesn't exist | Double-check the presentationId. If the user just created it, retry once after 2s. |
 | `archived` | Share is archived | Tell the user the presentation is archived. Offer to un-archive or create a new share with `share-presentation`. |
 | `missing-recipients` | No emails provided | Ask the user for at least one recipient address and retry. |

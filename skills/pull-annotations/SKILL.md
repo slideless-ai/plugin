@@ -22,7 +22,7 @@ This skill only **fetches** notes. It does not edit the deck. That's `apply-anno
 ## Prerequisites
 
 - `slideless` CLI installed + authenticated (run `setup-slideless` otherwise).
-- **Owner-only.** Dev collaborators cannot pull annotations — this is the owner's review inbox.
+- **Owner or active dev collaborator.** Anyone else gets `permission-denied`.
 - A linked deck folder (has `slideless.json`) if you omit `presentation_id`.
 
 ## Steps
@@ -61,7 +61,7 @@ Read this as: 4 new reviewer notes merged in, 2 were already local (skipped), th
 }
 ```
 
-## Example JSON (unauthenticated / not owner)
+## Example JSON (unauthenticated / no access)
 
 ```json
 {
@@ -69,14 +69,14 @@ Read this as: 4 new reviewer notes merged in, 2 were already local (skipped), th
   "status": 401,
   "error": {
     "code": "unauthenticated",
-    "message": "No valid API key. Run `setup-slideless`, or you are not the owner of this deck."
+    "message": "No valid API key. Run `setup-slideless`, or you are not the owner or a collaborator on this deck."
   }
 }
 ```
 
 ## Pitfalls
 
-- **Owner-only.** A dev collaborator gets `unauthenticated` / `permission-denied` here.
+- **Owner or active dev collaborator only.** Anyone else gets `unauthenticated` / `permission-denied` here.
 - This merges into the deck's **local** `.slideless/annotations.json`. If you run it from the wrong folder (or without `--path`), the notes land in the wrong place. Run it from the deck root, or pass `--path`.
 - Re-pulling is **additive and idempotent** — it tops up new notes and skips ones you already have; it never wipes local notes.
 - Omitting the id resolves to the linked deck's current version; passing an explicit id pulls across **all** versions. Use `--at <N>` to narrow.

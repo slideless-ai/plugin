@@ -106,7 +106,7 @@ All non-`generate-presentation` and non-`export-presentation-pdf` skills delegat
 | `push-presentation` | `slideless push <folder-or-file>` | `precheckAssets` → `uploadPresentationAsset` → `commitPresentationVersion` | `presentations:write` |
 | `pull-presentation` | `slideless pull <presentationId>` | `GET /getPresentationVersion` + `GET /downloadPresentationAsset` | `presentations:read` (owner or dev) |
 | `share-presentation` | `slideless share <presentationId> [--name <n>] [--annotator] [--to-version <N>]` | `POST /addPresentationToken` | `presentations:write` |
-| `pull-annotations` | `slideless pull-annotations [<presentationId>] [--at <N>] [--path <dir>]` | `GET /listAnnotationsForOwner` | `presentations:read` (owner-only) |
+| `pull-annotations` | `slideless pull-annotations [<presentationId>] [--at <N>] [--path <dir>]` | `GET /listAnnotationsForOwner` | `presentations:read` (owner or dev) |
 | `apply-annotations` | (no CLI — agent reads local `.slideless/annotations.json` and edits the deck) | (local only) | (none) |
 | `unshare-presentation` | `slideless unshare <presentationId> [--token <tokenId>]` | `POST /unsharePresentation` | `presentations:write` |
 | `delete-presentation` | `slideless delete <presentationId> --yes` | `POST /deletePresentation` | `presentations:write` |
@@ -130,7 +130,7 @@ A fresh push does not mint a viewer URL. The agent must call `share-presentation
 share-presentation --annotator → [reviewers annotate in the browser] → pull-annotations → apply-annotations → push-presentation
 ```
 
-`pull-annotations` is owner-only and merges hosted reviewer notes into the deck's local `.slideless/annotations.json` (schema v2; deduped by note id, additive, `source: "hosted"`). `apply-annotations` is a network-free **agent** skill (no CLI command): it reads that local file and best-effort edits the deck to address each `processed: false` note, anchoring via `anchor.selector` → `anchor.container` → `selectedText` + `context`. `slideless dev` captures the user's own notes into the same file (`source: "local"`); `apply-annotations` handles local and hosted notes identically.
+`pull-annotations` works for the owner or an active dev collaborator and merges hosted reviewer notes into the deck's local `.slideless/annotations.json` (schema v2; deduped by note id, additive, `source: "hosted"`). `apply-annotations` is a network-free **agent** skill (no CLI command): it reads that local file and best-effort edits the deck to address each `processed: false` note, anchoring via `anchor.selector` → `anchor.container` → `selectedText` + `context`. `slideless dev` captures the user's own notes into the same file (`source: "local"`); `apply-annotations` handles local and hosted notes identically.
 
 Skills always pass `--json` so the response shape is stable: `{ success: true, data: ... }` or `{ success: false, status, error: { code, message } }`.
 

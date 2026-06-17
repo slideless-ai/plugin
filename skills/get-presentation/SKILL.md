@@ -17,7 +17,7 @@ Wraps `slideless get`. Returns full metadata + per-token info for a single share
 
 - `slideless` CLI installed and authenticated — if `slideless --version` fails with `command not found`, invoke the `setup-slideless` skill first, then retry.
 - Active profile must have `presentations:read`
-- The user must own this presentation (ownership checked server-side)
+- The user must be the owner or an active dev collaborator (checked server-side)
 
 ## Steps
 
@@ -82,7 +82,7 @@ slideless get "$SHARE_ID" --json
 ## Pitfalls
 
 - **Wrong presentationId** → `not-found`. Confirm with `slideless list` first if unsure.
-- **Not the owner** → `permission-denied`.
+- **Not the owner or an active collaborator** → `permission-denied`.
 - **Per-token shareUrl includes the secret token** — surface them only when the user wants to share with a new recipient. Don't paste them in chat history that gets shared elsewhere.
 
 ## Output checklist

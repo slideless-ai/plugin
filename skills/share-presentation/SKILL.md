@@ -29,12 +29,12 @@ Reviewers' notes live on the server. The owner later collects them with `pull-an
 
 ## Prerequisites
 
-- Owner-only. If the caller is a dev collaborator, this fails with `permission-denied`.
+- Owner or active dev collaborator. Anyone else gets `permission-denied`.
 - Presentation must exist (run `push-presentation` first if it doesn't).
 
 ## Steps
 
-1. Confirm the caller is the owner of `presentation_id` (via `get-presentation` if unclear).
+1. Confirm the caller is the owner or an active collaborator of `presentation_id` (via `get-presentation` if unclear).
 2. If `annotator` is requested and no `name` was given, **ask for one** (it becomes the note author) — do not fall back to `default`.
 3. Run `slideless share <presentation_id> --name "…" [--annotator] [--to-version N] --json`.
    - Plain link: omit `--annotator` (and `--name` may be omitted too).
